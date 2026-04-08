@@ -36,17 +36,17 @@ input,button,select{font-family:'DM Mono',monospace}
 .plus-menu button:active{background:#ede7d4}
 .mix-col{display:flex;flex-direction:column;align-items:center;flex:1}
 .mix-col.mix-master{flex:none;align-items:center}
-.mix-track{position:relative;width:18px;flex:1;background:transparent;border-radius:0;cursor:pointer;touch-action:none}
-.mix-track::before{content:'';position:absolute;left:50%;top:0;bottom:0;width:3px;background:#ccc;border-radius:2px;transform:translateX(-50%)}
-.mix-fill{position:absolute;bottom:0;width:3px;left:50%;transform:translateX(-50%);background:#333;border-radius:2px;pointer-events:none}
-.mix-thumb{position:absolute;left:50%;width:14px;height:20px;background:#333;border-radius:1px;transform:translate(-50%,-50%);pointer-events:none}
+.mix-track{position:relative;width:22px;flex:1;background:transparent;border-radius:0;cursor:pointer;touch-action:none}
+.mix-track::before{content:'';position:absolute;left:50%;top:0;bottom:0;width:7px;background:#ccc;border-radius:2px;transform:translateX(-50%)}
+.mix-fill{position:absolute;bottom:0;width:7px;left:50%;transform:translateX(-50%);background:#333;border-radius:2px;pointer-events:none}
+.mix-thumb{position:absolute;left:50%;width:18px;height:20px;background:#333;border-radius:1px;transform:translate(-50%,-50%);pointer-events:none}
 .mix-master .mix-fill{background:#aaa}
 .mix-master .mix-thumb{background:#aaa}
 .tabs.mixer-active .tab{color:#333!important}
 .tabs.mixer-active .plus-btn{color:#333!important;border-bottom-color:#333!important}
 #modMixer.active{padding:16px 0 40px;flex:1;height:100%;overflow:hidden}
 .mixer-wrap{display:flex;width:100%;padding:4px 0;flex:1}
-.content{flex:1;overflow-y:auto;overflow-x:hidden;-webkit-overflow-scrolling:touch}
+.content{flex:1;overflow-y:auto;overflow-x:hidden;-webkit-overflow-scrolling:touch;position:relative}
 .mod{display:none;padding:16px 14px 60px}
 .mod.active{display:flex;flex-direction:column;align-items:center;gap:14px}
 .lbl{font-size:9px;color:#a0ad95;letter-spacing:1px}
@@ -93,7 +93,7 @@ input[type=range]::-moz-range-thumb{width:20px;height:20px;border-radius:50%;bac
 #modMulti .vnum,#modMulti .vedit{font-size:20px!important;color:#111!important;letter-spacing:0}
 #modMulti .vedit{border-color:#999;background:#f8f4eb;width:80px!important;padding:2px 4px}
 #muBg{position:absolute;inset:0;z-index:0;background:repeating-linear-gradient(-180deg,white,gray 1px,#ede7d4 1px,gray 2px)}
-#muContent{position:relative;z-index:3;height:100%;overflow:hidden;display:flex;flex-direction:column;align-items:center;gap:14px;padding:42px 12.5% 0;pointer-events:none}
+#muContent{position:relative;z-index:5;height:100%;overflow:visible;display:flex;flex-direction:column;align-items:center;gap:14px;padding:42px 12.5% 0;pointer-events:none}
 .maths-ctrlrow{display:flex;gap:6px;width:100%;max-width:360px;align-items:center;pointer-events:auto}
 .maths-grid{pointer-events:auto}
 #multiHarmonicSel{margin-left:auto}
@@ -431,6 +431,7 @@ input[type=range]::-moz-range-thumb{width:20px;height:20px;border-radius:50%;bac
     <div class="lbl" style="text-align:center;font-family:Arial,sans-serif;font-size:11px;margin-bottom:3px">volume</div>
     <input type="range" id="vtVolR" min="0" max="100" value="70" oninput="vtVol=+this.value;if(vtMGn&&AC)vtMGn.gain.setTargetAtTime(v2g(vtVol),AC.currentTime,.02);syncMixerUI()">
   </div>
+  <div style="position:absolute;bottom:10px;left:10px;font-family:Arial,sans-serif;font-size:11px;color:#d9a0d5">*This is a replica of Neil Thapen's Pink Thrombone</div>
 </div>
 
 </div>
