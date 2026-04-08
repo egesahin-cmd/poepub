@@ -1070,17 +1070,39 @@ function multiSetOscRatio(idx,ratio){
   if(multiHarmonicIdx<0)return;
   multiOscRatios[idx]=ratio;
   var newFreq=Math.max(0.01,Math.min(1e8,r2(multiFundamental*ratio)));
-  multiOscs[idx].freq=newFreq;
-  if(multiSweepActive){
-    multiFreqFrom[idx]=newFreq;
-    multiFreqTo[idx]=newFreq;
-  }else if(multiOscs[idx].osc&&AC){
-    multiOscs[idx].osc.frequency.setTargetAtTime(newFreq,AC.currentTime,.02);
-  }
+  // Update ratio label immediately; freq text animates via the sweep tick
   var rat=document.getElementById('mrat'+idx);
   if(rat)rat.textContent='\u00d7'+fmtRatio(ratio);
-  var fq=document.getElementById('mfq'+idx);
-  if(fq)setMcFreq(fq,newFreq);
+  // Snapshot current state of every osc (where each one is right now)
+  var curFreqs=[],curVols=[];
+  for(var k=0;k<8;k++){curFreqs[k]=multiOscs[k].freq;curVols[k]=multiOscs[k].vol;}
+  // If a sweep is currently in flight (e.g. from a roll), preserve the
+  // other oscs' targets so they continue toward their original goals.
+  var prevFreqTo=(multiSweepActive&&multiFreqTo&&multiFreqTo.length===8)?multiFreqTo.slice():null;
+  var prevVolTo =(multiSweepActive&&multiVolTo &&multiVolTo .length===8)?multiVolTo .slice():null;
+  var newFrom=curFreqs.slice();
+  var newTo=curFreqs.slice();
+  if(prevFreqTo){
+    for(var k=0;k<8;k++)if(k!==idx)newTo[k]=prevFreqTo[k];
+  }
+  newTo[idx]=newFreq;
+  multiFreqFrom=newFrom;
+  multiFreqTo=newTo;
+  multiVolFrom=curVols.slice();
+  multiVolTo=prevVolTo?prevVolTo.slice():curVols.slice();
+  if(!multiFreqTypes||multiFreqTypes.length!==8)multiFreqTypes=['linear','linear','linear','linear','linear','linear','linear','linear'];
+  for(var t=0;t<8;t++)if(!multiFreqTypes[t])multiFreqTypes[t]='linear';
+  if(!multiSweepVolType)multiSweepVolType='linear';
+  multiHarmonicSweep=false;
+  // Pause LFO so the sweep is the only animator; it auto-restarts when sweep ends
+  if(multiLfoActive){cancelAnimationFrame(multiLfoRAF);multiLfoActive=false;multiLfoRAF=null;}
+  // Restart the sweep from the current state over multiDur seconds
+  multiSweepLastFrame=performance.now();
+  multiSweepActive=true;
+  multiFrameCount=0;
+  multiSweepTick._prog=0;
+  if(multiSweepRAF)cancelAnimationFrame(multiSweepRAF);
+  multiSweepRAF=requestAnimationFrame(multiSweepTick);
 }
 function attachVolSlider(hit,fill,idx){
   function setFromY(clientY){
