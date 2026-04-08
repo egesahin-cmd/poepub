@@ -99,13 +99,13 @@ input[type=range]::-moz-range-thumb{width:20px;height:20px;border-radius:50%;bac
 #multiHarmonicSel{margin-left:auto}
 .maths-roll{padding:6px 10px;border-radius:1px;border:1px solid #555;background:#333;color:#fff;font-size:9px;font-weight:500;letter-spacing:1px;cursor:pointer;font-family:inherit;white-space:nowrap}
 .maths-roll:active{background:#f8f4eb;color:#555;border-color:#ccc}
-.maths-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;width:100%;max-width:360px}
-.maths-cell{position:relative;aspect-ratio:3/2;background:#f8f4eb;border:1px solid #ccc;border-radius:1px;cursor:pointer;display:flex;flex-direction:column;justify-content:space-between;padding:5px 6px;transition:opacity .15s}
+.maths-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:6px;width:100%;max-width:360px}
+.maths-cell{position:relative;aspect-ratio:3/2;background:#f8f4eb;border:1px solid #ccc;border-radius:1px;cursor:pointer;display:flex;flex-direction:column;justify-content:space-between;padding:5px 6px;transition:opacity .15s;min-width:0;overflow:hidden}
 .maths-cell.muted{opacity:.25}
 .maths-cell .mc-top{display:flex;justify-content:space-between;width:100%}
 .maths-cell .mc-ratio{color:#111;font-weight:600;font-size:9px;letter-spacing:.5px}
 .maths-cell .mc-vol{color:#666;font-size:8px}
-.maths-cell .mc-freq{color:#999;font-size:13px}
+.maths-cell .mc-freq{color:#999;font-size:13px;line-height:1.05;word-break:break-word;text-align:left;min-width:0}
 .maths-img-wrap{position:absolute;top:calc(50% - 30px);left:50%;transform:translate(-50%,-50%);width:45%;height:45%;z-index:2;pointer-events:none}
 .maths-img{width:100%;height:100%;object-fit:contain;pointer-events:none}
 .maths-img-click{position:absolute;top:25%;left:25%;width:50%;height:50%;cursor:pointer;pointer-events:auto;z-index:3}
@@ -206,6 +206,17 @@ input[type=range]::-moz-range-thumb{width:20px;height:20px;border-radius:50%;bac
 #modVoice input[type=range]::-webkit-slider-thumb{background:#C070C6;width:10px;height:22px;border-radius:3px}
 #modVoice input[type=range]::-moz-range-thumb{background:#C070C6;width:10px;height:22px;border-radius:3px}
 #modVoice .lbl{color:#d9a0d5}
+@media (hover:none) and (pointer:coarse){
+  /* MATHS — mobile-only layout */
+  /* Upper grid: 5px higher + shifted left (was 42px 12.5% 0) */
+  #muContent{padding:37px 4% 0}
+  /* SVG: 10% smaller (45 → 40.5) and 10px lower (-30 → -20) */
+  #modMulti .maths-img-wrap{top:calc(50% - 20px);width:40.5%;height:40.5%}
+  /* Sliders: extend symmetric to align with new grid left edge; tighter vertical packing */
+  #modMulti .maths-sliders{padding:0 4% 14px;gap:0}
+  #modMulti .maths-slider-wrap+.maths-slider-wrap{margin-top:-4px}
+  #modMulti .maths-slider-wrap .ms-label{margin-bottom:-1px;line-height:1.1}
+}
 </style>
 </head>
 <body>
@@ -550,6 +561,9 @@ const STYPES=['linear','log','wobble','meandering','cascade','shard','spiral'];
 const MULTI_FREQS=(function(){var a=[];for(var f=50;f<=1200;f+=12.5)a.push(f);return a;})();
 const HARMONIC_LISTS=[
   {name:'Harmonic Series',ratios:[1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31,32]},
+  {name:'5-Limit',ratios:[1,2,3,4,5,6,8,9,10,12,15,16,18,20,24,25,27,30,32,36,40,45,48,50,54,60,64,72,75,80,81,90]},
+  {name:'7-Limit',ratios:[1,2,3,4,5,6,7,8,9,10,12,14,15,16,18,20,21,24,25,27,28,30,32,35,36,40,42,45,48,49,50,54]},
+  {name:'11-Limit',ratios:[1,2,3,4,5,6,7,8,9,10,11,12,14,15,16,18,20,21,22,24,25,27,28,30,32,33,35,36,40,42,44,45]},
   {name:'Beatty (Phi)',ratios:[1,3,4,6,8,9,11,12,14,16,17,19,21,22,24,25,27,29,30,32,33,35,37,38,40,42,43,45,46,48,50,51]},
   {name:'Beatty (Sqrt2)',ratios:[1,2,4,5,7,8,9,11,12,14,15,16,18,19,21,22,24,25,26,28,29,31,32,33,35,36,38,39,41,42,43,45]},
   {name:'Bell',ratios:[1,1,2,5,15,52,203,877,4140,21147,115975,678570,4213597,27644437,190899322,1382958545,10480142147,82864869804,682076806159,5832742205057,51724158235372,474869816156751,4506715738447323,44152005855084346,445958869294805289,4638590332229999353,49631246523618756274,545717047936059989389,6160539404599934652455,71339801938860275191172,846749014511809332450147,10293358946226376485095653]},
@@ -578,9 +592,7 @@ const HARMONIC_LISTS=[
   {name:'Triangular',ratios:[1,3,6,10,15,21,28,36,45,55,66,78,91,105,120,136,153,171,190,210,231,253,276,300,325,351,378,406,435,465,496,528]},
   {name:'Powers of 2',ratios:[1,2,4,8,16,32,64,128,256,512,1024,2048,4096,8192,16384,32768,65536,131072,262144,524288,1048576,2097152,4194304,8388608,16777216,33554432,67108864,134217728,268435456,536870912,1073741824,2147483648]},
   {name:'Prime Powers',ratios:[2,3,4,5,7,8,9,11,13,16,17,19,23,25,27,29,31,32,37,41,43,47,49,53,59,61,64,67,71,73,79,81]},
-  {name:'5-Limit',ratios:[1,2,3,4,5,6,8,9,10,12,15,16,18,20,24,25,27,30,32,36,40,45,48,50,54,60,64,72,75,80,81,90]},
-  {name:'7-Limit',ratios:[1,2,3,4,5,6,7,8,9,10,12,14,15,16,18,20,21,24,25,27,28,30,32,35,36,40,42,45,48,49,50,54]},
-  {name:'11-Limit',ratios:[1,2,3,4,5,6,7,8,9,10,11,12,14,15,16,18,20,21,22,24,25,27,28,30,32,33,35,36,40,42,44,45]}
+  {name:'Primes',ratios:[2,3,5,7,11,13,17,19,23,29,31,37,41,43,47,53,59,61,67,71,73,79,83,89,97,101,103,107,109,113,127,131]}
 ];
 const BB_FREQS=[1000,1250,1500,1750,2000,2250,2500,2750,3000,3250,3500,3750,4000,4250,4500,4750,5000,5250,5500,5750,6000,6500,7000,7500,8000,8500,9000,9500,10000,11000,12000,13000,14000,15000,16000];
 const BB_DURS=[0.1,0.15,0.2,0.25,0.3,0.35,0.4,0.45,0.5,0.6,0.7,0.8,0.9,1.0,1.25,1.5,1.75,2.0,2.5,3.0];
@@ -964,6 +976,12 @@ function multiLfoTick(){
   }
   multiLfoRAF=requestAnimationFrame(multiLfoTick);
 }
+function setMcFreq(el,f){
+  var s=(f<100?f.toFixed(1):Math.round(f).toString())+' Hz';
+  el.textContent=s;
+  var len=s.length;
+  el.style.fontSize=len<=7?'13px':len<=9?'11px':len<=11?'9.5px':'8px';
+}
 function renderMulti(){
   var c=document.getElementById('mathsGrid');c.innerHTML='';
   multiOscs.forEach(function(o,idx){
@@ -977,7 +995,7 @@ function renderMulti(){
     vol.textContent=Math.round(o.vol)+'%';top.appendChild(vol);
     cell.appendChild(top);
     var freq=document.createElement('span');freq.className='mc-freq';freq.id='mfq'+idx;
-    freq.textContent=o.freq.toFixed(1)+' Hz';cell.appendChild(freq);
+    setMcFreq(freq,o.freq);cell.appendChild(freq);
     cell.onclick=(function(i){return function(){multiMuteToggle(i);};})(idx);
     c.appendChild(cell);
   });
@@ -988,7 +1006,7 @@ function renderMultiRows(){
   for(var i=0;i<8;i++){
     var fq=document.getElementById('mfq'+i);
     var vl=document.getElementById('mvol'+i);
-    if(fq)fq.textContent=multiOscs[i].freq.toFixed(1)+' Hz';
+    if(fq)setMcFreq(fq,multiOscs[i].freq);
     if(vl)vl.textContent=Math.round(multiOscs[i].vol)+'%';
   }
 }
