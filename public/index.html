@@ -143,12 +143,14 @@ input[type=range]::-moz-range-thumb{width:20px;height:20px;border-radius:50%;bac
 .maths-slider-wrap input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:20px;height:20px;border-radius:50%;background:#333;border:none}
 .maths-slider-wrap input[type=range]::-moz-range-thumb{width:20px;height:20px;border-radius:50%;background:#333;border:none}
 .maths-dual-label{margin-bottom:6px}
-.ag-btn{display:inline-block;width:22px;height:18px;padding:0;font-size:9px;font-weight:600;letter-spacing:1px;border-radius:1px;cursor:pointer;background:#fff;color:#000;border:1px solid #000;font-family:inherit;line-height:16px;text-align:center}
+.ag-btn{display:inline-block;width:27px;height:18px;padding:0;font-size:9px;font-weight:600;letter-spacing:1px;border-radius:1px;cursor:pointer;background:#fff;color:#000;border:1px solid #000;font-family:inherit;line-height:16px;text-align:center}
 .ag-btn.on{background:#000;color:#fff}
 #mAutoBtn{background:linear-gradient(rgba(0,0,0,.03),rgba(0,0,0,.03)),#f8f4eb}
 #mAutoBtn.on{background:#000}
 #appAutoBtn{background:#ede7d4}
 #appAutoBtn.on{background:#000}
+#appLimBtn{background:#ede7d4}
+#appLimBtn.on{background:#000}
 #msVolWrap{padding-bottom:5px}
 #msMasterWrap input[type=range]::-webkit-slider-thumb{background:#aaa;width:20px;height:20px}
 #msMasterWrap input[type=range]::-moz-range-thumb{background:#aaa;width:20px;height:20px}
@@ -395,7 +397,7 @@ input[type=range]::-moz-range-thumb{width:20px;height:20px;border-radius:50%;bac
       <span class="ms-label">master</span>
       <input type="range" id="mMVolR" min="0" max="100" value="50" oninput="multiMVol=+this.value;updateSliderVal('msMasterVal',this,Math.round(multiMVol));if(multiMGain&&AC)multiMGain.gain.setTargetAtTime(v2g(multiMVol),AC.currentTime,.02);syncMixerUI()">
       <span class="ms-val" id="msMasterVal">50</span>
-      <button class="ag-btn" id="mAutoBtn" onclick="toggleMultiAuto()" style="position:absolute;bottom:-2px;right:0">AG</button>
+      <button class="ag-btn" id="mAutoBtn" onclick="toggleMultiAuto()" style="position:absolute;bottom:-7px;right:0">AG</button>
     </div>
   </div>
 </div>
@@ -464,7 +466,8 @@ input[type=range]::-moz-range-thumb{width:20px;height:20px;border-radius:50%;bac
 /* ═══════ UTILS ═══════ */
 let AC=null,appMaster=null,appMasterVol=100;
 let appAutoGn=null,appAutoOn=false;
-function getAC(){if(!AC){AC=new(window.AudioContext||window.webkitAudioContext)();appMaster=AC.createGain();appAutoGn=AC.createGain();appAutoGn.gain.value=1.0;appMaster.connect(appAutoGn);appAutoGn.connect(AC.destination);startKeepAlive();}if(AC.state==='suspended')AC.resume();return AC;}
+let appLimiter=null,appLimOn=false;
+function getAC(){if(!AC){AC=new(window.AudioContext||window.webkitAudioContext)();appMaster=AC.createGain();appAutoGn=AC.createGain();appAutoGn.gain.value=1.0;appLimiter=AC.createDynamicsCompressor();appLimiter.threshold.value=appLimOn?-1:0;appLimiter.knee.value=0;appLimiter.ratio.value=appLimOn?20:1;appLimiter.attack.value=0.003;appLimiter.release.value=0.05;appMaster.connect(appAutoGn);appAutoGn.connect(appLimiter);appLimiter.connect(AC.destination);startKeepAlive();}if(AC.state==='suspended')AC.resume();return AC;}
 var keepAliveEl=null;
 function startKeepAlive(){if(keepAliveEl||!AC)return;var o=AC.createOscillator();var g=AC.createGain();g.gain.value=0;o.connect(g);var d=AC.createMediaStreamDestination();g.connect(d);keepAliveEl=new Audio();keepAliveEl.srcObject=d.stream;keepAliveEl.play().catch(function(){});o.start();}
 const FA=-6.398,FB=16.301;
@@ -588,6 +591,18 @@ function toggleAppAuto(){
   if(b)b.classList.toggle('on',appAutoOn);
   appAutoRecalc();
 }
+function appLimRecalc(){
+  if(!appLimiter||!AC)return;
+  var t=AC.currentTime;
+  appLimiter.threshold.setTargetAtTime(appLimOn?-1:0,t,.01);
+  appLimiter.ratio.setTargetAtTime(appLimOn?20:1,t,.01);
+}
+function toggleAppLim(){
+  appLimOn=!appLimOn;
+  var b=document.getElementById('appLimBtn');
+  if(b)b.classList.toggle('on',appLimOn);
+  appLimRecalc();
+}
 var mixDrag=-1,mixTracks=[];
 function initMixer(){
   var c=document.getElementById('mixerSliders');
@@ -614,13 +629,19 @@ function initMixer(){
     ab.onclick=function(e){e.stopPropagation();toggleAppAuto();};
     mc.appendChild(ab);
   }
+  if(mc&&!document.getElementById('appLimBtn')){
+    var lb=document.createElement('button');lb.className='ag-btn'+(appLimOn?' on':'');lb.id='appLimBtn';lb.textContent='LIM';
+    lb.style.cssText='margin-top:4px;align-self:center';
+    lb.onclick=function(e){e.stopPropagation();toggleAppLim();};
+    mc.appendChild(lb);
+  }
   document.addEventListener('mousemove',function(e){if(mixDrag>=0)updMix(mixDrag,mixY(mixTracks[mixDrag],e.clientY));});
   document.addEventListener('mouseup',function(){mixDrag=-1;});
 }
 function mixY(tk,y){var r=tk.getBoundingClientRect();return Math.round((1-Math.max(0,Math.min(1,(y-r.top)/r.height)))*100);}
 function setMixV(i,v){v=Math.round(v);document.getElementById('mxF'+i).style.height=v+'%';document.getElementById('mxT'+i).style.top=(100-v)+'%';}
 function updMix(i,v){v=Math.round(v);MIX_CH[i].set(v);setMixV(i,v);}
-function syncMixerUI(){MIX_CH.forEach(function(ch,i){setMixV(i,ch.get());});var ab=document.getElementById('appAutoBtn');if(ab)ab.classList.toggle('on',appAutoOn);}
+function syncMixerUI(){MIX_CH.forEach(function(ch,i){setMixV(i,ch.get());});var ab=document.getElementById('appAutoBtn');if(ab)ab.classList.toggle('on',appAutoOn);var lb=document.getElementById('appLimBtn');if(lb)lb.classList.toggle('on',appLimOn);}
 
 /* ═══════ SHARED WAVEFORMS ═══════ */
 const WF=['sine','sawtooth','square','triangle'],WI=['∿','⩘','⊓','△'],WN=['SINE','SAW','SQR','TRI'];
@@ -1494,7 +1515,7 @@ function captureState(){
     mhi:multiHarmonicIdx,mfu:multiFundamental,mor:multiOscRatios.slice(),
     mr:multiOscs.map(function(o){return{f:o.freq,v:o.vol,m:o.muted?1:0};}),
     xm:appMasterVol,
-    ma:multiAutoOn?1:0,xa:appAutoOn?1:0
+    ma:multiAutoOn?1:0,xa:appAutoOn?1:0,lm:appLimOn?1:0
   };
 }
 function restoreState(o){
@@ -1527,8 +1548,8 @@ function restoreState(o){
   }
   appMasterVol=o.xm!=null?o.xm:100;
   if(appMaster&&AC)appMaster.gain.setTargetAtTime(v2g(appMasterVol),AC.currentTime,.02);
-  multiAutoOn=!!o.ma;appAutoOn=!!o.xa;
-  multiAutoRecalc();appAutoRecalc();
+  multiAutoOn=!!o.ma;appAutoOn=!!o.xa;appLimOn=!!o.lm;
+  multiAutoRecalc();appAutoRecalc();appLimRecalc();
   recomputeHarmonicPools();
   syncRiserUI();syncSweepUI();syncNoiseUI();syncMultiUI();syncMixerUI();
 }
@@ -1664,7 +1685,7 @@ async function toggleRec(){
   recChunks=[];recSampleCount=0;
   recNode=c.createScriptProcessor(4096,1,1);
   recSilencer=c.createGain();recSilencer.gain.value=0;
-  appMaster.connect(recNode);recNode.connect(recSilencer);recSilencer.connect(c.destination);
+  appLimiter.connect(recNode);recNode.connect(recSilencer);recSilencer.connect(c.destination);
   recNode.onaudioprocess=function(e){
     const inp=e.inputBuffer.getChannelData(0);
     const i16=float32ToInt16(inp);recSampleCount+=i16.length;
@@ -1679,7 +1700,7 @@ async function toggleRec(){
 async function stopRec(){
   recActive=false;
   if(recTimerRAF){cancelAnimationFrame(recTimerRAF);recTimerRAF=null;}
-  if(recNode){recNode.onaudioprocess=null;try{appMaster.disconnect(recNode);}catch(e){}try{recNode.disconnect();}catch(e){}recNode=null;}
+  if(recNode){recNode.onaudioprocess=null;try{appLimiter.disconnect(recNode);}catch(e){}try{recNode.disconnect();}catch(e){}recNode=null;}
   if(recSilencer){try{recSilencer.disconnect();}catch(e){}recSilencer=null;}
   if(recStreamMode&&recWriter){
     try{await recWriter.seek(0);const hb=new ArrayBuffer(44);writeWavHeader(new DataView(hb),recSampleCount,recSampleRate);await recWriter.write(hb);await recWriter.close();}
