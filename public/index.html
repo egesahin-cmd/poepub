@@ -36,17 +36,17 @@ input,button,select{font-family:'DM Mono',monospace}
 .plus-menu button:active{background:#ede7d4}
 .mix-col{display:flex;flex-direction:column;align-items:center;flex:1}
 .mix-col.mix-master{flex:none;align-items:center}
-.mix-track{position:relative;width:18px;flex:1;background:transparent;border-radius:0;cursor:pointer;touch-action:none}
-.mix-track::before{content:'';position:absolute;left:50%;top:0;bottom:0;width:3px;background:#ccc;border-radius:2px;transform:translateX(-50%)}
-.mix-fill{position:absolute;bottom:0;width:3px;left:50%;transform:translateX(-50%);background:#333;border-radius:2px;pointer-events:none}
-.mix-thumb{position:absolute;left:50%;width:14px;height:20px;background:#333;border-radius:1px;transform:translate(-50%,-50%);pointer-events:none}
+.mix-track{position:relative;width:22px;flex:1;background:transparent;border-radius:0;cursor:pointer;touch-action:none}
+.mix-track::before{content:'';position:absolute;left:50%;top:0;bottom:0;width:7px;background:#ccc;border-radius:2px;transform:translateX(-50%)}
+.mix-fill{position:absolute;bottom:0;width:7px;left:50%;transform:translateX(-50%);background:#333;border-radius:2px;pointer-events:none}
+.mix-thumb{position:absolute;left:50%;width:18px;height:20px;background:#333;border-radius:1px;transform:translate(-50%,-50%);pointer-events:none}
 .mix-master .mix-fill{background:#aaa}
 .mix-master .mix-thumb{background:#aaa}
 .tabs.mixer-active .tab{color:#333!important}
 .tabs.mixer-active .plus-btn{color:#333!important;border-bottom-color:#333!important}
 #modMixer.active{padding:16px 0 40px;flex:1;height:100%;overflow:hidden}
 .mixer-wrap{display:flex;width:100%;padding:4px 0;flex:1}
-.content{flex:1;overflow-y:auto;overflow-x:hidden;-webkit-overflow-scrolling:touch}
+.content{flex:1;overflow-y:auto;overflow-x:hidden;-webkit-overflow-scrolling:touch;position:relative}
 .mod{display:none;padding:16px 14px 60px}
 .mod.active{display:flex;flex-direction:column;align-items:center;gap:14px}
 .lbl{font-size:9px;color:#a0ad95;letter-spacing:1px}
@@ -93,19 +93,34 @@ input[type=range]::-moz-range-thumb{width:20px;height:20px;border-radius:50%;bac
 #modMulti .vnum,#modMulti .vedit{font-size:20px!important;color:#111!important;letter-spacing:0}
 #modMulti .vedit{border-color:#999;background:#f8f4eb;width:80px!important;padding:2px 4px}
 #muBg{position:absolute;inset:0;z-index:0;background:repeating-linear-gradient(-180deg,white,gray 1px,#ede7d4 1px,gray 2px)}
-#muContent{position:relative;z-index:3;height:100%;overflow:hidden;display:flex;flex-direction:column;align-items:center;gap:14px;padding:42px 12.5% 0;pointer-events:none}
+#muContent{position:relative;z-index:5;height:100%;overflow:visible;display:flex;flex-direction:column;align-items:center;gap:14px;padding:42px 12.5% 0;pointer-events:none}
 .maths-ctrlrow{display:flex;gap:6px;width:100%;max-width:360px;align-items:center;pointer-events:auto}
 .maths-grid{pointer-events:auto}
 #multiHarmonicSel{margin-left:auto}
 .maths-roll{padding:6px 10px;border-radius:1px;border:1px solid #555;background:#333;color:#fff;font-size:9px;font-weight:500;letter-spacing:1px;cursor:pointer;font-family:inherit;white-space:nowrap}
 .maths-roll:active{background:#f8f4eb;color:#555;border-color:#ccc}
 .maths-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:6px;width:100%;max-width:360px}
-.maths-cell{position:relative;aspect-ratio:3/2;background:#f8f4eb;border:1px solid #ccc;border-radius:1px;cursor:pointer;display:flex;flex-direction:column;justify-content:space-between;padding:5px 6px;transition:opacity .15s;min-width:0;overflow:hidden}
+.maths-cell{position:relative;aspect-ratio:3/2;background:#f8f4eb;border:1px solid #ccc;border-radius:1px;cursor:pointer;display:flex;flex-direction:column;justify-content:flex-end;padding:5px 6px;transition:opacity .15s;min-width:0;overflow:hidden}
 .maths-cell.muted{opacity:.25}
 .maths-cell .mc-top{display:flex;justify-content:space-between;width:100%}
 .maths-cell .mc-ratio{color:#111;font-weight:600;font-size:9px;letter-spacing:.5px}
 .maths-cell .mc-vol{color:#666;font-size:8px}
-.maths-cell .mc-freq{color:#999;font-size:13px;line-height:1.05;word-break:break-word;text-align:left;min-width:0}
+.maths-cell .mc-freq{color:#999;font-size:13px;line-height:1.05;white-space:nowrap;text-align:left;min-width:0;overflow:hidden;text-overflow:clip;padding-right:6px;box-sizing:border-box;width:100%}
+/* per-panel ratio dropdown trigger (top 1/3, faded ~5% lighter) */
+.maths-cell .mc-rclick{position:absolute;top:0;left:0;right:2px;height:33.333%;background:linear-gradient(rgba(0,0,0,.03),rgba(0,0,0,.03));display:flex;align-items:center;padding:0 6px;box-sizing:border-box;cursor:pointer;z-index:4}
+.maths-cell .mc-rclick .mc-ratio{font-size:9px;font-weight:600;color:#111;letter-spacing:.5px}
+/* vertical volume bar (visual) + invisible drag hit zone */
+.maths-cell .mc-vbar{position:absolute;top:0;right:0;bottom:0;width:2px;background:transparent;z-index:3;pointer-events:none}
+.maths-cell .mc-vbar-fill{position:absolute;left:0;right:0;bottom:0;background:#000;pointer-events:none}
+.maths-cell .mc-vbar-hit{position:absolute;top:33.333%;right:0;bottom:0;width:14px;cursor:ns-resize;touch-action:none;z-index:4}
+/* portaled mini ratio dropdown */
+#mathsGrid{position:relative}
+#mathsMenuLayer{position:fixed;inset:0;pointer-events:none;z-index:1000}
+#mathsMenuLayer .mr-menu{position:fixed;display:none;flex-direction:column;background:linear-gradient(rgba(0,0,0,.03),rgba(0,0,0,.03)),#f8f4eb;border:1px solid #ccc;border-radius:1px;padding:4px 0;max-height:160px;overflow-y:auto;font-family:inherit;pointer-events:auto;box-shadow:0 2px 6px rgba(0,0,0,.06);box-sizing:border-box}
+#mathsMenuLayer .mr-menu.open{display:flex}
+#mathsMenuLayer .mr-opt{flex:0 0 auto;padding:6px 6px;font-size:9px;line-height:1.2;letter-spacing:.5px;color:#555;cursor:pointer;transition:150ms;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;border-radius:1px}
+#mathsMenuLayer .mr-opt:hover{background:#ede7d4}
+#mathsMenuLayer .mr-opt.active{color:#000;font-weight:600}
 .maths-img-wrap{position:absolute;top:calc(50% - 30px);left:50%;transform:translate(-50%,-50%);width:45%;height:45%;z-index:2;pointer-events:none}
 .maths-img{width:100%;height:100%;object-fit:contain;pointer-events:none}
 .maths-img-click{position:absolute;top:25%;left:25%;width:50%;height:50%;cursor:pointer;pointer-events:auto;z-index:3}
@@ -431,6 +446,7 @@ input[type=range]::-moz-range-thumb{width:20px;height:20px;border-radius:50%;bac
     <div class="lbl" style="text-align:center;font-family:Arial,sans-serif;font-size:11px;margin-bottom:3px">volume</div>
     <input type="range" id="vtVolR" min="0" max="100" value="70" oninput="vtVol=+this.value;if(vtMGn&&AC)vtMGn.gain.setTargetAtTime(v2g(vtVol),AC.currentTime,.02);syncMixerUI()">
   </div>
+  <div style="position:absolute;bottom:10px;left:10px;font-family:Arial,sans-serif;font-size:11px;color:#d9a0d5">*This is a replica of Neil Thapen's Pink Thrombone</div>
 </div>
 
 </div>
@@ -977,37 +993,187 @@ function multiLfoTick(){
   multiLfoRAF=requestAnimationFrame(multiLfoTick);
 }
 function setMcFreq(el,f){
-  var s=(f<100?f.toFixed(1):Math.round(f).toString())+' Hz';
+  // Non-breaking space so the number + "Hz" never wraps onto two lines on narrow cells
+  var s=(f<100?f.toFixed(1):Math.round(f).toString())+'\u00a0Hz';
   el.textContent=s;
   var len=s.length;
-  el.style.fontSize=len<=7?'13px':len<=9?'11px':len<=11?'9.5px':'8px';
+  // Tighter ramp so values never spill into the 2px right-edge slider area
+  el.style.fontSize=len<=6?'13px':len<=8?'11px':len<=10?'9.5px':'8px';
+}
+function fmtRatio(r){
+  if(r===0)return'0';
+  if(Math.abs(r)>=1e6)return Number(r).toExponential(2);
+  return''+r;
+}
+var multiVbarDragIdx=-1;
+function closeRatioMenu(){
+  var layer=document.getElementById('mathsMenuLayer');if(!layer)return;
+  var menu=layer.querySelector('.mr-menu');if(menu)menu.classList.remove('open');
+}
+function openRatioMenu(idx,anchorEl){
+  var layer=document.getElementById('mathsMenuLayer');if(!layer)return;
+  var menu=layer.querySelector('.mr-menu');if(!menu)return;
+  if(multiHarmonicIdx<0){menu.classList.remove('open');return;}
+  menu.innerHTML='';
+  menu.dataset.idx=''+idx;
+  var ratios=HARMONIC_LISTS[multiHarmonicIdx].ratios;
+  var current=multiOscRatios[idx];
+  var firstActive=ratios.indexOf(current);
+  ratios.forEach(function(r,i){
+    var d=document.createElement('div');
+    d.className='mr-opt'+(i===firstActive?' active':'');
+    d.textContent='\u00d7'+fmtRatio(r);
+    d.dataset.val=r;
+    d.addEventListener('click',function(e){
+      e.stopPropagation();
+      multiSetOscRatio(idx,r);
+      menu.classList.remove('open');
+    });
+    menu.appendChild(d);
+  });
+  // Viewport-fixed positioning so menu can spill outside the (small) maths grid.
+  // Width = full panel width (including the 2px slider bar) so the dropdown
+  // visually owns the entire cell column, matching .msel-style proportions.
+  var anchorRect=anchorEl.getBoundingClientRect();
+  var cell=anchorEl.closest('.maths-cell')||anchorEl;
+  var cellRect=cell.getBoundingClientRect();
+  var vw=window.innerWidth, vh=window.innerHeight;
+  var spaceBelow=vh-anchorRect.bottom-6;
+  var spaceAbove=anchorRect.top-6;
+  var maxH=Math.max(48,Math.min(160,Math.max(spaceBelow,spaceAbove)));
+  menu.style.maxHeight=maxH+'px';
+  menu.style.width=cellRect.width+'px';
+  menu.style.left='0px';
+  menu.style.top='0px';
+  menu.classList.add('open');
+  var menuH=menu.offsetHeight;
+  var menuW=menu.offsetWidth;
+  // Decide direction: prefer below; if not enough room, open above
+  var openDown=spaceBelow>=menuH||spaceBelow>=spaceAbove;
+  var top;
+  if(openDown){
+    top=anchorRect.bottom+2;
+    if(top+menuH>vh-4)top=vh-menuH-4;
+  }else{
+    top=anchorRect.top-menuH-2;
+    if(top<4)top=4;
+  }
+  var left=cellRect.left;
+  if(left+menuW>vw-4)left=vw-menuW-4;
+  if(left<4)left=4;
+  menu.style.left=left+'px';
+  menu.style.top=top+'px';
+  var act=menu.querySelector('.mr-opt.active');
+  if(act&&act.scrollIntoView)act.scrollIntoView({block:'nearest'});
+}
+function multiSetOscRatio(idx,ratio){
+  if(multiHarmonicIdx<0)return;
+  multiOscRatios[idx]=ratio;
+  var newFreq=Math.max(0.01,Math.min(1e8,r2(multiFundamental*ratio)));
+  multiOscs[idx].freq=newFreq;
+  if(multiSweepActive){
+    multiFreqFrom[idx]=newFreq;
+    multiFreqTo[idx]=newFreq;
+  }else if(multiOscs[idx].osc&&AC){
+    multiOscs[idx].osc.frequency.setTargetAtTime(newFreq,AC.currentTime,.02);
+  }
+  var rat=document.getElementById('mrat'+idx);
+  if(rat)rat.textContent='\u00d7'+fmtRatio(ratio);
+  var fq=document.getElementById('mfq'+idx);
+  if(fq)setMcFreq(fq,newFreq);
+}
+function attachVolSlider(hit,fill,idx){
+  function setFromY(clientY){
+    var rect=hit.getBoundingClientRect();
+    if(rect.height<=0)return;
+    var pct=1-(clientY-rect.top)/rect.height;
+    if(pct<0)pct=0;else if(pct>1)pct=1;
+    var vol=Math.round(pct*100);
+    multiOscs[idx].vol=vol;
+    fill.style.height=vol+'%';
+    var o=multiOscs[idx];
+    if(o.gain&&AC&&!o.muted){
+      o.gain.gain.setTargetAtTime(v2g(vol),AC.currentTime,.02);
+    }
+  }
+  hit.addEventListener('pointerdown',function(e){
+    e.stopPropagation();e.preventDefault();
+    closeRatioMenu();
+    try{hit.setPointerCapture(e.pointerId);}catch(_){}
+    multiVbarDragIdx=idx;
+    setFromY(e.clientY);
+  });
+  hit.addEventListener('pointermove',function(e){
+    if(multiVbarDragIdx!==idx)return;
+    e.stopPropagation();
+    setFromY(e.clientY);
+  });
+  function endDrag(e){
+    if(multiVbarDragIdx!==idx)return;
+    e.stopPropagation();
+    try{hit.releasePointerCapture(e.pointerId);}catch(_){}
+    setTimeout(function(){multiVbarDragIdx=-1;},0);
+  }
+  hit.addEventListener('pointerup',endDrag);
+  hit.addEventListener('pointercancel',endDrag);
+  hit.addEventListener('click',function(e){e.stopPropagation();},true);
 }
 function renderMulti(){
-  var c=document.getElementById('mathsGrid');c.innerHTML='';
+  var c=document.getElementById('mathsGrid');
+  // Ensure portal menu layer exists (one shared dropdown for all cells)
+  var layer=document.getElementById('mathsMenuLayer');
+  if(!layer){
+    layer=document.createElement('div');layer.id='mathsMenuLayer';
+    var menu=document.createElement('div');menu.className='mr-menu';
+    layer.appendChild(menu);c.appendChild(layer);
+  }
+  // Remove existing cells but preserve the menu layer
+  Array.prototype.slice.call(c.querySelectorAll('.maths-cell')).forEach(function(el){el.remove();});
   multiOscs.forEach(function(o,idx){
     var cell=document.createElement('div');cell.className='maths-cell'+(o.muted?' muted':'');
-    var top=document.createElement('div');top.className='mc-top';
+    // Top 1/3 ratio click area
+    var rclick=document.createElement('div');rclick.className='mc-rclick';
     var rat=document.createElement('span');rat.className='mc-ratio';rat.id='mrat'+idx;
-    if(multiHarmonicIdx>=0&&multiOscRatios.length>idx){rat.textContent='\u00d7'+multiOscRatios[idx];}
+    if(multiHarmonicIdx>=0&&multiOscRatios.length>idx){rat.textContent='\u00d7'+fmtRatio(multiOscRatios[idx]);}
     else{rat.textContent=''+(idx+1);}
-    top.appendChild(rat);
-    var vol=document.createElement('span');vol.className='mc-vol';vol.id='mvol'+idx;
-    vol.textContent=Math.round(o.vol)+'%';top.appendChild(vol);
-    cell.appendChild(top);
+    rclick.appendChild(rat);
+    rclick.addEventListener('click',(function(i,el){return function(e){
+      e.stopPropagation();
+      var menu=document.querySelector('#mathsMenuLayer .mr-menu');
+      var wasOpenForMe=menu&&menu.classList.contains('open')&&menu.dataset.idx===''+i;
+      closeRatioMenu();
+      if(!wasOpenForMe)openRatioMenu(i,el);
+    };})(idx,rclick));
+    cell.appendChild(rclick);
+    // Frequency text
     var freq=document.createElement('span');freq.className='mc-freq';freq.id='mfq'+idx;
     setMcFreq(freq,o.freq);cell.appendChild(freq);
-    cell.onclick=(function(i){return function(){multiMuteToggle(i);};})(idx);
-    c.appendChild(cell);
+    // Vertical volume bar
+    var vbar=document.createElement('div');vbar.className='mc-vbar';
+    var fill=document.createElement('div');fill.className='mc-vbar-fill';fill.id='mvbarfill'+idx;
+    fill.style.height=Math.max(0,Math.min(100,Math.round(o.vol)))+'%';
+    vbar.appendChild(fill);cell.appendChild(vbar);
+    var hit=document.createElement('div');hit.className='mc-vbar-hit';
+    cell.appendChild(hit);
+    attachVolSlider(hit,fill,idx);
+    // Mute toggle on the rest of the cell, with drag-guard
+    cell.onclick=(function(i){return function(){
+      if(multiVbarDragIdx===i)return;
+      multiMuteToggle(i);
+    };})(idx);
+    // Insert before the menu layer so layer stays last child
+    c.insertBefore(cell,layer);
   });
+  closeRatioMenu();
   var img=document.getElementById('mathsImg');
   if(img){img.style.transition='none';img.style.filter=multiPlaying?'none':'brightness(5)';}
 }
 function renderMultiRows(){
   for(var i=0;i<8;i++){
     var fq=document.getElementById('mfq'+i);
-    var vl=document.getElementById('mvol'+i);
     if(fq)setMcFreq(fq,multiOscs[i].freq);
-    if(vl)vl.textContent=Math.round(multiOscs[i].vol)+'%';
+    var fill=document.getElementById('mvbarfill'+i);
+    if(fill)fill.style.height=Math.max(0,Math.min(100,Math.round(multiOscs[i].vol)))+'%';
   }
 }
 function updateSliderVal(id,range,val){
@@ -2214,7 +2380,15 @@ initSwpTypes('swpFqTypes','linear',t=>{swpFqType=t;});
 mkDirBtns('rsFqDirBtns','r',function(d){rsFqDir=d;rsBloopReturn=false;rsRepCount=0;if(rsPausing){rsPausing=false;rsFqFwd=parsDir(d).base!=='left';rsFqStart=performance.now();if(rsSigGn&&AC)rsSigGn.gain.setTargetAtTime(1,AC.currentTime,.01);}},['r','l']);
 mkDirBtns('swpFqDirBtns','r',function(d){swpFqDir=d;swpBloopReturn=false;swpRepCount=0;if(swpPausing){swpPausing=false;swpFqFwd=parsDir(d).base!=='left';swpFqStart=performance.now();if(swpSigGn&&AC)swpSigGn.gain.setTargetAtTime(1,AC.currentTime,.01);}},BB_DIRS.map(function(d){return d.k;}));
 initEQ();initNP();multiInit();initMselWave();initMultiHarmonics();recomputeHarmonicPools();initMultiDualRange();syncMultiUI();renderArchive();initMixer();
-document.addEventListener('click',function(e){if(!e.target.closest('.msel'))document.querySelectorAll('.msel.open').forEach(function(s){s.classList.remove('open');});});
+document.addEventListener('click',function(e){
+  if(!e.target.closest('.msel'))document.querySelectorAll('.msel.open').forEach(function(s){s.classList.remove('open');});
+  if(!e.target.closest('.mc-rclick')&&!e.target.closest('#mathsMenuLayer'))closeRatioMenu();
+});
+window.addEventListener('resize',function(){closeRatioMenu();});
+window.addEventListener('scroll',function(e){
+  if(e.target&&e.target.nodeType===1&&e.target.closest&&e.target.closest('#mathsMenuLayer'))return;
+  closeRatioMenu();
+},true);
 syncRiserUI();updateBBBackground();updateNsBackground();
 initRsSwipe();
 var bgHideAt=0;
