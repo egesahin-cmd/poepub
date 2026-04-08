@@ -143,6 +143,12 @@ input[type=range]::-moz-range-thumb{width:20px;height:20px;border-radius:50%;bac
 .maths-slider-wrap input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:20px;height:20px;border-radius:50%;background:#333;border:none}
 .maths-slider-wrap input[type=range]::-moz-range-thumb{width:20px;height:20px;border-radius:50%;background:#333;border:none}
 .maths-dual-label{margin-bottom:6px}
+.ag-btn{display:inline-block;width:22px;height:18px;padding:0;font-size:9px;font-weight:600;letter-spacing:1px;border-radius:1px;cursor:pointer;background:#fff;color:#000;border:1px solid #000;font-family:inherit;line-height:16px;text-align:center}
+.ag-btn.on{background:#000;color:#fff}
+#mAutoBtn{background:linear-gradient(rgba(0,0,0,.03),rgba(0,0,0,.03)),#f8f4eb}
+#mAutoBtn.on{background:#000}
+#appAutoBtn{background:#ede7d4}
+#appAutoBtn.on{background:#000}
 #msVolWrap{padding-bottom:5px}
 #msMasterWrap input[type=range]::-webkit-slider-thumb{background:#aaa;width:20px;height:20px}
 #msMasterWrap input[type=range]::-moz-range-thumb{background:#aaa;width:20px;height:20px}
@@ -389,6 +395,7 @@ input[type=range]::-moz-range-thumb{width:20px;height:20px;border-radius:50%;bac
       <span class="ms-label">master</span>
       <input type="range" id="mMVolR" min="0" max="100" value="50" oninput="multiMVol=+this.value;updateSliderVal('msMasterVal',this,Math.round(multiMVol));if(multiMGain&&AC)multiMGain.gain.setTargetAtTime(v2g(multiMVol),AC.currentTime,.02);syncMixerUI()">
       <span class="ms-val" id="msMasterVal">50</span>
+      <button class="ag-btn" id="mAutoBtn" onclick="toggleMultiAuto()" style="position:absolute;bottom:-2px;right:0">AG</button>
     </div>
   </div>
 </div>
@@ -456,7 +463,8 @@ input[type=range]::-moz-range-thumb{width:20px;height:20px;border-radius:50%;bac
 <script>
 /* ═══════ UTILS ═══════ */
 let AC=null,appMaster=null,appMasterVol=100;
-function getAC(){if(!AC){AC=new(window.AudioContext||window.webkitAudioContext)();appMaster=AC.createGain();appMaster.connect(AC.destination);startKeepAlive();}if(AC.state==='suspended')AC.resume();return AC;}
+let appAutoGn=null,appAutoOn=false;
+function getAC(){if(!AC){AC=new(window.AudioContext||window.webkitAudioContext)();appMaster=AC.createGain();appAutoGn=AC.createGain();appAutoGn.gain.value=1.0;appMaster.connect(appAutoGn);appAutoGn.connect(AC.destination);startKeepAlive();}if(AC.state==='suspended')AC.resume();return AC;}
 var keepAliveEl=null;
 function startKeepAlive(){if(keepAliveEl||!AC)return;var o=AC.createOscillator();var g=AC.createGain();g.gain.value=0;o.connect(g);var d=AC.createMediaStreamDestination();g.connect(d);keepAliveEl=new Audio();keepAliveEl.srcObject=d.stream;keepAliveEl.play().catch(function(){});o.start();}
 const FA=-6.398,FB=16.301;
@@ -534,6 +542,52 @@ var MIX_CH=[
   {key:'noise',label:'NOISE',get:function(){return Math.round(nMixPost*100);},set:function(v){nMixPost=v/100;if(nMGain&&AC)nMGain.gain.setTargetAtTime(v2g(nVol)*nMixPost,AC.currentTime,.02);}},
   {key:'master',label:'MASTER',master:true,get:function(){return appMasterVol;},set:function(v){appMasterVol=v;if(appMaster&&AC)appMaster.gain.setTargetAtTime(v2g(v),AC.currentTime,.02);}}
 ];
+/* ═══════ AUTOGAIN ═══════ */
+function multiCountActive(){
+  if(!multiPlaying)return 0;
+  var n=0;
+  for(var i=0;i<multiOscs.length;i++)if(!multiOscs[i].muted)n++;
+  return n;
+}
+function multiAutoRecalc(){
+  if(!multiAutoGn||!AC)return;
+  var target=1.0;
+  if(multiAutoOn){
+    var n=multiCountActive();
+    target=n>0?1/Math.sqrt(n):1.0;
+  }
+  multiAutoGn.gain.setTargetAtTime(target,AC.currentTime,.02);
+}
+function appCountActiveModules(){
+  var n=0;
+  if(typeof rsPlaying!=='undefined'&&rsPlaying)n++;
+  if(typeof swpPlaying!=='undefined'&&swpPlaying)n++;
+  if(typeof multiPlaying!=='undefined'&&multiPlaying)n++;
+  if(typeof nOn!=='undefined'&&nOn)n++;
+  if(typeof vtMounted!=='undefined'&&vtMounted)n++;
+  return n;
+}
+function appAutoRecalc(){
+  if(!appAutoGn||!AC)return;
+  var target=1.0;
+  if(appAutoOn){
+    var n=appCountActiveModules();
+    target=n>0?1/Math.sqrt(n):1.0;
+  }
+  appAutoGn.gain.setTargetAtTime(target,AC.currentTime,.02);
+}
+function toggleMultiAuto(){
+  multiAutoOn=!multiAutoOn;
+  var b=document.getElementById('mAutoBtn');
+  if(b)b.classList.toggle('on',multiAutoOn);
+  multiAutoRecalc();
+}
+function toggleAppAuto(){
+  appAutoOn=!appAutoOn;
+  var b=document.getElementById('appAutoBtn');
+  if(b)b.classList.toggle('on',appAutoOn);
+  appAutoRecalc();
+}
 var mixDrag=-1,mixTracks=[];
 function initMixer(){
   var c=document.getElementById('mixerSliders');
@@ -554,13 +608,19 @@ function initMixer(){
   var pw=document.querySelector('.plus-wrap');
   var mc=c.querySelector('.mix-master');
   if(pw&&mc)mc.style.width=pw.offsetWidth+'px';
+  if(mc&&!document.getElementById('appAutoBtn')){
+    var ab=document.createElement('button');ab.className='ag-btn'+(appAutoOn?' on':'');ab.id='appAutoBtn';ab.textContent='AG';
+    ab.style.cssText='margin-top:8px;align-self:center';
+    ab.onclick=function(e){e.stopPropagation();toggleAppAuto();};
+    mc.appendChild(ab);
+  }
   document.addEventListener('mousemove',function(e){if(mixDrag>=0)updMix(mixDrag,mixY(mixTracks[mixDrag],e.clientY));});
   document.addEventListener('mouseup',function(){mixDrag=-1;});
 }
 function mixY(tk,y){var r=tk.getBoundingClientRect();return Math.round((1-Math.max(0,Math.min(1,(y-r.top)/r.height)))*100);}
 function setMixV(i,v){v=Math.round(v);document.getElementById('mxF'+i).style.height=v+'%';document.getElementById('mxT'+i).style.top=(100-v)+'%';}
 function updMix(i,v){v=Math.round(v);MIX_CH[i].set(v);setMixV(i,v);}
-function syncMixerUI(){MIX_CH.forEach(function(ch,i){setMixV(i,ch.get());});}
+function syncMixerUI(){MIX_CH.forEach(function(ch,i){setMixV(i,ch.get());});var ab=document.getElementById('appAutoBtn');if(ab)ab.classList.toggle('on',appAutoOn);}
 
 /* ═══════ SHARED WAVEFORMS ═══════ */
 const WF=['sine','sawtooth','square','triangle'],WI=['∿','⩘','⊓','△'],WN=['SINE','SAW','SQR','TRI'];
@@ -657,7 +717,7 @@ function sweepVal(type,t,mn,mx){
 function toggleSweep(){
   showBBBirdFlash();
   const c=getAC();
-  if(swpPlaying){if(swpOsc){swpOsc.stop();swpOsc=null;}if(swpRAF)cancelAnimationFrame(swpRAF);swpPlaying=false;setPB('swp',false);return;}
+  if(swpPlaying){if(swpOsc){swpOsc.stop();swpOsc=null;}if(swpRAF)cancelAnimationFrame(swpRAF);swpPlaying=false;setPB('swp',false);appAutoRecalc();return;}
   if(!swpMGn){swpMGn=c.createGain();swpMGn.connect(appMaster);}
   swpMGn.gain.setTargetAtTime(v2g(swpMVol),c.currentTime,.02);
   swpSigGn=c.createGain();swpSigGn.gain.value=1;
@@ -666,7 +726,7 @@ function toggleSweep(){
   const startF=swpFqMin;
   swpOsc.frequency.setValueAtTime(startF,c.currentTime);
   swpOsc.connect(swpSigGn);swpOsc.start();
-  swpPlaying=true;const now=performance.now();swpFqStart=now;
+  swpPlaying=true;appAutoRecalc();const now=performance.now();swpFqStart=now;
   var _pd0=parsDir(swpFqDir);swpFqFwd=_pd0.base!=='left';
   swpPausing=false;swpBloopReturn=false;swpRepCount=0;
   setPB('swp',true);
@@ -768,12 +828,12 @@ function applyNP(name){
 function toggleNoise(){
   showNsBirdFlash();
   const c=getAC();
-  if(nOn){nNodes.forEach(n=>{try{n.src.stop();}catch(e){}});nNodes=[];nTransActive=false;if(nTransRAF){cancelAnimationFrame(nTransRAF);nTransRAF=null;}nOn=false;setPB('n',false);showNsBirdFlash();return;}
+  if(nOn){nNodes.forEach(n=>{try{n.src.stop();}catch(e){}});nNodes=[];nTransActive=false;if(nTransRAF){cancelAnimationFrame(nTransRAF);nTransRAF=null;}nOn=false;setPB('n',false);showNsBirdFlash();appAutoRecalc();return;}
   if(!nMGain){nMGain=c.createGain();nMGain.connect(appMaster);}
   nMGain.gain.setTargetAtTime(v2g(nVol)*nMixPost,c.currentTime,.02);
   const buf=mkNB(c);
   nNodes=BANDS.map((fc,i)=>{const s=c.createBufferSource();s.buffer=buf;s.loop=true;const f=c.createBiquadFilter();f.type='bandpass';f.frequency.value=fc;f.Q.value=fc<100?.5:1.2;const g=c.createGain();g.gain.value=v2g(nSl[i]);s.connect(f);f.connect(g);g.connect(nMGain);s.start();return{src:s,gain:g};});
-  nOn=true;setPB('n',true);showNsBirdFlash();
+  nOn=true;setPB('n',true);showNsBirdFlash();appAutoRecalc();
 }
 function randomizeNoise(){
   nTransStartSl=nSl.slice();
@@ -842,6 +902,7 @@ function showNsBirdFlash(){
 }
 /* ═══════ MULTI ═══════ */
 let multiMGain=null,multiMVol=50,multiWv=0;
+let multiAutoGn=null,multiAutoOn=false;
 let multiOscs=[];
 let multiPlaying=false,multiDur=1.50;
 let multiVolMin=50,multiVolMax=100;
@@ -876,9 +937,9 @@ function multiToggle(){
     multiSweepActive=false;multiSweepRAF=null;
     if(multiLfoRAF)cancelAnimationFrame(multiLfoRAF);
     multiLfoActive=false;multiLfoRAF=null;
-    multiPlaying=false;var _img=document.getElementById('mathsImg');if(_img){_img.style.transition='none';_img.style.filter='brightness(5)';}renderMulti();return;
+    multiPlaying=false;var _img=document.getElementById('mathsImg');if(_img){_img.style.transition='none';_img.style.filter='brightness(5)';}renderMulti();multiAutoRecalc();appAutoRecalc();return;
   }
-  if(!multiMGain){multiMGain=c.createGain();multiMGain.connect(appMaster);}
+  if(!multiMGain){multiMGain=c.createGain();multiAutoGn=c.createGain();multiAutoGn.gain.value=1.0;multiMGain.connect(multiAutoGn);multiAutoGn.connect(appMaster);}
   multiMGain.gain.setTargetAtTime(v2g(multiMVol),c.currentTime,.02);
   multiOscs.forEach(function(o,idx){
     if(multiHarmonicIdx>=0&&multiOscRatios.length===8){
@@ -890,11 +951,12 @@ function multiToggle(){
     o.osc.frequency.setValueAtTime(o.freq,c.currentTime);
     o.osc.connect(o.gain);o.osc.start();
   });
-  multiPlaying=true;var _img=document.getElementById('mathsImg');if(_img){_img.style.transition='none';_img.style.filter='none';}renderMulti();
+  multiPlaying=true;var _img=document.getElementById('mathsImg');if(_img){_img.style.transition='none';_img.style.filter='none';}renderMulti();multiAutoRecalc();appAutoRecalc();
 }
 function multiMuteToggle(idx){
   var o=multiOscs[idx];o.muted=!o.muted;
   if(o.gain&&AC)o.gain.gain.setTargetAtTime(o.muted?0:v2g(o.vol),AC.currentTime,.02);
+  multiAutoRecalc();
   renderMulti();
 }
 function multiSetWave(idx){
@@ -1070,17 +1132,39 @@ function multiSetOscRatio(idx,ratio){
   if(multiHarmonicIdx<0)return;
   multiOscRatios[idx]=ratio;
   var newFreq=Math.max(0.01,Math.min(1e8,r2(multiFundamental*ratio)));
-  multiOscs[idx].freq=newFreq;
-  if(multiSweepActive){
-    multiFreqFrom[idx]=newFreq;
-    multiFreqTo[idx]=newFreq;
-  }else if(multiOscs[idx].osc&&AC){
-    multiOscs[idx].osc.frequency.setTargetAtTime(newFreq,AC.currentTime,.02);
-  }
+  // Update ratio label immediately; freq text animates via the sweep tick
   var rat=document.getElementById('mrat'+idx);
   if(rat)rat.textContent='\u00d7'+fmtRatio(ratio);
-  var fq=document.getElementById('mfq'+idx);
-  if(fq)setMcFreq(fq,newFreq);
+  // Snapshot current state of every osc (where each one is right now)
+  var curFreqs=[],curVols=[];
+  for(var k=0;k<8;k++){curFreqs[k]=multiOscs[k].freq;curVols[k]=multiOscs[k].vol;}
+  // If a sweep is currently in flight (e.g. from a roll), preserve the
+  // other oscs' targets so they continue toward their original goals.
+  var prevFreqTo=(multiSweepActive&&multiFreqTo&&multiFreqTo.length===8)?multiFreqTo.slice():null;
+  var prevVolTo =(multiSweepActive&&multiVolTo &&multiVolTo .length===8)?multiVolTo .slice():null;
+  var newFrom=curFreqs.slice();
+  var newTo=curFreqs.slice();
+  if(prevFreqTo){
+    for(var k=0;k<8;k++)if(k!==idx)newTo[k]=prevFreqTo[k];
+  }
+  newTo[idx]=newFreq;
+  multiFreqFrom=newFrom;
+  multiFreqTo=newTo;
+  multiVolFrom=curVols.slice();
+  multiVolTo=prevVolTo?prevVolTo.slice():curVols.slice();
+  if(!multiFreqTypes||multiFreqTypes.length!==8)multiFreqTypes=['linear','linear','linear','linear','linear','linear','linear','linear'];
+  for(var t=0;t<8;t++)if(!multiFreqTypes[t])multiFreqTypes[t]='linear';
+  if(!multiSweepVolType)multiSweepVolType='linear';
+  multiHarmonicSweep=false;
+  // Pause LFO so the sweep is the only animator; it auto-restarts when sweep ends
+  if(multiLfoActive){cancelAnimationFrame(multiLfoRAF);multiLfoActive=false;multiLfoRAF=null;}
+  // Restart the sweep from the current state over multiDur seconds
+  multiSweepLastFrame=performance.now();
+  multiSweepActive=true;
+  multiFrameCount=0;
+  multiSweepTick._prog=0;
+  if(multiSweepRAF)cancelAnimationFrame(multiSweepRAF);
+  multiSweepRAF=requestAnimationFrame(multiSweepTick);
 }
 function attachVolSlider(hit,fill,idx){
   function setFromY(clientY){
@@ -1409,7 +1493,8 @@ function captureState(){
     mv:multiMVol,mw:multiWv,md:multiDur,mvm:multiVolMin,mvx:multiVolMax,mld:multiLfoDur,mlo:multiLfoOn?1:0,
     mhi:multiHarmonicIdx,mfu:multiFundamental,mor:multiOscRatios.slice(),
     mr:multiOscs.map(function(o){return{f:o.freq,v:o.vol,m:o.muted?1:0};}),
-    xm:appMasterVol
+    xm:appMasterVol,
+    ma:multiAutoOn?1:0,xa:appAutoOn?1:0
   };
 }
 function restoreState(o){
@@ -1442,6 +1527,8 @@ function restoreState(o){
   }
   appMasterVol=o.xm!=null?o.xm:100;
   if(appMaster&&AC)appMaster.gain.setTargetAtTime(v2g(appMasterVol),AC.currentTime,.02);
+  multiAutoOn=!!o.ma;appAutoOn=!!o.xa;
+  multiAutoRecalc();appAutoRecalc();
   recomputeHarmonicPools();
   syncRiserUI();syncSweepUI();syncNoiseUI();syncMultiUI();syncMixerUI();
 }
@@ -1480,6 +1567,7 @@ function syncMultiUI(){
   document.getElementById('multiFundV').textContent=multiFundamental.toFixed(2);
   var mvR=document.getElementById('mMVolR');mvR.value=multiMVol;
   updateSliderVal('msMasterVal',mvR,Math.round(multiMVol));
+  var mab=document.getElementById('mAutoBtn');if(mab)mab.classList.toggle('on',multiAutoOn);
   renderMulti();
 }
 function archiveSave(){
@@ -1755,9 +1843,9 @@ function toggleRiser(){
     if(rsSigGn){rsSigGn.disconnect();rsSigGn=null;}
     if(rsMGn){rsMGn.disconnect();rsMGn=null;}
     if(rsRAF)cancelAnimationFrame(rsRAF);
-    setPB('rs',false);showRsBirdFlash();return;
+    setPB('rs',false);showRsBirdFlash();appAutoRecalc();return;
   }
-  rsPlaying=true;
+  rsPlaying=true;appAutoRecalc();
   rsMGn=c.createGain();rsMGn.gain.value=v2g(rsMVol);rsMGn.connect(appMaster);
   rsSigGn=c.createGain();rsSigGn.gain.value=1;rsSigGn.connect(rsMGn);
   rsOsc=c.createOscillator();rsOsc.type=WF[rsWv];rsOsc.frequency.value=rsFqMin;
@@ -2369,8 +2457,8 @@ function vtInit(){
   vtSigGn=c.createGain();vtSigGn.gain.value=1;vtSigGn.connect(vtMGn);
   VT.init(document.getElementById('vtCanvasWrap'),c,vtSigGn);
 }
-function vtMount(){if(!vtInitialized)return;vtMounted=true;VT.mount();}
-function vtUnmount(){if(!vtInitialized||!vtMounted)return;vtMounted=false;VT.unmount();}
+function vtMount(){if(!vtInitialized)return;vtMounted=true;VT.mount();appAutoRecalc();}
+function vtUnmount(){if(!vtInitialized||!vtMounted)return;vtMounted=false;VT.unmount();appAutoRecalc();}
 function vtToggleAlwaysVoice(){var on=!VT.getAlwaysVoice();VT.setAlwaysVoice(on);document.getElementById('vtAlwaysVoiceBtn').classList.toggle('on',on);}
 function vtToggleAutoWobble(){var on=!VT.getAutoWobble();VT.setAutoWobble(on);document.getElementById('vtAutoWobbleBtn').classList.toggle('on',on);}
 /* ═══════ INIT ═══════ */
