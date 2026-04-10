@@ -8,11 +8,12 @@
 <meta name="theme-color" content="#ede7d4">
 <title>PHONELAB</title>
 <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@300;400;500&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
 <style>
 *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent;-webkit-user-select:none;user-select:none}
 html,body{height:100%;overflow:hidden;background:#ede7d4;font-family:'DM Mono',monospace;color:#7a8c6e}
 input,button,select{font-family:'DM Mono',monospace}
-#app{max-width:480px;margin:0 auto;height:100%;display:flex;flex-direction:column;overflow:hidden}
+#app{max-width:480px;margin:0 auto;height:100%;display:flex;flex-direction:column;overflow:hidden;position:relative}
 .tabs{display:flex;padding-top:env(safe-area-inset-top,8px);background:#ede7d4;flex-shrink:0}
 .tab{flex:1;padding:12px 0;border:none;background:transparent;color:#fff;font-size:10px;font-weight:400;cursor:pointer;letter-spacing:1.5px;transition:all .15s}
 .tab.active{font-weight:700}
@@ -22,9 +23,9 @@ input,button,select{font-family:'DM Mono',monospace}
 .tab.active[data-tab="multi"]{color:#111}
 .tab.active[data-tab="voice"]{color:#d9a0d5}
 .plus-wrap{position:relative;flex-shrink:0;display:flex;align-items:stretch}
-.plus-btn{padding:12px 10px;border:none;background:transparent;color:#fff;font-size:16px;font-weight:500;cursor:pointer;border-bottom:2px solid transparent;font-family:'DM Mono',monospace}
+.plus-btn{padding:12px 10px;border:none;background:transparent;color:#fff;font-size:18px;font-weight:500;cursor:pointer;border-bottom:2px solid transparent;font-family:'DM Mono',monospace}
 .plus-btn.active{color:#333;border-bottom-color:#333}
-.plus-menu{display:none;position:absolute;top:100%;right:0;background:#f8f4eb;border:1px solid #ccc;border-radius:8px;box-shadow:0 4px 12px rgba(0,0,0,.08);z-index:10;min-width:120px;overflow:hidden}
+.plus-menu{display:none;position:absolute;top:100%;right:0;background:#f8f4eb;border:1px solid #ccc;border-radius:3px;box-shadow:0 4px 12px rgba(0,0,0,.08);z-index:10;min-width:120px;overflow:hidden}
 .plus-menu.open{display:block}
 .plus-menu button{width:100%;padding:10px 16px;border:none;background:transparent;color:#555;font-size:11px;font-weight:500;letter-spacing:1.5px;cursor:pointer;text-align:left;font-family:'DM Mono',monospace}
 #modCall{color:#222}
@@ -240,30 +241,123 @@ input[type=range]::-moz-range-thumb{width:20px;height:20px;border-radius:50%;bac
   #modMulti .maths-slider-wrap+.maths-slider-wrap{margin-top:-4px}
   #modMulti .maths-slider-wrap .ms-label{margin-bottom:-1px;line-height:1.1}
 }
+/* ═══ SCORE ═══ */
+#scoreMini{
+  position:absolute;top:55px;
+  left:calc((100% - 30px) / 10 - 30.4px);
+  width:60.8px;height:30.4px;border-radius:2px;
+  background:rgba(255,255,255,0.55);
+  border:1px solid #000;
+  color:#000;font-size:9px;font-weight:700;letter-spacing:1.5px;
+  display:flex;align-items:center;justify-content:center;
+  cursor:pointer;z-index:50;font-family:'DM Mono',monospace;
+  padding:0;
+}
+#scoreMini:active{background:rgba(0,0,0,0.1)}
+.tabs.mixer-active ~ #scoreMini,
+#app.score-open #scoreMini{display:none}
+#scorePanelWrap{display:none}
+#app.score-open #scorePanelWrap{display:block}
+.score-backdrop{
+  position:fixed;top:47px;left:0;right:0;bottom:0;background:transparent;
+  z-index:200;pointer-events:auto;
+}
+.score-panel{
+  position:fixed;top:64px;left:16px;right:16px;bottom:24px;
+  background:rgba(255,255,255,0.82);
+  -webkit-backdrop-filter:blur(2px);backdrop-filter:blur(2px);
+  border:1px solid #000;
+  border-radius:4px;
+  z-index:201;
+  display:flex;flex-direction:column;
+  padding:14px 14px 16px;
+  overflow:hidden;
+  color:#000;
+  max-width:448px;margin:0 auto;
+}
+.score-panel .score-title{
+  font-size:11px;letter-spacing:2px;color:#000;
+  text-align:center;margin-bottom:8px;
+}
+.score-close{
+  position:absolute;top:6px;right:8px;
+  width:28px;height:28px;padding:0;
+  background:transparent;border:none;
+  color:#000;font-size:18px;font-weight:700;line-height:1;
+  cursor:pointer;font-family:'DM Mono',monospace;
+  display:flex;align-items:center;justify-content:center;
+}
+.score-close:active{opacity:0.5}
+.score-tabs{
+  display:flex;gap:6px;justify-content:center;margin-bottom:10px;
+}
+.score-tabs .bsm{
+  height:26px;padding:0 14px;font-size:10px;letter-spacing:1px;
+  background:#fff;border:1px solid #000;color:#000;border-radius:2px;
+}
+.score-tabs .bsm.on{background:#000;color:#fff;border-color:#000}
+.score-body{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;padding-right:4px}
+.score-page{display:none;font-size:10.5px;line-height:1.55;color:#000}
+.score-page.active{display:block}
+.score-page h4{
+  font-size:10px;letter-spacing:1.5px;color:#000;
+  margin:10px 0 4px;font-weight:700;
+  border-bottom:1px solid #000;padding-bottom:2px;
+}
+.score-page h4:first-child{margin-top:0}
+.score-page ol{padding-left:26px;margin:4px 0 6px}
+.score-page ul{padding-left:16px;margin:4px 0 6px;list-style:none}
+.score-page ul li{position:relative;padding-left:10px;margin-bottom:2px}
+.score-page ul li::before{content:"-";position:absolute;left:0;color:#000}
+.score-page ol li{margin-bottom:2px}
+.score-page .sp-divider{
+  text-align:center;font-size:9px;letter-spacing:2px;
+  color:#000;margin:10px 0;
+  border-top:1px dashed #000;border-bottom:1px dashed #000;padding:4px 0;
+}
+.score-page .sp-note{font-size:9px;color:#000;letter-spacing:0.5px;margin-top:-2px;margin-bottom:6px;opacity:0.65}
+#landingOverlay{position:fixed;inset:0;background:rgba(237,231,212,0.95);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);display:flex;align-items:center;justify-content:center;z-index:3000;padding:24px}
+#landingOverlay.hidden{display:none}
+#landingOverlay .lp-card{display:flex;flex-direction:column;align-items:center;gap:20px;max-width:320px;width:100%}
+#landingOverlay #lpQR{padding:12px;background:#ede7d4;border:2px solid #000;border-radius:2px;line-height:0}
+#landingOverlay #lpQR img,#landingOverlay #lpQR canvas{display:block}
+#landingOverlay .lp-instr{font-family:'DM Mono',monospace;font-size:12px;font-weight:500;letter-spacing:1.5px;color:#000;text-align:center;line-height:1.8}
+#landingOverlay .lp-enter{font-family:'DM Mono',monospace;font-size:14px;font-weight:700;letter-spacing:3px;color:#ede7d4;background:#000;border:2px solid #000;border-radius:2px;padding:14px 40px;cursor:pointer;transition:all .12s}
+#landingOverlay .lp-enter:active{transform:scale(.95)}
 </style>
 </head>
 <body>
+<div id="landingOverlay">
+  <div class="lp-card">
+    <div id="lpQR"></div>
+    <div class="lp-instr">
+      TURN OFF SILENT MODE
+    </div>
+    <button class="lp-enter" onclick="dismissLanding()">TAKE PART</button>
+  </div>
+</div>
 <div id="app">
 <div class="tabs">
-  <button class="tab active" data-tab="riser" onclick="switchTab('riser')">VISTA</button>
-  <button class="tab" data-tab="birdbox" onclick="switchTab('birdbox')">BIRDBOX</button>
+  <button class="tab active" data-tab="voice" onclick="switchTab('voice')">VOICE</button>
   <button class="tab" data-tab="multi" onclick="switchTab('multi')">MATHS</button>
-  <button class="tab" data-tab="voice" onclick="switchTab('voice')">VOICE</button>
   <button class="tab" data-tab="noise" onclick="switchTab('noise')">NOISE</button>
+  <button class="tab" data-tab="riser" onclick="switchTab('riser')">VISTA</button>
+  <button class="tab" data-tab="birdbox" onclick="switchTab('birdbox')">BIRDBOX</button>
   <div class="plus-wrap">
     <button class="plus-btn" onclick="togglePlusMenu(event)">+</button>
     <div class="plus-menu" id="plusMenu">
+      <button onclick="switchTab('mixer')">MIXER</button>
       <button onclick="switchTab('call')">CALL</button>
       <button onclick="switchTab('archive')">ARCHIVE</button>
-      <button onclick="switchTab('mixer')">MIXER</button>
     </div>
   </div>
 </div>
+<button id="scoreMini" onclick="openScore()">SCORE</button>
 <svg width="0" height="0" style="position:absolute"><defs><filter id="toEde7d4" color-interpolation-filters="sRGB"><feColorMatrix type="matrix" values="0 0 0 0 0.8365 0 0 0 0 0.8153 0 0 0 0 0.7483 0 0 0 1 0"/></filter><filter id="toEde7d4exact" color-interpolation-filters="sRGB"><feColorMatrix type="matrix" values="0 0 0 0 0.9294 0 0 0 0 0.9059 0 0 0 0 0.8314 0 0 0 1 0"/></filter></defs></svg>
 <div class="content">
 
 <!-- ═══ RISER ═══ -->
-<div class="mod active" id="modRiser">
+<div class="mod" id="modRiser">
   <div id="rsBg"></div>
 
   <img id="rsBird" src="henningchristiansen-riser.svg" alt="">
@@ -363,7 +457,7 @@ input[type=range]::-moz-range-thumb{width:20px;height:20px;border-radius:50%;bac
   </div>
   <div id="muContent">
     <div class="maths-ctrlrow">
-      <span class="vnum" id="multiFundV" style="font-size:20px;letter-spacing:0;color:#111" onclick="tapNum('multiFundV',1,20000,function(v){multiSetFundamental(v)})">25.00</span><span class="vunit" style="color:#999;margin-right:6px">Hz</span>
+      <span class="vnum" id="multiFundV" style="font-size:20px;letter-spacing:0;color:#111" onclick="tapNum('multiFundV',1,20000,function(v){multiSetFundamental(v)})">30.00</span><span class="vunit" style="color:#999;margin-right:6px">Hz</span>
       <div class="msel" id="mathsWaveSel" onclick="this.classList.toggle('open')">
         <div class="msel-head"><span id="mselWaveText">SINE</span><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" class="msel-arrow"><path d="M233.4 406.6c12.5 12.5 32.8 12.5 45.3 0l192-192c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0L256 338.7 86.6 169.4c-12.5-12.5-32.8-12.5-45.3 0s-12.5 32.8 0 45.3l192 192z"/></svg></div>
         <div class="msel-opts" id="mselWaveOpts"></div>
@@ -444,20 +538,109 @@ input[type=range]::-moz-range-thumb{width:20px;height:20px;border-radius:50%;bac
 </div>
 
 <!-- ═══ VOICE ═══ -->
-<div class="mod" id="modVoice">
+<div class="mod active" id="modVoice">
   <div id="vtCanvasWrap">
     <canvas id="vtBackCanvas" width="600" height="730"></canvas>
     <canvas id="vtTractCanvas" width="600" height="730"></canvas>
   </div>
-  <button class="bsm on" id="vtAutoWobbleBtn" onclick="vtToggleAutoWobble()">pitch wobble</button>
+  <button class="bsm" id="vtAutoWobbleBtn" onclick="vtToggleAutoWobble()">pitch wobble</button>
   <button class="bsm" id="vtAlwaysVoiceBtn" onclick="vtToggleAlwaysVoice()">always voice</button>
   <div class="rr">
     <div class="lbl" style="text-align:center;font-family:Arial,sans-serif;font-size:11px;margin-bottom:3px">volume</div>
     <input type="range" id="vtVolR" min="0" max="100" value="70" oninput="vtVol=+this.value;if(vtMGn&&AC)vtMGn.gain.setTargetAtTime(v2g(vtVol),AC.currentTime,.02);syncMixerUI()">
   </div>
-  <div style="position:absolute;bottom:10px;left:10px;font-family:Arial,sans-serif;font-size:11px;color:#d9a0d5">*This is a replica of Neil Thapen's Pink Thrombone</div>
+  <div style="margin-top:auto;padding-top:8px;font-family:Arial,sans-serif;font-size:11px;color:#d9a0d5;text-align:center">*This is a replica of Neil Thapen's Pink Thrombone</div>
 </div>
 
+</div>
+<!-- SCORE main panel -->
+<div id="scorePanelWrap">
+  <div class="score-backdrop" onclick="closeScore(event)"></div>
+  <div class="score-panel" onclick="event.stopPropagation()">
+    <button class="score-close" onclick="closeScore()" aria-label="Close score">&times;</button>
+    <div class="score-title">SCORE</div>
+    <div class="score-tabs">
+      <button class="bsm on" id="scoreTabInside" onclick="switchScoreTab('inside')">INSIDE</button>
+      <button class="bsm" id="scoreTabOutside" onclick="switchScoreTab('outside')">OUTSIDE</button>
+    </div>
+    <div class="score-body" id="scoreBody">
+      <div class="score-page active" id="scorePageInside">
+        <h4>A &mdash; VOICE</h4>
+        <div class="sp-note">Learn to voice each below, one by one. Only move to the next one when everyone voices the same thing together.</div>
+        <ol>
+          <li>aa</li>
+          <li>ee</li>
+          <li>ii</li>
+          <li>mama</li>
+          <li>meme</li>
+          <li>bebe</li>
+          <li>dede</li>
+          <li>yoyo</li>
+          <li>yoyoyo lelele</li>
+          <li>tssss</li>
+          <li>haa</li>
+          <li>shhhh</li>
+          <li>whistle</li>
+        </ol>
+        <h4>B &mdash; MATHS</h4>
+        <div class="sp-note">[30 Hz and 5-Limit]</div>
+        <ol>
+          <li>ROLL until you love the sound.</li>
+          <li>Move in the space to find your right place.</li>
+        </ol>
+        <h4>C &mdash; MATHS &amp; VOICE</h4>
+        <ol>
+          <li>As accurately as possible, voice a pitch you hear from MATHS.</li>
+          <li>As accurately as possible, match the voice color of MATHS.</li>
+          <li>Click the menu [+] and open [Mixer].</li>
+          <li>Mix volumes to your taste.</li>
+          <li>Move in the space to find your right place.</li>
+          <li>If you wish, voice another pitch you hear from MATHS.</li>
+          <li>Fade out at your pace.</li>
+        </ol>
+      </div>
+      <div class="score-page" id="scorePageOutside">
+        <h4>PRE-WALK</h4>
+        <ol>
+          <li>In MATHS, on top left, Tap [30 Hz] and change it to [7 Hz].</li>
+          <li>In MATHS, on top right, Tap [5-Limit] and select [Fibonacci].</li>
+          <li>Learn what VISTA and BIRDBOX do.</li>
+        </ol>
+        <div class="sp-divider">&mdash; GREY SPACE &mdash;</div>
+        <h4>NOISE</h4>
+        <ol>
+          <li>Turn on NOISE, and slowly walk to Grote Markt.</li>
+          <li>Fade out NOISE just before you reach Grote Markt.</li>
+        </ol>
+        <div class="sp-divider">&mdash; GROTE MARKT &mdash;</div>
+        <h4>WALK</h4>
+        <ul>
+          <li>Wait for the group to gather, start the walk with the first &ldquo;hooter&rdquo;.</li>
+          <li>Walk in the direction of the rainbow flag, spread out in the street.</li>
+          <li>Be as anonymous as possible with your phone while walking.</li>
+        </ul>
+        <h4>A &mdash; VISTA</h4>
+        <ol>
+          <li>Turn VISTA on with the hooter call, turn off with the next one, all together.</li>
+          <li>Keep walking in this order, swipe up to change your VISTA.</li>
+          <li>When the hooter call is continuous, turn off VISTA, open BIRDBOX.</li>
+        </ol>
+        <h4>B &mdash; BIRDBOX</h4>
+        <ol>
+          <li>Swipe up to find a bird you love and let it sing.</li>
+          <li>Follow the group to the end location.</li>
+        </ol>
+        <h4>C &mdash; BIRDBOX &amp; GROUP CALL</h4>
+        <ol>
+          <li>While the BIRDBOX is playing, in menu [+], open [Call], type &ldquo;phones&rdquo; and enter the room.</li>
+          <li>Find other birds you love and let them sing.</li>
+          <li>Move in the space to find your right place.</li>
+          <li>Fade BIRDBOX out at your own pace.</li>
+          <li>Exit the call when you want to.</li>
+        </ol>
+      </div>
+    </div>
+  </div>
 </div>
 </div>
 
@@ -528,13 +711,25 @@ function switchTab(t){
   if(t==='birdbox'&&!bbInitialized){bbInitialized=true;randomizeBirdbox();}
   if(t==='riser'&&!rsInitialized){rsInitialized=true;randomizeRiser();}
   if(t==='noise'&&!nsInitialized){nsInitialized=true;randomizeNoise();}
-  if(t==='mixer')syncMixerUI();
+  if(t==='mixer'){syncMixerUI();closeScore();}
   if(t==='voice'&&!vtInitialized){vtInitialized=true;vtInit();}
   if(vtInitialized){if(t==='voice')vtMount();else vtUnmount();}
 }
 function togglePlusMenu(e){e.stopPropagation();document.getElementById('plusMenu').classList.toggle('open');}
 function closePlusMenu(){document.getElementById('plusMenu').classList.remove('open');}
 document.addEventListener('click',()=>closePlusMenu());
+
+/* ═══════ SCORE ═══════ */
+function openScore(){document.getElementById('app').classList.add('score-open');}
+function closeScore(e){if(e)e.stopPropagation();document.getElementById('app').classList.remove('score-open');}
+function switchScoreTab(name){
+  var isI=name==='inside';
+  document.getElementById('scoreTabInside').classList.toggle('on',isI);
+  document.getElementById('scoreTabOutside').classList.toggle('on',!isI);
+  document.getElementById('scorePageInside').classList.toggle('active',isI);
+  document.getElementById('scorePageOutside').classList.toggle('active',!isI);
+  var sb=document.getElementById('scoreBody');if(sb)sb.scrollTop=0;
+}
 
 /* ═══════ MIXER ═══════ */
 var MIX_CH=[
@@ -933,15 +1128,15 @@ let multiFreqFrom=[],multiFreqTo=[],multiVolFrom=[],multiVolTo=[];
 let multiFreqTypes=[];
 let multiLfoDur=3.00,multiLfoOn=true;
 let multiLfoActive=false,multiLfoRAF=null,multiLfoLastFrame=0,multiLfoPhase=[];
-let multiHarmonicIdx=0;
-let multiFundamental=25.00,multiFundFrom=25.00,multiFundTo=25.00;
+let multiHarmonicIdx=1;
+let multiFundamental=30.00,multiFundFrom=30.00,multiFundTo=30.00;
 let multiHarmonicSweep=false;
 let multiOscRatios=[];
 var multiFrameCount=0;
 var multiIsMobile=window.matchMedia('(hover:none) and (pointer:coarse)').matches;
 function multiInit(){
-  multiHarmonicIdx=0;
-  var list=HARMONIC_LISTS[0].ratios;
+  multiHarmonicIdx=1;
+  var list=HARMONIC_LISTS[1].ratios;
   multiOscRatios=[];
   multiOscs=[];
   for(var i=0;i<8;i++){
@@ -1945,7 +2140,7 @@ var vtRedraw=null;
 var VT=(function(){
 var backCanvas,backCtx,tractCanvas,tractCtx;
 var sampleRate,time=0,temp={a:0,b:0};
-var alwaysVoice=false,autoWobble=true;
+var alwaysVoice=false,autoWobble=false;
 var palePink='#FFEEF5';
 var _gainNode=null;
 
@@ -2512,6 +2707,26 @@ document.addEventListener('visibilitychange',function(){
   if(multiLfoActive){multiLfoLastFrame=performance.now();if(multiLfoRAF)cancelAnimationFrame(multiLfoRAF);multiLfoRAF=requestAnimationFrame(multiLfoTick);}
   if(vtMounted&&vtRAF){cancelAnimationFrame(vtRAF);vtRAF=requestAnimationFrame(vtRedraw);}
 });
+
+// ═══ LANDING OVERLAY ═══
+function dismissLanding(){
+  var o=document.getElementById('landingOverlay');
+  if(o)o.classList.add('hidden');
+  switchTab('voice');
+  openScore();
+}
+(function initLandingQR(){
+  var el=document.getElementById('lpQR');
+  if(!el||typeof QRCode==='undefined')return;
+  new QRCode(el,{
+    text:'https://poepub.onrender.com/',
+    width:200,
+    height:200,
+    colorDark:'#000000',
+    colorLight:'#ede7d4',
+    correctLevel:QRCode.CorrectLevel.H
+  });
+})();
 </script>
 </body>
 </html>
