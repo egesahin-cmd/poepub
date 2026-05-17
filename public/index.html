@@ -316,26 +316,9 @@ input[type=range]::-moz-range-thumb{width:20px;height:20px;border-radius:50%;bac
   border-top:1px dashed #000;border-bottom:1px dashed #000;padding:4px 0;
 }
 .score-page .sp-note{font-size:9px;color:#000;letter-spacing:0.5px;margin-top:-2px;margin-bottom:6px;opacity:0.65}
-#landingOverlay{position:fixed;inset:0;background:rgba(237,231,212,0.95);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);display:flex;align-items:center;justify-content:center;z-index:3000;padding:24px}
-#landingOverlay.hidden{display:none}
-#landingOverlay .lp-card{display:flex;flex-direction:column;align-items:center;gap:20px;max-width:320px;width:100%}
-#landingOverlay #lpQR{padding:12px;background:#ede7d4;border:2px solid #000;border-radius:2px;line-height:0}
-#landingOverlay #lpQR img,#landingOverlay #lpQR canvas{display:block}
-#landingOverlay .lp-instr{font-family:'DM Mono',monospace;font-size:12px;font-weight:500;letter-spacing:1.5px;color:#000;text-align:center;line-height:1.8}
-#landingOverlay .lp-enter{font-family:'DM Mono',monospace;font-size:14px;font-weight:700;letter-spacing:3px;color:#ede7d4;background:#000;border:2px solid #000;border-radius:2px;padding:14px 40px;cursor:pointer;transition:all .12s}
-#landingOverlay .lp-enter:active{transform:scale(.95)}
 </style>
 </head>
 <body>
-<div id="landingOverlay">
-  <div class="lp-card">
-    <div id="lpQR"></div>
-    <div class="lp-instr">
-      TURN OFF SILENT MODE<br>PUT VOLUME ON MAX
-    </div>
-    <button class="lp-enter" onclick="dismissLanding()">TAKE PART</button>
-  </div>
-</div>
 <div id="app">
 <div class="tabs">
   <button class="tab active" data-tab="voice" onclick="switchTab('voice')">VOICE</button>
@@ -2722,16 +2705,10 @@ document.addEventListener('visibilitychange',function(){
 });
 
 // ═══ LANDING OVERLAY ═══
-function dismissLanding(){
-  var o=document.getElementById('landingOverlay');
-  if(o)o.classList.add('hidden');
-  switchTab('voice');
-  openScore();
-}
+switchTab('voice');
 (function initQRCodes(){
   if(typeof QRCode==='undefined')return;
   var qrOpts={text:'https://poepub.onrender.com/',width:200,height:200,colorDark:'#000000',colorLight:'#ede7d4',correctLevel:QRCode.CorrectLevel.H};
-  var lp=document.getElementById('lpQR');if(lp)new QRCode(lp,qrOpts);
   var app=document.getElementById('appQR');if(app)new QRCode(app,qrOpts);
 })();
 </script>
