@@ -69,7 +69,10 @@ input[type=range]::-moz-range-thumb{width:20px;height:20px;border-radius:50%;bac
 .preset.on{background:#2d6a4e;border-color:#2d6a4e;color:#ede7d4}
 .vnum{font-size:30px;font-weight:500;color:#2d6a4e;cursor:pointer;letter-spacing:-1px}
 .vunit{font-size:12px;color:#a0ad95;font-weight:400;margin-left:3px}
-.vedit{width:100px;text-align:center;font-size:24px;font-weight:500;background:#f8f4eb;border:1px solid #2d6a4e;border-radius:6px;color:#2d6a4e;padding:3px 6px;outline:none;-webkit-user-select:text;user-select:text}
+.vedit{-webkit-appearance:none;appearance:none;width:100px;text-align:center;font-size:24px;font-weight:500;font-variant-numeric:tabular-nums;background-color:transparent;background-repeat:no-repeat;background-image:linear-gradient(currentColor,currentColor),linear-gradient(currentColor,currentColor),linear-gradient(currentColor,currentColor),linear-gradient(currentColor,currentColor),linear-gradient(currentColor,currentColor),linear-gradient(currentColor,currentColor),linear-gradient(currentColor,currentColor),linear-gradient(currentColor,currentColor);background-size:8px 1.5px,1.5px 8px,8px 1.5px,1.5px 8px,8px 1.5px,1.5px 8px,8px 1.5px,1.5px 8px;background-position:left top,left top,right top,right top,left bottom,left bottom,right bottom,right bottom;border:none;border-radius:0;color:#2d6a4e;caret-color:currentColor;padding:5px 8px;outline:none;-webkit-user-select:text;user-select:text}
+.vedit::-webkit-outer-spin-button,.vedit::-webkit-inner-spin-button{-webkit-appearance:none;margin:0}
+.vedit[type=number]{-moz-appearance:textfield}
+.vedit::selection{background:rgba(0,0,0,.14)}
 .eq-col{display:flex;flex-direction:column;align-items:center;flex:1;gap:3px}
 .eq-track{position:relative;width:28px;height:140px;background:#dfdacc;border-radius:14px;cursor:pointer;touch-action:none}
 .eq-fill{position:absolute;bottom:0;left:0;right:0;background:#a0ad95;border-radius:14px;pointer-events:none;transition:height .05s linear}
@@ -93,7 +96,7 @@ input[type=range]::-moz-range-thumb{width:20px;height:20px;border-radius:50%;bac
 #modMulti .vnum{color:#111}
 #modMulti .vunit{color:#999}
 #modMulti .vnum,#modMulti .vedit{font-size:20px!important;color:#111!important;letter-spacing:0}
-#modMulti .vedit{border-color:#999;background:#f8f4eb;width:80px!important;padding:2px 4px}
+#modMulti .vedit{width:80px!important;padding:4px 6px}
 #muBg{position:absolute;inset:0;z-index:0;background:repeating-linear-gradient(-180deg,white,gray 1px,#ede7d4 1px,gray 2px)}
 #muContent{position:relative;z-index:5;height:100%;overflow:visible;display:flex;flex-direction:column;align-items:center;gap:14px;padding:42px 12.5% 0;pointer-events:none}
 .maths-ctrlrow{display:flex;gap:6px;width:100%;max-width:360px;align-items:center;pointer-events:auto}
@@ -145,7 +148,7 @@ input[type=range]::-moz-range-thumb{width:20px;height:20px;border-radius:50%;bac
 #mathsMenuLayer .mr-opt{flex:0 0 auto;padding:6px 6px;font-size:9px;line-height:1.2;letter-spacing:.5px;color:#555;cursor:pointer;transition:150ms;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;border-radius:1px}
 #mathsMenuLayer .mr-opt:hover{background:#ede7d4}
 #mathsMenuLayer .mr-opt.active{color:#000;font-weight:600}
-.maths-img-wrap{position:absolute;top:calc(50% - 30px);left:50%;transform:translate(-50%,-50%);width:45%;height:45%;z-index:2;pointer-events:none}
+.maths-img-wrap{position:absolute;bottom:230px;left:50%;transform:translateX(-50%);width:45%;height:45%;z-index:2;pointer-events:none}
 .maths-img{width:100%;height:100%;object-fit:contain;pointer-events:none}
 .maths-img-click{position:absolute;top:25%;left:25%;width:50%;height:50%;cursor:pointer;pointer-events:auto;z-index:3}
 .maths-sliders{position:absolute;bottom:10px;left:0;right:0;z-index:6;display:flex;flex-direction:column;align-items:center;gap:4px;padding:0 12.5% 14px;pointer-events:auto}
@@ -186,7 +189,7 @@ input[type=range]::-moz-range-thumb{width:20px;height:20px;border-radius:50%;bac
 .swp-sub .lbl{color:#a0ad95}
 .swp-sub .vnum{color:#d4b42a}
 .swp-sub .vunit{color:#d4b860}
-.swp-sub .vedit{border-color:#c8a030;color:#dcc25e;background:#faf6eb}
+.swp-sub .vedit{color:#dcc25e}
 .swp-sub .preset{background:#faf6eb;border:1px solid #e8ddb0;color:#dcc25e}
 .swp-sub .preset.on{background:#2d6a4e;border-color:#2d6a4e;color:#ecc735}
 .swp-sub .bsm{background:#faf6eb;border:1px solid #e8ddb0;color:#dcc25e}
@@ -242,6 +245,27 @@ input[type=range]::-moz-range-thumb{width:20px;height:20px;border-radius:50%;bac
 .af-frame{transition:opacity .2s}
 .af-frame.off{opacity:.4;pointer-events:none}
 .af-swp-lbl{font-size:8px;color:#a0ad95;letter-spacing:1.5px;margin-bottom:3px}
+/* ── console fader skin (shared, generalized from NOISE #nsVsFaderR) ── */
+.cfader input[type=range]{height:10px;border-radius:2px;background:linear-gradient(#cbc4b0,#ece6d5);box-shadow:inset 0 1px 3px rgba(0,0,0,.4)}
+.cfader input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:18px;height:28px;border-radius:3px;background:linear-gradient(90deg,#222 41%,#d8d0ba 41%,#d8d0ba 59%,#222 59%);border:1px solid #000;box-shadow:0 2px 4px rgba(0,0,0,.45)}
+.cfader input[type=range]::-moz-range-thumb{width:18px;height:28px;border-radius:3px;background:linear-gradient(90deg,#222 41%,#d8d0ba 41%,#d8d0ba 59%,#222 59%);border:1px solid #000}
+.cfader-master input[type=range]::-webkit-slider-thumb{background:linear-gradient(90deg,#1f4a37 41%,#8fbfa8 41%,#8fbfa8 59%,#1f4a37 59%)}
+.cfader-master input[type=range]::-moz-range-thumb{background:linear-gradient(90deg,#1f4a37 41%,#8fbfa8 41%,#8fbfa8 59%,#1f4a37 59%)}
+/* ── PULSE / FREQ B type selector (compact, mirror NOISE #nsVsTypeSel) ── */
+.af-msel .msel-head{padding:1px 8px;border:none;border-radius:4px;background:rgba(0,0,0,.05);font-size:8.4px;letter-spacing:1px;color:#222}
+.af-msel .msel-arrow{display:none}
+/* ── PULSE / FREQ B inline blocks: label toggles on/off, controls dim when off ── */
+.ns-lfo-btn.on{background:#000;color:#fff;border-color:#000}
+.af-pulse-block{display:flex;flex-direction:column;align-items:center;gap:6px;width:100%;max-width:340px}
+.af-pulse-head{display:flex;align-items:center;justify-content:space-between;width:100%;gap:8px}
+.af-pulse-head .af-swp-lbl{margin-bottom:0}
+.af-ctl-group{display:flex;align-items:center;gap:6px;flex-shrink:0}
+.af-freqb-num{display:flex;align-items:baseline;gap:1px}
+.af-switch{display:inline-flex;align-items:center;justify-content:center;height:22px;min-width:38px;padding:0 8px;border:1px solid #333;border-radius:3px;background:#f8f4eb;color:#111;cursor:pointer;font-family:inherit}
+.af-switch:active{background:#ede7d4}
+.af-switch svg{width:15px;height:15px}
+.af-sweep-frame{display:flex;flex-direction:column;align-items:center;gap:8px;width:100%;max-width:340px;border:1px solid #c2ccb6;border-radius:8px;padding:10px 12px;box-sizing:border-box}
+.af-sweep-body{display:flex;flex-direction:column;align-items:center;gap:8px;width:100%}
 /* ═══ NOISE UI ═══ */
 #modNoise.active{display:flex;flex-direction:column;align-items:center;height:100%;padding:0;overflow:hidden;position:relative;}
 #nsStage{position:relative;flex:1;min-height:0;width:100%;overflow:hidden;z-index:1;}
@@ -251,13 +275,17 @@ input[type=range]::-moz-range-thumb{width:20px;height:20px;border-radius:50%;bac
 #nsHidden{display:none;}
 #nsPlayBtn{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:25%;aspect-ratio:1;border-radius:50%;z-index:4;cursor:pointer;}
 #nsVsPanel{width:100%;max-width:400px;margin:0 auto;flex:0 0 auto;padding:8px 12px 10px;display:flex;flex-direction:column;gap:6px;position:relative;z-index:5;background:transparent;}
-#nsVsTop{display:flex;justify-content:space-between;align-items:center;width:100%;}
-#nsVsHead{display:flex;align-items:center;gap:8px;min-width:0;}
-#nsVsBody{display:flex;flex-direction:column;align-items:center;gap:8px;width:100%;}
-#nsVsTypeSel .msel-head{padding:1px 6px;border:none;border-radius:4px;background:rgba(0,0,0,.05);font-size:8.4px;letter-spacing:1px;color:#222;gap:0;}
+#nsVsTop{display:flex;justify-content:space-between;align-items:center;width:100%;position:relative;top:-1px;}
+#nsVsHead{display:flex;align-items:center;gap:6px;min-width:0;}
+#nsVsBody{display:none;flex-direction:column;align-items:center;gap:8px;width:100%;position:relative;top:-3px;}
+#nsVsPanel.vs-open #nsVsBody{display:flex;}
+/* LINEAR type chip shares the PULSE row, only visible when panel is open */
+#nsVsTypeSel{display:none;}
+#nsVsPanel.vs-open #nsVsTypeSel{display:inline-block;}
+#nsVsTypeSel .msel-head{padding:1px 6px;border:none;border-radius:4px;background:rgba(0,0,0,.05);font-size:9.4px;letter-spacing:1px;color:#222;gap:0;}
 #nsVsTypeSel .msel-arrow{display:none;}
-#nsVsTypeSel .msel-opts{top:auto;bottom:100%;margin-top:0;margin-bottom:4px;border-radius:6px;}
-#nsVsTypeSel .msel-opt{font-size:8.4px;letter-spacing:1px;color:#999;padding:5px 9px;border-radius:4px;}
+#nsVsTypeSel .msel-opts{top:auto;bottom:100%;margin-top:0;margin-bottom:4px;border-radius:6px;right:0;left:auto;}
+#nsVsTypeSel .msel-opt{font-size:9.4px;letter-spacing:1px;color:#999;padding:5px 9px;border-radius:4px;}
 #nsVsTypeSel .msel-opt.active{color:#555;}
 #nsVsABrow{display:flex;justify-content:space-between;align-items:center;width:100%;gap:8px;}
 #nsVsCenter{flex:1;display:grid;grid-template-columns:repeat(3,1fr);gap:5px;align-items:center;}
@@ -266,12 +294,30 @@ input[type=range]::-moz-range-thumb{width:20px;height:20px;border-radius:50%;bac
 #nsVsDurWrap .vnum{font-size:13px;color:#111;}
 #nsVsDurWrap .vunit{font-size:8px;}
 .ns-dim{opacity:.42;transition:opacity .2s;}
-.ns-switch{width:44px;height:30px;position:relative;top:-5px;cursor:pointer;flex-shrink:0;opacity:.5;transition:opacity .2s;}
+.ns-half{opacity:.5;transition:opacity .2s;}
+/* LFO label — click-to-open panel frame */
+.ns-lfo-btn{display:inline-flex;align-items:center;gap:5px;height:22px;padding:0 9px;font-family:inherit;font-size:10px;letter-spacing:2px;font-weight:500;color:#111;background:rgba(0,0,0,.05);border:1px solid #333;border-radius:3px;cursor:pointer;line-height:1;flex-shrink:0;transition:background .15s,color .15s;}
+.ns-lfo-btn .ns-lfo-caret{width:8px;height:8px;fill:#888;transition:transform .2s,fill .15s;}
+.ns-lfo-btn.open{background:#000;color:#fff;border-color:#000;}
+.ns-lfo-btn.open .ns-lfo-caret{transform:rotate(180deg);fill:#fff;}
+/* PULSE label — styled like the pulse-type chip: subtle fill, no border, larger font, less rounded, no black on open */
+#nsVsLabelBtn{border:none;border-radius:2px;background:rgba(0,0,0,.05);color:#222;font-size:12px;letter-spacing:1.5px;padding:3px 10px;}
+#nsVsLabelBtn.open{background:rgba(0,0,0,.08);color:#222;border-color:transparent;}
+#nsVsLabelBtn .ns-lfo-caret{fill:#888;}
+#nsVsLabelBtn.open .ns-lfo-caret{fill:#888;}
+/* Pulse on/off toggle — original knife switch, scaled to 95% */
+.ns-switch{width:44px;height:30px;position:relative;top:-3px;cursor:pointer;flex-shrink:0;transform:scale(.9025);transform-origin:center;background:none;border:none;padding:0;}
 .ns-switch::before{content:'';position:absolute;left:5px;right:5px;bottom:1px;height:7px;background:linear-gradient(#2a2a2a,#000);border:1px solid #000;border-radius:2px;}
 .ns-switch .lever{position:absolute;bottom:5px;left:50%;width:5px;height:21px;background:linear-gradient(#8a8a8a,#333);border-radius:3px;transform-origin:bottom center;transform:translateX(-50%) rotate(-42deg);transition:transform .26s cubic-bezier(.5,1.7,.4,.9);}
-.ns-switch .lever::after{content:'';position:absolute;top:-7px;left:50%;width:13px;height:13px;border-radius:50%;background:radial-gradient(circle at 35% 30%,#bbb,#333 70%);border:1px solid #000;transform:translateX(-50%);box-shadow:0 1px 2px rgba(0,0,0,.5);}
+.ns-switch .lever::after{content:'';position:absolute;top:-7px;left:50%;width:13px;height:13px;border-radius:50%;background:radial-gradient(circle at 35% 30%,#6f6f6f,#333 70%);border:1px solid #000;transform:translateX(-50%);box-shadow:0 1px 2px rgba(0,0,0,.5);}
 .ns-switch.on .lever{transform:translateX(-50%) rotate(42deg);}
-.ns-switch.on{opacity:1;}
+/* [O][I] switch — used by AUDIO FUNCTION (riser) LFO/target toggles */
+.ns-pwr{display:inline-flex;align-items:stretch;height:22px;padding:0;background:#f8f4eb;border:1px solid #333;border-radius:3px;overflow:hidden;cursor:pointer;font-family:inherit;flex-shrink:0;}
+.ns-pwr span{display:flex;align-items:center;justify-content:center;width:20px;font-size:10px;font-weight:600;letter-spacing:0;color:#9a9483;transition:background .15s,color .15s;}
+.ns-pwr .ns-pwr-i{border-left:1px solid #333;}
+.ns-pwr .ns-pwr-o{background:#111;color:#f8f4eb;}
+.ns-pwr.on .ns-pwr-o{background:transparent;color:#9a9483;}
+.ns-pwr.on .ns-pwr-i{background:#111;color:#f8f4eb;}
 #nsVsPanel .vedit{color:#111;border-color:#333;font-size:14px;width:62px;padding:1px 3px;}
 #nsVsPanel .maths-slider-wrap{width:100%;}
 #nsVsFaderR{height:10px;border-radius:2px;background:linear-gradient(#cbc4b0,#ece6d5);box-shadow:inset 0 1px 3px rgba(0,0,0,.4);}
@@ -281,6 +327,47 @@ input[type=range]::-moz-range-thumb{width:20px;height:20px;border-radius:50%;bac
 #nsVsPanel .af-swp-lbl,#nsVsPanel .lbl{color:#222;}
 #nsVsPanel .vnum{color:#111;}
 #nsVsPanel .vunit{color:#777;}
+/* ═══ MATHS volume-sweep LFO (muVs) — collapsible strip above the volume slider ═══ */
+/* the whole LFO is one frame when open (settings-panel width), covering the advanced row + strip down to the fader */
+#muVsPanel{position:relative;width:calc(100% + 35px);max-width:395px;display:flex;flex-direction:column;gap:9px}
+/* frame border via box-shadow (no layout) + no bottom padding, so opening never nudges the strip up */
+#muVsPanel.vs-open{background:rgba(248,244,235,.98);border-radius:3px;box-shadow:0 0 0 1px #ccc,0 4px 14px rgba(0,0,0,.12);padding:12px 0 0}
+#muVsBody{display:none;flex-direction:column;align-items:center;gap:8px;width:100%;padding:0 12px;box-sizing:border-box}
+#muVsPanel.vs-open #muVsBody{display:flex}
+#muVsStrip{display:flex;flex-direction:column;align-items:center;gap:6px;width:calc(100% - 35px);max-width:360px;margin:0 auto}
+#muVsPanel:not(.vs-open) #muVsTypeSel,#muVsPanel:not(.vs-open) #muVsPerOscRow{display:none}
+#muVsStripTop{display:flex;align-items:center;gap:6px;width:100%}
+#muVsPerOscRow{display:flex;align-items:center;gap:6px}
+#muVsFaderWrap{width:100%;max-width:none;padding-bottom:14px}
+#msVolumeWrap{margin-top:8px}
+/* fader value readout box (replaces the moving thumb bubble): shows Xs in per-osc, Xms otherwise */
+#muVsRight{display:flex;align-items:center;gap:6px;margin-left:auto}
+#muVsFaderNum{display:inline-flex;align-items:center;gap:1px;height:20px;padding:0 7px;border:1px solid rgba(0,0,0,.15);border-radius:2px;background:#efe9da;box-sizing:border-box;white-space:nowrap;flex:0 0 auto}
+#muVsFaderNum .mvfn-v{font-size:12px;font-weight:600;color:#111;letter-spacing:0;line-height:1}
+#muVsFaderNum .mvfn-u{font-size:8px;color:#8a8478;letter-spacing:.5px;margin-left:1px;line-height:1}
+#muVsABrow.ns-dim{pointer-events:none}
+/* pulse label: bold; beige overlay + thin border when closed, dark when open */
+#muVsLabelBtn{display:inline-flex;align-items:center;height:20px;margin-left:-7px;padding:0 6px;font-family:inherit;font-size:8.4px;font-weight:700;letter-spacing:1px;color:#222;background:#ede7d4;border:1px solid rgba(0,0,0,.14);border-radius:2px;cursor:pointer;line-height:1;white-space:nowrap}
+#muVsLabelBtn.open{background:#222;color:#f8f4eb;border-color:#222}
+#muVsStripTop #muVsTypeSel{margin-left:2px}
+#muVsStripTop #muVsTypeSel .msel-head{height:20px;box-sizing:border-box}
+#muVsFaderR{height:10px;border-radius:2px;background:linear-gradient(#cbc4b0,#ece6d5);box-shadow:inset 0 1px 3px rgba(0,0,0,.4)}
+#muVsFaderR::-webkit-slider-thumb{-webkit-appearance:none;width:18px;height:28px;border-radius:3px;background:linear-gradient(90deg,#222 41%,#d8d0ba 41%,#d8d0ba 59%,#222 59%);border:1px solid #000;box-shadow:0 2px 4px rgba(0,0,0,.45)}
+#muVsFaderR::-moz-range-thumb{width:18px;height:28px;border-radius:3px;background:linear-gradient(90deg,#222 41%,#d8d0ba 41%,#d8d0ba 59%,#222 59%);border:1px solid #000}
+#muVsABrow{display:flex;justify-content:space-between;align-items:center;width:100%;gap:8px}
+#muVsCenter{flex:1;display:grid;grid-template-columns:repeat(3,1fr);gap:5px;align-items:center}
+#muVsAutoBtn.on{background:#000;color:#fff;border-color:#000}
+#muVsTypeSel .msel-head{padding:1px 6px;border:none;border-radius:4px;background:rgba(0,0,0,.05);font-size:8.4px;letter-spacing:1px;color:#222;gap:0}
+#muVsTypeSel .msel-arrow{display:none}
+#muVsTypeSel .msel-opts{top:auto;bottom:100%;margin-top:0;margin-bottom:4px;border-radius:6px;right:0;left:auto}
+#muVsTypeSel .msel-opt{font-size:8.4px;letter-spacing:1px;color:#999;padding:5px 9px;border-radius:4px}
+#muVsTypeSel .msel-opt.active{color:#555}
+#muVsPanel .vnum{font-size:14px!important;color:#111!important;letter-spacing:0}
+#muVsPanel .vunit{color:#777}
+#muVsPanel #muVsAV,#muVsPanel #muVsBV{font-size:17px!important}
+#muVsPanel #muVsDurV{font-size:13px!important}
+#muVsDurWrap .vunit{font-size:8px}
+#muVsPanel .vedit{font-size:13px!important;width:56px!important;color:#111!important;border-color:#333;padding:1px 3px}
 /* ═══ VOICE (Pink Trombone) ═══ */
 #modVoice.active{display:flex;flex-direction:column;align-items:center;gap:10px}
 #vtCanvasWrap{position:relative;width:100%;max-width:480px;aspect-ratio:600/730;overflow:visible;background:#ede7d4;touch-action:none;margin-top:20px}
@@ -301,8 +388,8 @@ input[type=range]::-moz-range-thumb{width:20px;height:20px;border-radius:50%;bac
   /* MATHS — mobile-only layout */
   /* Upper grid: 5px higher + shifted left (was 42px 12.5% 0) */
   #muContent{padding:37px 4% 0}
-  /* SVG: 10% smaller (45 → 40.5) and 10px lower (-30 → -20) */
-  #modMulti .maths-img-wrap{top:calc(50% - 20px);width:40.5%;height:40.5%}
+  /* SVG: 10% smaller (45 → 40.5); bottom-anchored above the LFO strip */
+  #modMulti .maths-img-wrap{top:auto;bottom:215px;width:40.5%;height:40.5%}
   /* Sliders: extend symmetric to align with new grid left edge; tighter vertical packing */
   #modMulti .maths-sliders{padding:0 4% 14px;gap:0}
   #modMulti .maths-slider-wrap+.maths-slider-wrap{margin-top:-4px}
@@ -387,35 +474,49 @@ input[type=range]::-moz-range-thumb{width:20px;height:20px;border-radius:50%;bac
 
   <div class="af-waves" id="rsWaves"></div>
 
-  <div class="rr">
+  <div class="rr cfader">
     <div class="lbl-row lbl"><span>FREQUENCY</span><span>1 Hz &mdash; 20 kHz</span></div>
     <input type="range" id="rsFreqSL" min="0" max="1000" value="500" oninput="rsSetFreq(+this.value)">
   </div>
   <div style="display:flex;flex-direction:column;align-items:center;gap:15px;width:100%">
-    <div class="section-toggle" id="rsVolBar" onclick="togSection('rsVolBody')">
-      <span style="display:flex;align-items:center;gap:8px"><span class="af-dot"></span>VOLUME SWEEP</span>
-      <span id="rsVolBodyArrow">&#9660;</span>
+    <div class="af-sweep-frame" id="rsSweepFrame">
+      <div class="af-pulse-head">
+        <button class="ns-lfo-btn" id="rsBLabelBtn" onclick="rsToggleSweep()" role="switch" aria-label="sweep on/off">SWEEP</button>
+        <div class="af-freqb-num ns-dim" id="rsBNum"><span class="vnum" id="rsFqBV" style="font-size:18px" onclick="tapNum('rsFqBV',1,20000,function(v){rsSetFqB(v);})">8000.00</span><span class="vunit">Hz</span></div>
+      </div>
+      <div class="af-sweep-body ns-dim" id="rsBBody">
+        <div class="af-pulse-head" id="rsBCtlRow" style="justify-content:flex-end">
+          <div class="af-ctl-group" id="rsBCtl">
+            <button class="af-switch" id="rsBDirSw" onclick="rsPitchCycleDir()" aria-label="sweep direction"></button>
+            <div class="msel af-msel" id="rsPitchTypeSel" onclick="this.classList.toggle('open')" style="display:inline-block;text-align:left"><div class="msel-head"><span id="rsPitchTypeText">LINEAR</span><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" class="msel-arrow"><path d="M233.4 406.6c12.5 12.5 32.8 12.5 45.3 0l192-192c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0L256 338.7 86.6 169.4c-12.5-12.5-32.8-12.5-45.3 0s-12.5 32.8 0 45.3l192 192z"/></svg></div><div class="msel-opts" id="rsPitchTypeOpts"></div></div>
+          </div>
+        </div>
+        <div class="maths-slider-wrap cfader" id="rsBDurFaderWrap" style="max-width:340px">
+          <div class="lbl-row lbl"><span>SWEEP DURATION</span></div>
+          <input type="range" id="rsPitchDurSL" min="0" max="1000" value="577" oninput="rsSetPitchDur(+this.value)">
+          <span class="ms-val" id="rsPitchDurVal">4.0 s</span>
+        </div>
+        <div class="maths-slider-wrap cfader" id="rsFqBFaderWrap" style="max-width:340px">
+          <div class="lbl-row lbl"><span>FREQUENCY</span></div>
+          <input type="range" id="rsFqBSL" min="0" max="1000" value="820" oninput="rsSetFqBFromSlider(+this.value)">
+          <span class="ms-val" id="rsFqBFaderVal">8000</span>
+        </div>
+      </div>
     </div>
-    <div class="section-body" id="rsVolBody">
-      <div class="af-btoggle" id="rsVolToggle" onclick="rsToggleVolSweep()"><span class="af-sw"></span>ENABLE</div>
-      <div class="rr">
-        <div class="lbl-row lbl"><span>DURATION</span><span id="rsVolDurL">4.0 s</span></div>
+    <div class="af-pulse-block">
+      <div class="af-pulse-head">
+        <button class="ns-lfo-btn" id="rsVolLabelBtn" onclick="rsToggleVolSweep()" role="switch" aria-label="volume pulse on/off">PULSE</button>
+        <div class="af-ctl-group ns-dim" id="rsVolCtl">
+          <button class="af-switch" id="rsVolDirSw" onclick="rsVolCycleDir()" aria-label="pulse direction"></button>
+          <div class="msel af-msel" id="rsVolTypeSel" onclick="this.classList.toggle('open')" style="display:inline-block;text-align:left"><div class="msel-head"><span id="rsVolTypeText">LINEAR</span><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" class="msel-arrow"><path d="M233.4 406.6c12.5 12.5 32.8 12.5 45.3 0l192-192c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0L256 338.7 86.6 169.4c-12.5-12.5-32.8-12.5-45.3 0s-12.5 32.8 0 45.3l192 192z"/></svg></div><div class="msel-opts" id="rsVolTypeOpts"></div></div>
+        </div>
+      </div>
+      <div class="maths-slider-wrap cfader ns-dim" id="rsVolFaderWrap" style="max-width:340px">
         <input type="range" id="rsVolDurSL" min="0" max="1000" value="577" oninput="rsSetVolDur(+this.value)">
+        <span class="ms-val" id="rsVolDurVal">4.0 s</span>
       </div>
-      <div style="text-align:center"><div class="af-swp-lbl">DIRECTION</div><div style="display:flex;gap:6px;justify-content:center" id="rsVolDirBtns"></div></div>
-      <div style="text-align:center"><div class="af-swp-lbl">TYPE</div><div class="msel" id="rsVolTypeSel" onclick="this.classList.toggle('open')" style="display:inline-block;min-width:130px;text-align:left"><div class="msel-head"><span id="rsVolTypeText">LINEAR</span><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" class="msel-arrow"><path d="M233.4 406.6c12.5 12.5 32.8 12.5 45.3 0l192-192c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0L256 338.7 86.6 169.4c-12.5-12.5-32.8-12.5-45.3 0s-12.5 32.8 0 45.3l192 192z"/></svg></div><div class="msel-opts" id="rsVolTypeOpts"></div></div></div>
     </div>
-    <div class="af-btoggle" id="rsBtoggle" onclick="rsToggleSweep()"><span class="af-sw"></span>TARGET&nbsp;B</div>
-    <div class="swp-section af-frame off" id="rsBframe">
-      <div style="text-align:center"><div class="lbl">TARGET B</div><span class="vnum" id="rsFqBV" onclick="tapNum('rsFqBV',1,20000,function(v){rsFqB=v;})">8000.00</span><span class="vunit">Hz</span></div>
-      <div class="rr">
-        <div class="lbl-row lbl"><span>DURATION</span><span id="rsPitchDurL">4.0 s</span></div>
-        <input type="range" id="rsPitchDurSL" min="0" max="1000" value="577" oninput="rsSetPitchDur(+this.value)">
-      </div>
-      <div style="text-align:center"><div class="af-swp-lbl">DIRECTION</div><div style="display:flex;gap:6px;justify-content:center" id="rsPitchDirBtns"></div></div>
-      <div style="text-align:center"><div class="af-swp-lbl">TYPE</div><div class="msel" id="rsPitchTypeSel" onclick="this.classList.toggle('open')" style="display:inline-block;min-width:130px;text-align:left"><div class="msel-head"><span id="rsPitchTypeText">LINEAR</span><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" class="msel-arrow"><path d="M233.4 406.6c12.5 12.5 32.8 12.5 45.3 0l192-192c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0L256 338.7 86.6 169.4c-12.5-12.5-32.8-12.5-45.3 0s-12.5 32.8 0 45.3l192 192z"/></svg></div><div class="msel-opts" id="rsPitchTypeOpts"></div></div></div>
-    </div>
-    <div class="rr">
+    <div class="rr cfader cfader-master">
       <div class="lbl-row lbl"><span>0%</span><span id="rsMVolL">VOLUME — 70%</span><span>100%</span></div>
       <input type="range" id="rsMVolR" min="0" max="100" value="70" oninput="rsMVol=+this.value;document.getElementById('rsMVolL').textContent='VOLUME \u2014 '+rsMVol+'%';if(rsMGn&&AC)rsMGn.gain.setTargetAtTime(v2g(rsMVol),AC.currentTime,.02);syncMixerUI()">
     </div>
@@ -480,10 +581,10 @@ input[type=range]::-moz-range-thumb{width:20px;height:20px;border-radius:50%;bac
   <div id="nsVsPanel">
     <div id="nsVsTop">
       <div id="nsVsHead">
-        <div class="af-title" style="margin:0">LFO</div>
-        <div class="ns-switch" id="nsVsEnableBtn" onclick="nsVsToggle()" role="button" aria-label="LFO on/off"><span class="lever"></span></div>
+        <button class="ns-lfo-btn" id="nsVsLabelBtn" onclick="nsVsTogglePanel()" aria-expanded="false" aria-label="Pulse settings">PULSE<svg class="ns-lfo-caret" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><path d="M233.4 406.6c12.5 12.5 32.8 12.5 45.3 0l192-192c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0L256 338.7 86.6 169.4c-12.5-12.5-32.8-12.5-45.3 0s-12.5 32.8 0 45.3l192 192z"/></svg></button>
+        <button class="ns-switch" id="nsVsEnableBtn" onclick="nsVsToggle()" role="switch" aria-label="Pulse on/off"><span class="lever"></span></button>
       </div>
-      <div class="msel ns-dim" id="nsVsTypeSel" onclick="this.classList.toggle('open')" style="display:inline-block"><div class="msel-head"><span id="nsVsTypeText">LINEAR</span><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" class="msel-arrow"><path d="M233.4 406.6c12.5 12.5 32.8 12.5 45.3 0l192-192c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0L256 338.7 86.6 169.4c-12.5-12.5-32.8-12.5-45.3 0s-12.5 32.8 0 45.3l192 192z"/></svg></div><div class="msel-opts" id="nsVsTypeOpts"></div></div>
+      <div class="msel ns-dim" id="nsVsTypeSel" onclick="this.classList.toggle('open')"><div class="msel-head"><span id="nsVsTypeText">LINEAR</span><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" class="msel-arrow"><path d="M233.4 406.6c12.5 12.5 32.8 12.5 45.3 0l192-192c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0L256 338.7 86.6 169.4c-12.5-12.5-32.8-12.5-45.3 0s-12.5 32.8 0 45.3l192 192z"/></svg></div><div class="msel-opts" id="nsVsTypeOpts"></div></div>
     </div>
     <div class="ns-dim" id="nsVsBody">
       <div id="nsVsABrow">
@@ -495,10 +596,10 @@ input[type=range]::-moz-range-thumb{width:20px;height:20px;border-radius:50%;bac
         </div>
         <div style="text-align:right"><span class="vnum" id="nsVsBV" style="font-size:18px" onclick="tapNum('nsVsBV',1,100000,function(v){nsVsB=v/1000;nsVsRefreshFader();},true)">10000</span><span class="vunit">ms</span></div>
       </div>
-      <div class="maths-slider-wrap" id="nsVsFaderWrap" style="max-width:100%">
-        <input type="range" id="nsVsFaderR" min="0" max="1000" value="0" oninput="nsVsFader=+this.value/1000;nsVsRefreshFader()">
-        <span class="ms-val" id="nsVsFaderVal">1</span>
-      </div>
+    </div>
+    <div class="maths-slider-wrap" id="nsVsFaderWrap" style="max-width:100%">
+      <input type="range" id="nsVsFaderR" min="0" max="1000" value="0" oninput="nsVsFader=+this.value/1000;nsVsRefreshFader()">
+      <span class="ms-val" id="nsVsFaderVal">1</span>
     </div>
   </div>
 </div>
@@ -548,6 +649,33 @@ input[type=range]::-moz-range-thumb{width:20px;height:20px;border-radius:50%;bac
     <div class="ms-toggle-row"><span class="ms-tlabel"><span style="color:#111">MATHS</span> to <span style="color:#2d6a4e">BIRDBOX</span> Frequency Ratio</span><span class="ms-fxwrap"><span class="ms-fx">×</span><span class="ms-num" id="bbFqRatioV" onclick="tapNum('bbFqRatioV',0.1,16,function(v){bbFqRatio=v;recomputeHarmonicPools();},false,2)">1.00</span></span></div>
   </div>
   <div class="maths-sliders">
+    <div id="muVsPanel">
+      <div id="muVsBody">
+        <div id="muVsABrow">
+          <div style="text-align:left"><span class="vnum" id="muVsAV" style="font-size:18px" onclick="tapNum('muVsAV',1,100000,function(v){muVsA=v/1000;muVsRefreshFader();},true)">1</span><span class="vunit">ms</span></div>
+          <div id="muVsCenter">
+            <button class="ns-cell" id="muVsAutoBtn" onclick="muVsToggleAuto()">AUTO</button>
+            <div class="ns-cell ns-dim" id="muVsDurWrap"><span class="vnum" id="muVsDurV" onclick="tapNum('muVsDurV',0.01,300,function(v){muVsDur=v;},false,2)">10.00</span><span class="vunit">s</span></div>
+            <button class="ns-cell dir-btn ns-dim" id="muVsDirCycle" onclick="muVsCycleDir()"></button>
+          </div>
+          <div style="text-align:right"><span class="vnum" id="muVsBV" style="font-size:18px" onclick="tapNum('muVsBV',1,100000,function(v){muVsB=v/1000;muVsRefreshFader();},true)">10000</span><span class="vunit">ms</span></div>
+        </div>
+      </div>
+      <div id="muVsStrip">
+        <div id="muVsStripTop">
+          <button id="muVsLabelBtn" onclick="muVsTogglePanel()" aria-expanded="false" aria-label="PULSE settings">pulse</button>
+          <button class="ms-toggle" id="muVsEnableBtn" onclick="muVsToggle()">OFF</button>
+          <div class="msel" id="muVsTypeSel" onclick="this.classList.toggle('open')"><div class="msel-head"><span id="muVsTypeText">LINEAR</span><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" class="msel-arrow"><path d="M233.4 406.6c12.5 12.5 32.8 12.5 45.3 0l192-192c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0L256 338.7 86.6 169.4c-12.5-12.5-32.8-12.5-45.3 0s-12.5 32.8 0 45.3l192 192z"/></svg></div><div class="msel-opts" id="muVsTypeOpts"></div></div>
+          <div id="muVsRight">
+            <div id="muVsPerOscRow"><span class="ms-tlabel">Per Osc Ratio</span><button class="ms-toggle" id="muVsPerOscBtn" onclick="muVsTogglePerOsc()">OFF</button></div>
+            <span id="muVsFaderNum"><span class="mvfn-v" id="muVsFaderNumV">1</span><span class="mvfn-u" id="muVsFaderNumU">ms</span></span>
+          </div>
+        </div>
+        <div class="maths-slider-wrap" id="muVsFaderWrap">
+          <input type="range" id="muVsFaderR" min="0" max="1000" value="0" oninput="muVsFader=+this.value/1000;muVsRefreshFader()">
+        </div>
+      </div>
+    </div>
     <div class="maths-slider-wrap" id="msVolumeWrap">
       <span class="ms-unit">%</span><span class="ms-label">volume</span>
       <input type="range" id="multiMVolR" min="0" max="100" value="80" oninput="multiSetMasterVol(+this.value)">
@@ -666,6 +794,23 @@ const FA=-6.398,FB=16.301;
 function s2f(v){const x=v/10000;return Math.max(1,Math.min(1e8,Math.exp(FA*x*x+FB*x)));}
 function f2s(f){const l=Math.log(Math.max(1,Math.min(1e8,f)));const d=FB*FB+4*FA*l;if(d<0)return 5000;return Math.round(Math.max(0,Math.min(10000,(FB-Math.sqrt(Math.max(0,d)))/(2*(-FA))*10000)));}
 function v2g(v){const n=v/100;return n*n*n;}
+// audio-rate tremolo helpers: period(sec)→LFO freq (0.5ms floor / 2000Hz cap), and click-free engage/disengage of a DC-offset gain-pair
+function periodToFreq(P){return Math.min(2000,1/Math.max(P||1e9,0.0005));}
+function tremEngage(g,d,on){if(!g||!d||!AC)return;var t=AC.currentTime;g.gain.setTargetAtTime(on?0.5:1,t,.02);d.gain.setTargetAtTime(on?0.5:0,t,.02);}
+// PULSE auto sweep is geometric (STYPE shape applied in log-period space), matching the manual fader —
+// avoids linear-period's flaw where ~95% of the sweep collapses into a slow near-silent swell ("mid cut").
+function sweepPeriod(type,t,A,B){return (A>0&&B>0)?Math.exp(sweepVal(type,t,Math.log(A),Math.log(B))):sweepVal(type,t,A,B);}
+// PULSE "fire & decay" LFO wave: one cycle = snap to full, then decay to 0 shaped by TYPE. Bipolar (w=2*env-1);
+// muTremGain.gain = 0.5 + 0.5*w = env. Cached per type; ~2ms attack taper softens the loop-point "fire" click.
+var muVsWaveCache={};
+function muVsWaveBuf(type){
+  if(muVsWaveCache[type])return muVsWaveCache[type];
+  var sr=AC.sampleRate,buf=AC.createBuffer(1,sr,sr),d=buf.getChannelData(0);
+  for(var k=0;k<sr;k++)d[k]=1-2*sweepVal(type,k/sr,0,1);
+  var atk=Math.max(1,Math.round(sr*0.002));
+  for(var j=0;j<atk;j++)d[j]=-1+(d[j]+1)*(j/atk);
+  muVsWaveCache[type]=buf;return buf;
+}
 function mkNB(ctx){const s=ctx.sampleRate*4,b=ctx.createBuffer(1,s,ctx.sampleRate),d=b.getChannelData(0);for(let i=0;i<s;i++)d[i]=Math.random()*2-1;return b;}
 function spdS2V(v){return Math.round(Math.exp(v/10000*Math.log(3300))*100)/100;}
 function spdV2S(v){return Math.round(Math.log(Math.max(1,v))/Math.log(3300)*10000);}
@@ -944,8 +1089,14 @@ function rsMapSliderToDur(v){return Math.round(0.1*Math.pow(600,v/1000)*10)/10;}
 function rsDurToSlider(d){return Math.max(0,Math.min(1000,Math.round(1000*Math.log(Math.max(0.1,d)/0.1)/Math.log(600))));}
 function rsSetFreq(v){rsFreq=rsMapSliderToFreq(v);var el=document.getElementById('rsFreqV');if(el)el.textContent=rsFreq.toFixed(2);if(!rsSweepOn&&rsOsc&&AC)rsOsc.frequency.setTargetAtTime(rsFreq,AC.currentTime,.02);}
 function rsSetFreqDirect(v){rsFreq=Math.max(1,Math.min(20000,v));var el=document.getElementById('rsFreqV');if(el)el.textContent=rsFreq.toFixed(2);var sl=document.getElementById('rsFreqSL');if(sl)sl.value=Math.round(rsFreqToSlider(rsFreq));if(!rsSweepOn&&rsOsc&&AC)rsOsc.frequency.setTargetAtTime(rsFreq,AC.currentTime,.02);}
-function rsSetPitchDur(v){rsPitchDur=rsMapSliderToDur(v);var el=document.getElementById('rsPitchDurL');if(el)el.textContent=rsPitchDur.toFixed(1)+' s';}
-function rsSetVolDur(v){rsVolDur=rsMapSliderToDur(v);var el=document.getElementById('rsVolDurL');if(el)el.textContent=rsVolDur.toFixed(1)+' s';}
+function rsSetPitchDur(v){rsPitchDur=rsMapSliderToDur(v);var r=document.getElementById('rsPitchDurSL');if(r)updateSliderVal('rsPitchDurVal',r,rsPitchDur.toFixed(1)+' s');}
+function rsSetVolDur(v){rsVolDur=rsMapSliderToDur(v);var r=document.getElementById('rsVolDurSL');if(r)updateSliderVal('rsVolDurVal',r,rsVolDur.toFixed(1)+' s');}
+function rsSetFqB(v){rsFqB=Math.max(1,Math.min(20000,v));var t=document.getElementById('rsFqBV');if(t)t.textContent=rsFqB.toFixed(2);var r=document.getElementById('rsFqBSL');if(r){r.value=Math.round(rsFreqToSlider(rsFqB));updateSliderVal('rsFqBFaderVal',r,Math.round(rsFqB));}}
+function rsSetFqBFromSlider(v){rsFqB=rsMapSliderToFreq(v);var t=document.getElementById('rsFqBV');if(t)t.textContent=rsFqB.toFixed(2);var r=document.getElementById('rsFqBSL');if(r)updateSliderVal('rsFqBFaderVal',r,Math.round(rsFqB));}
+function rsVolRenderDir(){var b=document.getElementById('rsVolDirSw');if(b)b.innerHTML=nsVsDirIcon(rsVolDir);}
+function rsVolCycleDir(){var i=NS_DIR_ORDER.indexOf(rsVolDir);rsVolDir=NS_DIR_ORDER[(i+1)%NS_DIR_ORDER.length];rsVolRenderDir();}
+function rsPitchRenderDir(){var b=document.getElementById('rsBDirSw');if(b)b.innerHTML=nsVsDirIcon(rsPitchDir);}
+function rsPitchCycleDir(){var i=NS_DIR_ORDER.indexOf(rsPitchDir);rsPitchDir=NS_DIR_ORDER[(i+1)%NS_DIR_ORDER.length];rsPitchRenderDir();}
 
 /* ═══════ SWEEP (dual: freq + vol on same signal) ═══════ */
 const STYPES=['linear','log','wobble','meandering','cascade','shard','spiral','surge'];
@@ -1038,8 +1189,8 @@ function sweepVal(type,t,mn,mx){
   }
 }
 function swpReroll(){
-  swpFqMin=bbRand(bbFreqPool);
-  swpFqMax=bbRand(bbFreqPool);
+  if(Math.random()<0.5) swpFqMin=bbRand(bbFreqPool);   // 50%: reroll init, else repeat previous
+  if(Math.random()<0.5) swpFqMax=bbRand(bbFreqPool);   // 50%: reroll target, else repeat previous
   swpFqDur=bbRand(bbDurHarmonic?bbDurPool:bbDurPoolPool);
   updateBBBackground();updateBBBird();
 }
@@ -1127,6 +1278,7 @@ let nTransStartVol=60,nTransTargetVol=60;
 let nTransRAF=null;
 // Volume-Sweep LFO — a tremolo on the noise master gain whose PERIOD is the swept quantity
 let nsVsOn=false,nsVsAuto=false;
+let nsTremGain=null,nsTremOsc=null,nsTremDepth=null;
 let nsVsA=0.001,nsVsB=10;          // period targets in seconds (A=fast 1ms … B=slow 10000ms)
 let nsVsFader=0;                   // 0..1 manual position between A and B
 let nsVsDur=10,nsVsDir='fwd',nsVsType='linear';
@@ -1168,7 +1320,15 @@ function toggleNoise(){
   showNsBirdFlash();
   const c=getAC();
   if(nOn){nNodes.forEach(n=>{try{n.src.stop();}catch(e){}});nNodes=[];nTransActive=false;if(nTransRAF){cancelAnimationFrame(nTransRAF);nTransRAF=null;}nOn=false;setPB('n',false);showNsBirdFlash();appAutoRecalc();return;}
-  if(!nMGain){nMGain=c.createGain();nMGain.connect(appMaster);}
+  if(!nMGain){nMGain=c.createGain();
+    nsTremGain=c.createGain();nsTremGain.gain.value=1;         // tremolo node — pass-through when off
+    nsTremDepth=c.createGain();nsTremDepth.gain.value=0;       // depth (silent when off)
+    nsTremOsc=c.createOscillator();nsTremOsc.type='sine';nsTremOsc.frequency.value=1;
+    nsTremOsc.connect(nsTremDepth);nsTremDepth.connect(nsTremGain.gain);
+    nMGain.connect(nsTremGain);nsTremGain.connect(appMaster);
+    nsTremOsc.start();
+    if(nsVsOn)tremEngage(nsTremGain,nsTremDepth,true);
+  }
   nMGain.gain.setTargetAtTime(v2g(nVol)*nMixPost,c.currentTime,.02);
   const buf=mkNB(c);
   nNodes=BANDS.map((fc,i)=>{const s=c.createBufferSource();s.buffer=buf;s.loop=true;const f=c.createBiquadFilter();f.type='bandpass';f.frequency.value=fc;f.Q.value=fc<100?.5:1.2;const g=c.createGain();g.gain.value=v2g(nSl[i]);s.connect(f);f.connect(g);g.connect(nMGain);s.start();return{src:s,gain:g};});
@@ -1206,16 +1366,14 @@ function nsTransTick(){
     nSl[i]=Math.round(sweepVal(nTransType,t,nTransStartSl[i],nTransTargetSl[i]));
   }
   nVol=sweepVal(nTransType,t,nTransStartVol,nTransTargetVol);
-  // Volume-Sweep tremolo LFO — modulates master gain every frame when enabled
+  // Volume-Sweep tremolo LFO — audio-rate; per frame we only steer the LFO frequency (= 1/period)
   if(nsVsOn){
-    var P=nsVsAuto?sweepVal(nsVsType,rsPhase(nsVsAutoStart,nsVsDur,nsVsDir,now),nsVsA,nsVsB):nsVsFaderToPeriod(nsVsFader);
-    nsVsPhase=(nsVsPhase+dt/Math.max(P,0.02))%1;
-    var env=0.5-0.5*Math.cos(2*Math.PI*nsVsPhase);
-    if(nMGain&&AC)nMGain.gain.setTargetAtTime(v2g(nVol)*nMixPost*env,AC.currentTime,.008);
+    var P=nsVsAuto?sweepPeriod(nsVsType,rsPhase(nsVsAutoStart,nsVsDur,nsVsDir,now),nsVsA,nsVsB):nsVsFaderToPeriod(nsVsFader);
+    if(nsTremOsc&&AC)nsTremOsc.frequency.setTargetAtTime(periodToFreq(P),AC.currentTime,.02);
   }
   if(++nsFrameCount%(nsMobile?4:2)===0){
     for(var j=0;j<10;j++){if(nNodes[j]&&AC)nNodes[j].gain.gain.setTargetAtTime(v2g(nSl[j]),AC.currentTime,.02);}
-    if(!nsVsOn&&nMGain&&AC)nMGain.gain.setTargetAtTime(v2g(nVol)*nMixPost,AC.currentTime,.02);
+    if(nMGain&&AC)nMGain.gain.setTargetAtTime(v2g(nVol)*nMixPost,AC.currentTime,.02);
     updateNsBackground();
   }
   if(t>=1){
@@ -1249,10 +1407,21 @@ function showNsBirdFlash(){
 function nsVsToggle(){
   nsVsOn=!nsVsOn;
   var b=document.getElementById('nsVsEnableBtn');if(b)b.classList.toggle('on',nsVsOn);
+  nsVsSyncDim();
+  if(nsVsOn)nsVsAutoStart=performance.now();
+  tremEngage(nsTremGain,nsTremDepth,nsVsOn);
+}
+function nsVsSyncDim(){
+  var lab=document.getElementById('nsVsLabelBtn');if(lab)lab.classList.toggle('ns-half',!nsVsOn);
+  var en=document.getElementById('nsVsEnableBtn');if(en)en.classList.toggle('ns-half',!nsVsOn);
   var body=document.getElementById('nsVsBody');if(body)body.classList.toggle('ns-dim',!nsVsOn);
   var vt=document.getElementById('nsVsTypeSel');if(vt)vt.classList.toggle('ns-dim',!nsVsOn);
-  if(nsVsOn){nsVsPhase=0;nsVsAutoStart=performance.now();}
-  else if(nMGain&&AC)nMGain.gain.setTargetAtTime(v2g(nVol)*nMixPost,AC.currentTime,.03);
+  nsVsUpdModes();
+}
+function nsVsTogglePanel(){
+  var p=document.getElementById('nsVsPanel');if(!p)return;
+  var open=p.classList.toggle('vs-open');
+  var b=document.getElementById('nsVsLabelBtn');if(b){b.classList.toggle('open',open);b.setAttribute('aria-expanded',open?'true':'false');}
 }
 function nsVsToggleAuto(){
   nsVsAuto=!nsVsAuto;
@@ -1260,9 +1429,9 @@ function nsVsToggleAuto(){
   nsVsUpdModes();
   if(nsVsAuto)nsVsAutoStart=performance.now();
 }
-function nsVsUpdModes(){var f=document.getElementById('nsVsFaderWrap');if(f)f.classList.toggle('ns-dim',nsVsAuto);var d=document.getElementById('nsVsDurWrap');if(d)d.classList.toggle('ns-dim',!nsVsAuto);var g=document.getElementById('nsVsDirCycle');if(g)g.classList.toggle('ns-dim',!nsVsAuto);}
-// Manual fader is log-scaled A→B, with the centre pinned to 1000ms (=1s) when it lies in range (piecewise-geometric).
-function nsVsFaderToPeriod(f){var A=nsVsA,B=nsVsB,M=1;if(A>0&&A<M&&M<B){return f<=0.5?A*Math.pow(M/A,f*2):M*Math.pow(B/M,(f-0.5)*2);}return A>0?A*Math.pow(B/Math.max(A,1e-9),f):A+(B-A)*f;}
+function nsVsUpdModes(){var f=document.getElementById('nsVsFaderWrap');if(f)f.classList.toggle('ns-dim',nsVsAuto||!nsVsOn);var d=document.getElementById('nsVsDurWrap');if(d)d.classList.toggle('ns-dim',!nsVsAuto);var g=document.getElementById('nsVsDirCycle');if(g)g.classList.toggle('ns-dim',!nsVsAuto);}
+// Manual fader is log-scaled A→B; midpoint (f=0.5) is the geometric median √(A·B) — no hardcoded pin.
+function nsVsFaderToPeriod(f){var A=nsVsA,B=nsVsB;return A>0?A*Math.pow(B/Math.max(A,1e-9),f):A+(B-A)*f;}
 function nsVsRefreshFader(){var r=document.getElementById('nsVsFaderR');if(r)updateSliderVal('nsVsFaderVal',r,Math.round(nsVsFaderToPeriod(nsVsFader)*1000));}
 var NS_DIR_ORDER=['fwd','rev','pp'];
 function nsVsDirIcon(d){var a='width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"';var m={fwd:'<line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/>',rev:'<line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/>',pp:'<polyline points="17 2 21 6 17 10"/><line x1="3" y1="6" x2="21" y2="6"/><polyline points="7 14 3 18 7 22"/><line x1="21" y1="18" x2="3" y2="18"/>'};return'<svg '+a+'>'+(m[d]||'')+'</svg>';}
@@ -1284,6 +1453,12 @@ let multiFreqFrom=[],multiFreqTo=[],multiVolFrom=[],multiVolTo=[];
 let multiFreqTypes=[];
 let multiLfoDur=3.00,multiLfoOn=true;
 let multiLfoActive=false,multiLfoRAF=null,multiLfoLastFrame=0,multiLfoPhase=[];
+// MATHS volume-sweep LFO (muVs) — tremolo on multiMGain whose PERIOD is the swept quantity
+let muVsOn=false,muVsAuto=false,muVsA=0.001,muVsB=10,muVsFader=0;
+let muTremGain=null,muTremSrc=null,muTremDepth=null;
+let muVsDur=10,muVsDir='fwd',muVsType='linear',muVsAutoStart=0,muVsPhase=0;
+let muVsPerOsc=false,muVsOscPhase=[];   // per-osc mode: period(ms) = x/ratio
+let muVsActive=false,muVsRAF=null,muVsLastFrame=0;
 let multiHarmonicIdx=1;
 let multiFundamental=30.00,multiFundFrom=30.00,multiFundTo=30.00;
 let multiHarmonicSweep=false;
@@ -1297,7 +1472,7 @@ function multiInit(){
   multiOscs=[];
   for(var i=0;i<8;i++){
     multiOscRatios[i]=list[Math.floor(Math.random()*list.length)];
-    multiOscs.push({osc:null,gain:null,muted:i>=4,freq:Math.max(0.01,Math.min(1e8,r2(multiFundamental*multiOscRatios[i]))),vol:50});
+    multiOscs.push({osc:null,gain:null,lfoGain:null,muted:i>=4,freq:Math.max(0.01,Math.min(1e8,r2(multiFundamental*multiOscRatios[i]))),vol:50});
   }
   renderMulti();
 }
@@ -1309,21 +1484,27 @@ function multiToggle(){
     multiSweepActive=false;multiSweepRAF=null;
     if(multiLfoRAF)cancelAnimationFrame(multiLfoRAF);
     multiLfoActive=false;multiLfoRAF=null;
+    muVsStop(false);
     multiPlaying=false;var _img=document.getElementById('mathsImg');if(_img){_img.style.transition='none';_img.style.filter='brightness(5)';}renderMulti();multiAutoRecalc();appAutoRecalc();return;
   }
-  if(!multiMGain){multiMGain=c.createGain();multiAutoGn=c.createGain();multiAutoGn.gain.value=1.0;multiFilter=c.createBiquadFilter();multiFilter.type=multiFilterType;multiFilter.frequency.value=filterV2F(multiFilterFreq);multiFilter.Q.value=0.707;multiMGain.connect(multiAutoGn);multiAutoGn.connect(multiFilter);multiFilter.connect(appMaster);}
+  if(!multiMGain){multiMGain=c.createGain();multiAutoGn=c.createGain();multiAutoGn.gain.value=1.0;multiFilter=c.createBiquadFilter();multiFilter.type=multiFilterType;multiFilter.frequency.value=filterV2F(multiFilterFreq);multiFilter.Q.value=0.707;
+    muTremGain=c.createGain();muTremGain.gain.value=1;muTremDepth=c.createGain();muTremDepth.gain.value=0;muTremSrc=c.createBufferSource();muTremSrc.buffer=muVsWaveBuf(muVsType);muTremSrc.loop=true;muTremSrc.connect(muTremDepth);muTremDepth.connect(muTremGain.gain);muTremSrc.start();
+    multiMGain.connect(muTremGain);muTremGain.connect(multiAutoGn);multiAutoGn.connect(multiFilter);multiFilter.connect(appMaster);}
   multiMGain.gain.setTargetAtTime(v2g(multiMVol),c.currentTime,.02);
   multiOscs.forEach(function(o,idx){
     if(multiHarmonicIdx>=0&&multiOscRatios.length===8){
       o.freq=Math.max(0.01,Math.min(1e8,r2(multiFundamental*multiOscRatios[idx])));
     }
-    if(!o.gain){o.gain=c.createGain();o.gain.connect(multiMGain);}
+    if(!o.gain){o.gain=c.createGain();}
+    if(!o.lfoGain){o.lfoGain=c.createGain();o.lfoGain.gain.value=1;o.gain.connect(o.lfoGain);o.lfoGain.connect(multiMGain);
+      o.lfoDepth=c.createGain();o.lfoDepth.gain.value=0;o.lfoSrc=c.createBufferSource();o.lfoSrc.buffer=muVsWaveBuf(muVsType);o.lfoSrc.loop=true;o.lfoSrc.connect(o.lfoDepth);o.lfoDepth.connect(o.lfoGain.gain);o.lfoSrc.start();}
     o.gain.gain.setTargetAtTime(o.muted?0:v2g(o.vol),c.currentTime,.02);
     o.osc=c.createOscillator();o.osc.type=WF[multiWv];
     o.osc.frequency.setValueAtTime(o.freq,c.currentTime);
     o.osc.connect(o.gain);o.osc.start();
   });
   multiPlaying=true;var _img=document.getElementById('mathsImg');if(_img){_img.style.transition='none';_img.style.filter='none';}renderMulti();multiAutoRecalc();appAutoRecalc();
+  muVsApplyTrem();muVsStart();
 }
 function multiMuteToggle(idx){
   var o=multiOscs[idx];o.muted=!o.muted;
@@ -1465,6 +1646,76 @@ function multiLfoTick(){
     renderMultiRows();
   }
   multiLfoRAF=requestAnimationFrame(multiLfoTick);
+}
+// ── MATHS volume-sweep LFO (muVs) — modelled on the noise nsVs LFO, applied to multiMGain ──
+function muVsTogglePanel(){
+  var p=document.getElementById('muVsPanel');if(!p)return;
+  var open=p.classList.toggle('vs-open');
+  var b=document.getElementById('muVsLabelBtn');if(b){b.classList.toggle('open',open);b.setAttribute('aria-expanded',open?'true':'false');}
+}
+function muVsToggle(){
+  muVsOn=!muVsOn;
+  var b=document.getElementById('muVsEnableBtn');if(b){b.classList.toggle('on',muVsOn);b.textContent=muVsOn?'ON':'OFF';}
+  var body=document.getElementById('muVsBody');if(body)body.classList.toggle('ns-dim',!muVsOn);
+  var mty=document.getElementById('muVsTypeSel');if(mty)mty.classList.toggle('ns-dim',!muVsOn);
+  muVsPerOscUpd();
+  if(muVsOn){muVsAutoStart=performance.now();muVsApplyTrem();muVsStart();}
+  else muVsStop(true);
+}
+// engage the tremolo node-set matching the current mode (global muTremGain vs per-osc o.lfoGain); disengage the other
+function muVsApplyTrem(){
+  if(muVsPerOsc){tremEngage(muTremGain,muTremDepth,false);multiOscs.forEach(function(o){tremEngage(o.lfoGain,o.lfoDepth,muVsOn);});}
+  else{tremEngage(muTremGain,muTremDepth,muVsOn);multiOscs.forEach(function(o){tremEngage(o.lfoGain,o.lfoDepth,false);});}
+}
+function muVsToggleAuto(){
+  if(muVsPerOsc)return;  // AUTO is N/A while per-osc ratio is on
+  muVsAuto=!muVsAuto;
+  var b=document.getElementById('muVsAutoBtn');if(b)b.classList.toggle('on',muVsAuto);
+  muVsUpdModes();
+  if(muVsAuto)muVsAutoStart=performance.now();
+}
+function muVsUpdModes(){var f=document.getElementById('muVsFaderWrap');if(f)f.classList.toggle('ns-dim',muVsAuto);var d=document.getElementById('muVsDurWrap');if(d)d.classList.toggle('ns-dim',!muVsAuto);var g=document.getElementById('muVsDirCycle');if(g)g.classList.toggle('ns-dim',!muVsAuto);}
+function muVsFaderToPeriod(f){var A=muVsA,B=muVsB;return A>0?A*Math.pow(B/Math.max(A,1e-9),f):A+(B-A)*f;}
+function muVsBase(){return 0.1*Math.pow(10000,muVsFader);} // per-osc x: 0.1..1000 s (log)
+function muVsRefreshFader(){var vs=document.getElementById('muVsFaderNumV'),us=document.getElementById('muVsFaderNumU');if(!vs)return;if(muVsPerOsc){var b=muVsBase();vs.textContent=(b<100?+b.toFixed(1):Math.round(b));us.textContent='s';}else{vs.textContent=Math.round(muVsFaderToPeriod(muVsFader)*1000);us.textContent='ms';}}
+function muVsRenderDir(){var b=document.getElementById('muVsDirCycle');if(b)b.innerHTML=nsVsDirIcon(muVsDir);}
+function muVsCycleDir(){var i=NS_DIR_ORDER.indexOf(muVsDir);muVsDir=NS_DIR_ORDER[(i+1)%NS_DIR_ORDER.length];muVsRenderDir();}
+function muVsStart(){if(muVsActive||!muVsOn||!multiPlaying)return;muVsLastFrame=performance.now();muVsActive=true;muVsRAF=requestAnimationFrame(muVsTick);}
+function muVsStop(restore){if(muVsRAF)cancelAnimationFrame(muVsRAF);muVsActive=false;muVsRAF=null;if(restore&&AC){tremEngage(muTremGain,muTremDepth,false);multiOscs.forEach(function(o){tremEngage(o.lfoGain,o.lfoDepth,false);});}}
+function muVsTick(){
+  if(!muVsOn||!multiPlaying){muVsActive=false;muVsRAF=null;return;}
+  var now=performance.now();
+  if(muVsPerOsc){
+    // per-osc-by-ratio: audio-rate LFO on each o.lfoGain; frequency = ratio/x (period ms = x/ratio)
+    var x=muVsBase();  // ms
+    for(var i=0;i<8;i++){var o=multiOscs[i];if(!o||!o.lfoSrc)continue;
+      var rr=multiOscRatios[i]||0;
+      var per=Math.min(1000,Math.max(0.0005,x/(rr>1e-6?rr:1e-6)));  // x is seconds now
+      if(AC)o.lfoSrc.playbackRate.setTargetAtTime(periodToFreq(per),AC.currentTime,.02);
+    }
+  }else{
+    var P=muVsAuto?sweepPeriod(muVsType,rsPhase(muVsAutoStart,muVsDur,muVsDir,now),muVsA,muVsB):muVsFaderToPeriod(muVsFader);
+    if(muTremSrc&&AC)muTremSrc.playbackRate.setTargetAtTime(periodToFreq(P),AC.currentTime,.02);
+  }
+  muVsRAF=requestAnimationFrame(muVsTick);
+}
+// TYPE change: a buffer source's buffer is set-once, so recreate the modulation sources with the new shape.
+function muVsRewave(){
+  if(!AC||!multiPlaying)return;
+  if(muTremSrc){try{muTremSrc.stop();}catch(e){}try{muTremSrc.disconnect();}catch(e){}}
+  if(muTremDepth){muTremSrc=AC.createBufferSource();muTremSrc.buffer=muVsWaveBuf(muVsType);muTremSrc.loop=true;muTremSrc.connect(muTremDepth);muTremSrc.start();}
+  multiOscs.forEach(function(o){if(!o.lfoDepth)return;if(o.lfoSrc){try{o.lfoSrc.stop();}catch(e){}try{o.lfoSrc.disconnect();}catch(e){}}o.lfoSrc=AC.createBufferSource();o.lfoSrc.buffer=muVsWaveBuf(muVsType);o.lfoSrc.loop=true;o.lfoSrc.connect(o.lfoDepth);o.lfoSrc.start();});
+}
+function muVsTogglePerOsc(){
+  muVsPerOsc=!muVsPerOsc;
+  var b=document.getElementById('muVsPerOscBtn');if(b){b.classList.toggle('on',muVsPerOsc);b.textContent=muVsPerOsc?'ON':'OFF';}
+  muVsApplyTrem();
+  muVsPerOscUpd();muVsRefreshFader();
+}
+function muVsPerOscUpd(){
+  var ab=document.getElementById('muVsABrow'),fw=document.getElementById('muVsFaderWrap');
+  if(muVsPerOsc){if(ab)ab.classList.add('ns-dim');if(fw)fw.classList.remove('ns-dim');}
+  else{if(ab)ab.classList.remove('ns-dim');muVsUpdModes();}
 }
 function setMcFreq(el,f){
   // Non-breaking space so the number + "Hz" never wraps onto two lines on narrow cells
@@ -1910,6 +2161,7 @@ function captureState(){
     sw:swpWv,sm:swpMVol,si:swpFqMin,sx:swpFqMax,sd:swpFqDur,st:TYPE_ENC[swpFqType]||'l',sr:DIR_ENC[swpFqDir]||'f',
     ns:nSl.slice(),nv:nVol,np:nAPre,nse:nsVsOn?1:0,nsau:nsVsAuto?1:0,nspa:nsVsA,nspb:nsVsB,nsf:nsVsFader,nsvd:nsVsDur,nsvr:DIR_ENC[nsVsDir]||'fwd',nsvt:TYPE_ENC[nsVsType]||'l',
     mv:multiMVol,mw:multiWv,md:multiDur,mvm:multiVolMin,mvx:multiVolMax,mld:multiLfoDur,mlo:multiLfoOn?1:0,
+    mvse:muVsOn?1:0,mvsau:muVsAuto?1:0,mvsa:muVsA,mvsb:muVsB,mvsf:muVsFader,mvsd:muVsDur,mvsr:DIR_ENC[muVsDir]||'fwd',mvst:TYPE_ENC[muVsType]||'l',mvsp:muVsPerOsc?1:0,
     mhi:multiHarmonicIdx,mfu:multiFundamental,mor:multiOscRatios.slice(),mff:multiFilterFreq,mft:multiFilterType,bfr:bbFqRatio,
     mr:multiOscs.map(function(o){return{f:o.freq,v:o.vol,m:o.muted?1:0};}),
     xm:appMasterVol,
@@ -1936,6 +2188,7 @@ function restoreState(o){
   multiWv=o.mw||0;multiDur=o.md||1.5;
   multiVolMin=o.mvm!=null?o.mvm:65;multiVolMax=o.mvx!=null?o.mvx:100;
   multiLfoDur=o.mld||3;multiLfoOn=true;
+  muVsOn=!!o.mvse;muVsAuto=!!o.mvsau;muVsA=o.mvsa!=null?+o.mvsa:0.001;muVsB=o.mvsb!=null?+o.mvsb:10;muVsFader=o.mvsf!=null?+o.mvsf:0;muVsDur=o.mvsd!=null?+o.mvsd:10;muVsDir=DIR_DEC[o.mvsr]||'fwd';muVsType=TYPE_DEC[o.mvst]||'linear';muVsPerOsc=!!o.mvsp;
   multiHarmonicIdx=o.mhi!=null?o.mhi:0;
   multiFundamental=o.mfu!=null?o.mfu:25;multiFundFrom=multiFundamental;multiFundTo=multiFundamental;
   multiOscRatios=o.mor&&o.mor.length===8?o.mor.slice():[];
@@ -1973,10 +2226,9 @@ function syncNoiseUI(){
   document.querySelectorAll('#modNoise .preset').forEach(b=>b.classList.toggle('on',nAPre&&b.textContent===nAPre));
   updateNsBackground();
   var vsEn=document.getElementById('nsVsEnableBtn');if(vsEn)vsEn.classList.toggle('on',nsVsOn);
-  var vsBody=document.getElementById('nsVsBody');if(vsBody)vsBody.classList.toggle('ns-dim',!nsVsOn);
-  var vsTy=document.getElementById('nsVsTypeSel');if(vsTy)vsTy.classList.toggle('ns-dim',!nsVsOn);
   var vsAu=document.getElementById('nsVsAutoBtn');if(vsAu)vsAu.classList.toggle('on',nsVsAuto);
-  nsVsUpdModes();
+  if(nsTremGain&&AC)tremEngage(nsTremGain,nsTremDepth,nsVsOn);
+  nsVsSyncDim();
   var vsAV=document.getElementById('nsVsAV');if(vsAV)vsAV.textContent=Math.round(nsVsA*1000);
   var vsBV=document.getElementById('nsVsBV');if(vsBV)vsBV.textContent=Math.round(nsVsB*1000);
   var vsDV=document.getElementById('nsVsDurV');if(vsDV)vsDV.textContent=nsVsDur.toFixed(2);
@@ -2010,6 +2262,18 @@ function syncMultiUI(){
   var mab=document.getElementById('mAutoBtn');if(mab){mab.classList.toggle('on',multiAutoOn);mab.textContent=multiAutoOn?'ON':'OFF';}
   var rrb=document.getElementById('mathsRatioBtn');if(rrb){rrb.classList.toggle('on',bbDurHarmonic);rrb.textContent=bbDurHarmonic?'ON':'OFF';}
   var fqr=document.getElementById('bbFqRatioV');if(fqr)fqr.textContent=bbFqRatio.toFixed(2);
+  var mvEn=document.getElementById('muVsEnableBtn');if(mvEn){mvEn.classList.toggle('on',muVsOn);mvEn.textContent=muVsOn?'ON':'OFF';}
+  var mvBody=document.getElementById('muVsBody');if(mvBody)mvBody.classList.toggle('ns-dim',!muVsOn);
+  var mvAu=document.getElementById('muVsAutoBtn');if(mvAu)mvAu.classList.toggle('on',muVsAuto);
+  var mvAV=document.getElementById('muVsAV');if(mvAV)mvAV.textContent=Math.round(muVsA*1000);
+  var mvBV=document.getElementById('muVsBV');if(mvBV)mvBV.textContent=Math.round(muVsB*1000);
+  var mvDV=document.getElementById('muVsDurV');if(mvDV)mvDV.textContent=muVsDur.toFixed(2);
+  var mvFd=document.getElementById('muVsFaderR');if(mvFd)mvFd.value=Math.round(muVsFader*1000);
+  var mvPo=document.getElementById('muVsPerOscBtn');if(mvPo){mvPo.classList.toggle('on',muVsPerOsc);mvPo.textContent=muVsPerOsc?'ON':'OFF';}
+  var mvTy=document.getElementById('muVsTypeSel');if(mvTy)mvTy.classList.toggle('ns-dim',!muVsOn);
+  muVsPerOscUpd();muVsRefreshFader();muVsRenderDir();setSwpTypeSel('muVsTypeSel',muVsType);
+  muVsApplyTrem();
+  if(muVsOn&&multiPlaying)muVsStart();else if(!muVsOn)muVsStop(false);
   renderMulti();
 }
 function archiveSave(){
@@ -2238,17 +2502,19 @@ function syncRsW(){
     c.appendChild(b);
   });
 }
+function rsBDim(){var d=!rsSweepOn;['rsBNum','rsBBody'].forEach(function(id){var e=document.getElementById(id);if(e)e.classList.toggle('ns-dim',d);});}
+function rsVolDim(){var d=!rsVolSweepOn;['rsVolCtl','rsVolFaderWrap'].forEach(function(id){var e=document.getElementById(id);if(e)e.classList.toggle('ns-dim',d);});}
 function rsToggleSweep(){
   rsSweepOn=!rsSweepOn;
-  var bt=document.getElementById('rsBtoggle');if(bt)bt.classList.toggle('on',rsSweepOn);
-  var bf=document.getElementById('rsBframe');if(bf)bf.classList.toggle('off',!rsSweepOn);
+  var b=document.getElementById('rsBLabelBtn');if(b)b.classList.toggle('on',rsSweepOn);
+  rsBDim();
   if(rsSweepOn){rsPitchStart=performance.now();}
   else if(rsOsc&&AC){rsOsc.frequency.setTargetAtTime(rsFreq,AC.currentTime,.05);}
 }
 function rsToggleVolSweep(){
   rsVolSweepOn=!rsVolSweepOn;
-  var vt=document.getElementById('rsVolToggle');if(vt)vt.classList.toggle('on',rsVolSweepOn);
-  var vb=document.getElementById('rsVolBar');if(vb)vb.classList.toggle('on',rsVolSweepOn);
+  var b=document.getElementById('rsVolLabelBtn');if(b)b.classList.toggle('on',rsVolSweepOn);
+  rsVolDim();
   if(rsVolSweepOn){rsVolStart=performance.now();}
   else if(rsSigGn&&AC){rsSigGn.gain.setTargetAtTime(1,AC.currentTime,.05);}
 }
@@ -2278,18 +2544,18 @@ function syncRiserUI(){
   el=document.getElementById('rsFreqV');if(el)el.textContent=rsFreq.toFixed(2);
   el=document.getElementById('rsFreqSL');if(el)el.value=Math.round(rsFreqToSlider(rsFreq));
   el=document.getElementById('rsFqBV');if(el)el.textContent=rsFqB.toFixed(2);
-  el=document.getElementById('rsPitchDurSL');if(el)el.value=Math.round(rsDurToSlider(rsPitchDur));
-  el=document.getElementById('rsPitchDurL');if(el)el.textContent=rsPitchDur.toFixed(1)+' s';
-  el=document.getElementById('rsVolDurSL');if(el)el.value=Math.round(rsDurToSlider(rsVolDur));
-  el=document.getElementById('rsVolDurL');if(el)el.textContent=rsVolDur.toFixed(1)+' s';
+  el=document.getElementById('rsFqBSL');if(el){el.value=Math.round(rsFreqToSlider(rsFqB));updateSliderVal('rsFqBFaderVal',el,Math.round(rsFqB));}
+  el=document.getElementById('rsPitchDurSL');if(el){el.value=Math.round(rsDurToSlider(rsPitchDur));updateSliderVal('rsPitchDurVal',el,rsPitchDur.toFixed(1)+' s');}
+  el=document.getElementById('rsVolDurSL');if(el){el.value=Math.round(rsDurToSlider(rsVolDur));updateSliderVal('rsVolDurVal',el,rsVolDur.toFixed(1)+' s');}
   el=document.getElementById('rsMVolL');if(el)el.textContent='VOLUME \u2014 '+rsMVol+'%';
   el=document.getElementById('rsMVolR');if(el)el.value=rsMVol;
-  var bt=document.getElementById('rsBtoggle');if(bt)bt.classList.toggle('on',rsSweepOn);
-  var bf=document.getElementById('rsBframe');if(bf)bf.classList.toggle('off',!rsSweepOn);
-  var vt=document.getElementById('rsVolToggle');if(vt)vt.classList.toggle('on',rsVolSweepOn);
-  var vb=document.getElementById('rsVolBar');if(vb)vb.classList.toggle('on',rsVolSweepOn);
+  var bl=document.getElementById('rsBLabelBtn');if(bl)bl.classList.toggle('on',rsSweepOn);
+  rsBDim();
+  var vl=document.getElementById('rsVolLabelBtn');if(vl)vl.classList.toggle('on',rsVolSweepOn);
+  rsVolDim();
   setSwpTypeSel('rsPitchTypeSel',rsPitchType);
   setSwpTypeSel('rsVolTypeSel',rsVolType);
+  rsVolRenderDir();rsPitchRenderDir();
 }
 function toggleRiser(){
   const c=getAC();
@@ -2892,12 +3158,13 @@ syncRsW();initSwpW();
 initSwpTypeSel('rsPitchTypeSel','linear',function(t){rsPitchType=t;});
 initSwpTypeSel('rsVolTypeSel','linear',function(t){rsVolType=t;});
 initSwpTypeSel('nsVsTypeSel','linear',function(t){nsVsType=t;});
-nsVsRefreshFader();nsVsUpdModes();
+nsVsRefreshFader();nsVsSyncDim();
 initSwpTypes('swpFqTypes','linear',t=>{swpFqType=t;});
-mkDirBtns('rsPitchDirBtns','fwd',function(d){rsPitchDir=d;},['fwd','rev','pp']);
-mkDirBtns('rsVolDirBtns','fwd',function(d){rsVolDir=d;},['fwd','rev','pp']);
+rsVolRenderDir();rsPitchRenderDir();
 nsVsRenderDir();
 mkDirBtns('swpFqDirBtns','r',function(d){swpFqDir=d;swpBloopReturn=false;swpRepCount=0;if(swpPausing){swpPausing=false;swpFqFwd=parsDir(d).base!=='left';swpFqStart=performance.now();if(swpSigGn&&AC)swpSigGn.gain.setTargetAtTime(1,AC.currentTime,.01);}},BB_DIRS.map(function(d){return d.k;}));
+initSwpTypeSel('muVsTypeSel','linear',function(t){muVsType=t;muVsRewave();});
+muVsRefreshFader();muVsUpdModes();muVsRenderDir();
 initEQ();initNP();multiInit();initMselWave();initMselFilter();initMultiHarmonics();recomputeHarmonicPools();initMultiDualRange();syncMultiUI();renderArchive();initMixer();initBBTempoWheel();renderScores();
 document.addEventListener('click',function(e){
   if(!e.target.closest('.msel'))document.querySelectorAll('.msel.open').forEach(function(s){s.classList.remove('open');});
