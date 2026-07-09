@@ -11,18 +11,42 @@
 <script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
 <style>
 *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent;-webkit-user-select:none;user-select:none}
+/* ═══ vertical density tokens — px fallbacks equal the original desktop values ═══ */
+:root{
+  --mu-pad-top:42px;--mu-gap:14px;--mu-wrap-pad:19px;--mu-foot-pad:24px;--mu-foot-gap:4px;
+  --mu-vol-gap:8px;--mu-strip-gap:6px;--mu-cell-h:34px;--mu-cell-ar:3/2;--mu-fader-pad:14px;
+  --muvs-h:55px;              /* PULSE overlay height; refined by muVsMeasure() */
+  --tab-pad:12px;--mod-pad-bot:60px;--tab-h:46px
+}
+/* svh = small viewport height: body never scrolls, so this can't jitter with the URL bar.
+   Every curve saturates at its original value by ~800px of viewport height, so anything that
+   tall renders exactly as before; below that, vertical density scales down instead of colliding. */
+@supports (height:1svh){
+  :root{
+    --mu-pad-top:clamp(12px,calc(8.82svh - 28.6px),42px);
+    --mu-gap:clamp(4px,calc(2.94svh - 9.5px),14px);
+    --mu-wrap-pad:clamp(9px,2.375svh,19px);
+    --mu-foot-pad:clamp(8px,3svh,24px);
+    --mu-fader-pad:clamp(6px,1.75svh,14px);
+    --mu-vol-gap:clamp(2px,1svh,8px);
+    --mu-strip-gap:clamp(3px,0.75svh,6px);
+    --mu-cell-h:clamp(26px,4.25svh,34px);
+    --tab-pad:clamp(9px,1.5svh,12px);
+    --mod-pad-bot:clamp(16px,7.5svh,60px)
+  }
+}
 html,body{height:100%;overflow:hidden;background:#ede7d4;font-family:'DM Mono',monospace;color:#7a8c6e}
 input,button,select{font-family:'DM Mono',monospace}
 #app{max-width:480px;margin:0 auto;height:100%;display:flex;flex-direction:column;overflow:hidden;position:relative}
 .tabs{display:flex;padding-top:env(safe-area-inset-top,8px);background:#ede7d4;flex-shrink:0}
-.tab{flex:1;padding:12px 0;border:none;background:transparent;color:#fff;font-size:10px;font-weight:400;cursor:pointer;letter-spacing:1.5px;transition:all .15s}
+.tab{flex:1;padding:var(--tab-pad) 0;border:none;background:transparent;color:#fff;font-size:10px;font-weight:400;cursor:pointer;letter-spacing:1.5px;transition:all .15s}
 .tab.active{font-weight:700}
 .tab.active[data-tab="birdbox"]{color:#2d6a4e}
 .tab.active[data-tab="noise"]{color:#555}
 .tab.active[data-tab="multi"]{color:#111}
 .tab.active[data-tab="voice"]{color:#d9a0d5}
 .plus-wrap{position:relative;flex-shrink:0;display:flex;align-items:stretch}
-.plus-btn{padding:12px 10px;border:none;background:transparent;color:#fff;font-size:18px;font-weight:500;cursor:pointer;border-bottom:2px solid transparent;font-family:'DM Mono',monospace}
+.plus-btn{padding:var(--tab-pad) 10px;border:none;background:transparent;color:#fff;font-size:18px;font-weight:500;cursor:pointer;border-bottom:2px solid transparent;font-family:'DM Mono',monospace}
 .plus-btn.active{color:#333;border-bottom-color:#333}
 .plus-menu{display:none;position:absolute;top:100%;right:0;background:#f8f4eb;border:1px solid #ccc;border-radius:3px;box-shadow:0 4px 12px rgba(0,0,0,.08);z-index:10;min-width:120px;overflow:hidden}
 .plus-menu.open{display:block}
@@ -47,7 +71,7 @@ input,button,select{font-family:'DM Mono',monospace}
 #modMixer.active{padding:16px 0 40px;flex:1;height:100%;overflow:hidden}
 .mixer-wrap{display:flex;width:100%;padding:4px 0;flex:1}
 .content{flex:1;overflow-y:auto;overflow-x:hidden;-webkit-overflow-scrolling:touch;position:relative}
-.mod{display:none;padding:16px 14px 60px}
+.mod{display:none;padding:16px 14px var(--mod-pad-bot)}
 .mod.active{display:flex;flex-direction:column;align-items:center;gap:14px}
 .lbl{font-size:9px;color:#a0ad95;letter-spacing:1px}
 .lbl-row{display:flex;justify-content:space-between;margin-bottom:3px;width:100%}
@@ -98,7 +122,13 @@ input[type=range]::-moz-range-thumb{width:20px;height:20px;border-radius:50%;bac
 #modMulti .vnum,#modMulti .vedit{font-size:20px!important;color:#111!important;letter-spacing:0}
 #modMulti .vedit{width:80px!important;padding:4px 6px}
 #muBg{position:absolute;inset:0;z-index:0;background:repeating-linear-gradient(-180deg,white,gray 1px,#ede7d4 1px,gray 2px)}
-#muContent{position:relative;z-index:5;height:100%;overflow:visible;display:flex;flex-direction:column;align-items:center;gap:14px;padding:42px 12.5% 0;pointer-events:none}
+/* MATHS is a flex column: rigid header, elastic stage, rigid footer. Nothing is pinned by px offsets,
+   so a short viewport shrinks the stage instead of stacking the clusters on top of each other. */
+#muCol{height:100%;display:flex;flex-direction:column;overflow-y:auto;overscroll-behavior:contain}
+#muContent{position:relative;z-index:5;flex:0 0 auto;overflow:visible;display:flex;flex-direction:column;align-items:center;gap:var(--mu-gap);padding:var(--mu-pad-top) 12.5% 0;pointer-events:none}
+#muStage{position:relative;z-index:2;flex:1 1 0;min-height:48px;width:100%;display:flex;align-items:center;justify-content:center;overflow:hidden}
+/* the image IS the play/stop target — no wrapper, so the hit box can never drift off the artwork */
+.maths-img{max-width:45%;max-height:100%;width:auto;height:auto;object-fit:contain;pointer-events:auto;cursor:pointer}
 .maths-ctrlrow{display:flex;gap:6px;width:100%;max-width:360px;align-items:center;pointer-events:auto}
 .maths-grid{pointer-events:auto}
 #multiHarmonicSel{margin-left:auto}
@@ -109,7 +139,8 @@ input[type=range]::-moz-range-thumb{width:20px;height:20px;border-radius:50%;bac
 .maths-settings-btn svg{width:13px;height:13px;fill:#555;transition:fill .15s}
 .maths-settings-btn.on{background:#000;border-color:#000}
 .maths-settings-btn.on svg{fill:#fff}
-.maths-settings-panel{display:none;position:absolute;left:50%;top:81px;transform:translateX(-50%);width:calc(75% + 20px);max-width:380px;max-height:calc(100% - 176px);overflow-x:hidden;overflow-y:auto;z-index:7;background:rgba(248,244,235,.98);border:1px solid #ccc;border-radius:2px;box-shadow:0 4px 14px rgba(0,0,0,.12);padding:14px 10px 8px;box-sizing:border-box;pointer-events:auto}
+/* top + max-height are set by toggleMathsSettings() from the live grid/footer rects */
+.maths-settings-panel{display:none;position:absolute;left:50%;top:81px;transform:translateX(-50%);width:calc(75% + 20px);max-width:380px;overflow-x:hidden;overflow-y:auto;z-index:7;background:rgba(248,244,235,.98);border:1px solid #ccc;border-radius:2px;box-shadow:0 4px 14px rgba(0,0,0,.12);padding:14px 10px 8px;box-sizing:border-box;pointer-events:auto}
 .maths-settings-panel.open{display:flex;flex-direction:column;align-items:center;gap:4px}
 .ms-fxwrap{display:flex;align-items:center;flex-shrink:0}
 .ms-fx{font-size:9px;color:#777;margin-right:1px}
@@ -127,7 +158,7 @@ input[type=range]::-moz-range-thumb{width:20px;height:20px;border-radius:50%;bac
 #mathsFilterSel .msel-opt{font-size:8.4px;letter-spacing:1px;color:#999;padding:5px 9px;border-radius:4px}
 #mathsFilterSel .msel-opt.active{color:#555}
 .maths-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:6px;width:100%;max-width:360px}
-.maths-cell{position:relative;aspect-ratio:3/2;background:#f8f4eb;border:1px solid #ccc;border-radius:1px;cursor:pointer;display:flex;flex-direction:column;justify-content:flex-end;padding:5px 6px;transition:opacity .15s;min-width:0;overflow:hidden}
+.maths-cell{position:relative;aspect-ratio:var(--mu-cell-ar);background:#f8f4eb;border:1px solid #ccc;border-radius:1px;cursor:pointer;display:flex;flex-direction:column;justify-content:flex-end;padding:5px 6px;transition:opacity .15s;min-width:0;overflow:hidden}
 .maths-cell.muted{opacity:.25}
 .maths-cell .mc-top{display:flex;justify-content:space-between;width:100%}
 .maths-cell .mc-ratio{color:#111;font-weight:600;font-size:9px;letter-spacing:.5px}
@@ -148,10 +179,7 @@ input[type=range]::-moz-range-thumb{width:20px;height:20px;border-radius:50%;bac
 #mathsMenuLayer .mr-opt{flex:0 0 auto;padding:6px 6px;font-size:9px;line-height:1.2;letter-spacing:.5px;color:#555;cursor:pointer;transition:150ms;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;border-radius:1px}
 #mathsMenuLayer .mr-opt:hover{background:#ede7d4}
 #mathsMenuLayer .mr-opt.active{color:#000;font-weight:600}
-.maths-img-wrap{position:absolute;bottom:230px;left:50%;transform:translateX(-50%);width:45%;height:45%;z-index:2;pointer-events:none}
-.maths-img{width:100%;height:100%;object-fit:contain;pointer-events:none}
-.maths-img-click{position:absolute;top:25%;left:25%;width:50%;height:50%;cursor:pointer;pointer-events:auto;z-index:3}
-.maths-sliders{position:absolute;bottom:10px;left:0;right:0;z-index:6;display:flex;flex-direction:column;align-items:center;gap:4px;padding:0 12.5% 14px;pointer-events:auto}
+.maths-sliders{position:relative;z-index:6;flex:0 0 auto;display:flex;flex-direction:column;align-items:center;gap:var(--mu-foot-gap);padding:0 12.5% var(--mu-foot-pad);pointer-events:auto}
 .msel{cursor:pointer;position:relative;color:#555;font-family:inherit}
 .msel .msel-head{padding:6px 10px;border-radius:1px;border:1px solid #ccc;position:relative;z-index:10;font-size:9px;letter-spacing:1px;display:flex;align-items:center;justify-content:space-between;gap:4px;white-space:nowrap;overflow:hidden;background:#f8f4eb}
 .msel .msel-arrow{height:10px;width:16px;fill:#999;transition:300ms;flex-shrink:0;transform:rotate(-90deg)}
@@ -163,6 +191,8 @@ input[type=range]::-moz-range-thumb{width:20px;height:20px;border-radius:50%;bac
 .msel .msel-opt.active{color:#000;font-weight:600}
 #multiHarmonicSel .msel-opts{right:0;left:auto;max-height:50vh}
 .maths-slider-wrap{width:100%;max-width:360px;position:relative;padding-bottom:19px}
+/* scoped to MATHS on purpose: .maths-slider-wrap is shared with AUDIO FUNCTION and NOISE */
+#modMulti .maths-slider-wrap{padding-bottom:var(--mu-wrap-pad)}
 .maths-slider-wrap .ms-label{font-size:8.4px;color:#222;letter-spacing:1px;margin-bottom:1px;display:block}
 .maths-slider-wrap .ms-unit{font-size:8.4px;color:#777;letter-spacing:.5px;float:right;margin-bottom:1px}
 .maths-slider-wrap .ms-val{position:absolute;bottom:0;font-size:10px;color:#222;font-weight:500;transform:translateX(-50%);pointer-events:none}
@@ -229,7 +259,7 @@ input[type=range]::-moz-range-thumb{width:20px;height:20px;border-radius:50%;bac
 #bbTempoWheel::after{content:"";position:absolute;inset:0;pointer-events:none;background:linear-gradient(rgba(0,0,0,.28),transparent 42%,transparent 58%,rgba(0,0,0,.28))}
 #bbTempoVal{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);z-index:1;font:600 10px/1 'DM Mono',monospace;letter-spacing:1px;color:rgba(255,255,255,.92);text-shadow:0 1px 2px rgba(0,0,0,.45);pointer-events:none}
 /* ═══ AUDIO FUNCTION (riser) ═══ */
-#modRiser.active{gap:15px;padding:20px 14px 60px}
+#modRiser.active{gap:15px;padding:20px 14px var(--mod-pad-bot)}
 .af-title{font-size:11px;letter-spacing:3px;color:#a0ad95;font-weight:500;margin-bottom:2px}
 .af-readout{display:flex;align-items:baseline;gap:1px}
 .af-readout .vnum{font-size:34px}
@@ -330,16 +360,22 @@ input[type=range]::-moz-range-thumb{width:20px;height:20px;border-radius:50%;bac
 /* ═══ MATHS volume-sweep LFO (muVs) — collapsible strip above the volume slider ═══ */
 /* the whole LFO is one frame when open (settings-panel width), covering the advanced row + strip down to the fader */
 #muVsPanel{position:relative;width:calc(100% + 35px);max-width:395px;display:flex;flex-direction:column;gap:9px}
-/* frame border via box-shadow (no layout) + no bottom padding, so opening never nudges the strip up */
-#muVsPanel.vs-open{background:rgba(248,244,235,.98);border-radius:3px;box-shadow:0 0 0 1px #ccc,0 4px 14px rgba(0,0,0,.12);padding:12px 0 0}
+/* Open state: #muVsBody leaves the flow and floats UPWARD, so the panel — and the whole footer —
+   keeps its closed height and no control ever moves. The frame is drawn by ::before, stretched up
+   by the measured --muvs-h, so it still reads as one continuous rounded box. */
+#muVsPanel.vs-open{padding:0;background:none;box-shadow:none}
+#muVsPanel.vs-open::before{content:"";position:absolute;z-index:-1;left:0;right:0;bottom:0;top:calc(-1 * var(--muvs-h));background:rgba(248,244,235,.98);border-radius:3px;box-shadow:0 0 0 1px #ccc,0 4px 14px rgba(0,0,0,.12)}
 #muVsBody{display:none;flex-direction:column;align-items:center;gap:8px;width:100%;padding:0 12px;box-sizing:border-box}
-#muVsPanel.vs-open #muVsBody{display:flex}
-#muVsStrip{display:flex;flex-direction:column;align-items:center;gap:6px;width:calc(100% - 35px);max-width:360px;margin:0 auto}
+#muVsPanel.vs-open #muVsBody{display:flex;position:absolute;left:0;right:0;bottom:100%;padding:12px 12px 9px}
+/* stage keeps its height and just yields interior space, so the footer never moves.
+   --muvs-lift is clamped by muVsMeasure() so the image stays whole and above the frame. */
+#modMulti.vs-open #muStage{padding-bottom:var(--muvs-lift,var(--muvs-h));min-height:calc(var(--muvs-h) + 40px)}
+#muVsStrip{display:flex;flex-direction:column;align-items:center;gap:var(--mu-strip-gap);width:calc(100% - 35px);max-width:360px;margin:0 auto}
 #muVsPanel:not(.vs-open) #muVsTypeSel,#muVsPanel:not(.vs-open) #muVsPerOscRow{display:none}
 #muVsStripTop{display:flex;align-items:center;gap:6px;width:100%}
 #muVsPerOscRow{display:flex;align-items:center;gap:6px}
-#muVsFaderWrap{width:100%;max-width:none;padding-bottom:14px}
-#msVolumeWrap{margin-top:8px}
+#modMulti #muVsFaderWrap{width:100%;max-width:none;padding-bottom:var(--mu-fader-pad)}
+#msVolumeWrap{margin-top:var(--mu-vol-gap)}
 /* fader value readout box (replaces the moving thumb bubble): shows Xs in per-osc, Xms otherwise */
 #muVsRight{display:flex;align-items:center;gap:6px;margin-left:auto}
 #muVsFaderNum{display:inline-flex;align-items:center;gap:1px;height:20px;padding:0 7px;border:1px solid rgba(0,0,0,.15);border-radius:2px;background:#efe9da;box-sizing:border-box;white-space:nowrap;flex:0 0 auto}
@@ -356,6 +392,7 @@ input[type=range]::-moz-range-thumb{width:20px;height:20px;border-radius:50%;bac
 #muVsFaderR::-moz-range-thumb{width:18px;height:28px;border-radius:3px;background:linear-gradient(90deg,#222 41%,#d8d0ba 41%,#d8d0ba 59%,#222 59%);border:1px solid #000}
 #muVsABrow{display:flex;justify-content:space-between;align-items:center;width:100%;gap:8px}
 #muVsCenter{flex:1;display:grid;grid-template-columns:repeat(3,1fr);gap:5px;align-items:center}
+#muVsCenter .ns-cell{height:var(--mu-cell-h)}
 #muVsAutoBtn.on{background:#000;color:#fff;border-color:#000}
 #muVsTypeSel .msel-head{padding:1px 6px;border:none;border-radius:4px;background:rgba(0,0,0,.05);font-size:8.4px;letter-spacing:1px;color:#222;gap:0}
 #muVsTypeSel .msel-arrow{display:none}
@@ -384,20 +421,22 @@ input[type=range]::-moz-range-thumb{width:20px;height:20px;border-radius:50%;bac
 #modVoice input[type=range]::-webkit-slider-thumb{background:#C070C6;width:10px;height:22px;border-radius:3px}
 #modVoice input[type=range]::-moz-range-thumb{background:#C070C6;width:10px;height:22px;border-radius:3px}
 #modVoice .lbl{color:#d9a0d5}
+/* Genuinely short viewports: flatten the harmonic cells. Their in-flow content
+   (.mc-ratio 9px + .mc-freq 13px + padding) needs ~36px, so 1.7 stays safe. */
+@media (max-height:520px){:root{--mu-cell-ar:1.7}}
 @media (hover:none) and (pointer:coarse){
-  /* MATHS — mobile-only layout */
-  /* Upper grid: 5px higher + shifted left (was 42px 12.5% 0) */
-  #muContent{padding:37px 4% 0}
-  /* SVG: 10% smaller (45 → 40.5); bottom-anchored above the LFO strip */
-  #modMulti .maths-img-wrap{top:auto;bottom:215px;width:40.5%;height:40.5%}
-  /* Sliders: extend symmetric to align with new grid left edge; tighter vertical packing */
-  #modMulti .maths-sliders{padding:0 4% 14px;gap:0}
-  #modMulti .maths-slider-wrap+.maths-slider-wrap{margin-top:-4px}
+  /* MATHS — mobile-only layout. Horizontal widening only; vertical density comes from the
+     --mu-* tokens, and the flex column keeps the clusters apart on its own. */
+  /* Upper grid: shifted left (was 42px 12.5% 0) */
+  #muContent{padding-left:4%;padding-right:4%}
+  /* SVG: 10% smaller (45 → 40.5) */
+  #modMulti .maths-img{max-width:40.5%}
+  /* Sliders: extend symmetric to align with new grid left edge */
+  #modMulti .maths-sliders{padding-left:4%;padding-right:4%;gap:0}
   #modMulti .maths-slider-wrap .ms-label{margin-bottom:-1px;line-height:1.1}
   /* Settings redesign: tighter control row + full-width overlay */
   #modMulti .maths-ctrlrow{gap:4px}
-  #modMulti .maths-settings-panel{width:calc(92% + 20px);max-width:none;top:76px;max-height:calc(100% - 160px)}
-  #modMulti .ms-toggle-row+.ms-toggle-row{margin-top:0}
+  #modMulti .maths-settings-panel{width:calc(92% + 20px);max-width:none}
 }
 /* ═══ SCORES ═══ */
 /* see-through overlay HUD */
@@ -607,10 +646,7 @@ input[type=range]::-moz-range-thumb{width:20px;height:20px;border-radius:50%;bac
 <!-- ═══ MATHS ═══ -->
 <div class="mod" id="modMulti">
   <div id="muBg"></div>
-  <div class="maths-img-wrap">
-    <img id="mathsImg" class="maths-img" src="sihirsharmoniclines.png" alt="">
-    <div class="maths-img-click" onclick="multiToggle()"></div>
-  </div>
+  <div id="muCol">
   <div id="muContent">
     <div class="maths-ctrlrow">
       <span class="vnum" id="multiFundV" style="font-size:20px;letter-spacing:0;color:#111" onclick="tapNum('multiFundV',1,20000,function(v){multiSetFundamental(v)})">30.00</span><span class="vunit" style="color:#999;margin-right:6px">Hz</span>
@@ -627,26 +663,8 @@ input[type=range]::-moz-range-thumb{width:20px;height:20px;border-radius:50%;bac
     <div class="maths-grid" id="mathsGrid"></div>
     <button class="maths-roll maths-roll-wide" onclick="multiRoll()">ROLL</button>
   </div>
-  <div class="maths-settings-panel" id="mathsSettings">
-    <div class="maths-slider-wrap" id="msDurWrap">
-      <span class="ms-unit">sec</span><span class="ms-label">transition time</span>
-      <input type="range" id="multiDurR" min="0" max="10000" value="4875" oninput="multiDur=expS(+this.value,0.10,30);updateSliderVal('msDurVal',this,multiDur.toFixed(2))">
-      <span class="ms-val" id="msDurVal">1.50</span>
-    </div>
-    <div class="maths-slider-wrap" id="msLfoWrap">
-      <span class="ms-unit">ms</span><span class="ms-label">tremolo</span>
-      <input type="range" id="multiLfoDurR" min="0" max="10000" value="6845" oninput="multiLfoDur=expS(+this.value,0.10,15);updateSliderVal('msLfoVal',this,Math.round(multiLfoDur*1000))">
-      <span class="ms-val" id="msLfoVal">3000</span>
-    </div>
-    <div class="maths-slider-wrap" id="msVolWrap">
-      <span class="ms-unit">%</span><span class="ms-label">vol chance range on roll</span>
-      <div id="multiDualRange" style="position:relative;height:36px;width:100%;touch-action:none"></div>
-      <span class="ms-val" id="msVolMinVal">65</span>
-      <span class="ms-val" id="msVolMaxVal">100</span>
-    </div>
-    <div class="ms-toggle-row"><span class="ms-tlabel">Multi-AutoGain</span><button class="ms-toggle on" id="mAutoBtn" onclick="toggleMultiAuto()">ON</button></div>
-    <div class="ms-toggle-row"><span class="ms-tlabel"><span style="color:#111">MATHS</span> to <span style="color:#2d6a4e">BIRDBOX</span> Duration</span><button class="ms-toggle on" id="mathsRatioBtn" onclick="toggleBbDurMode()">ON</button></div>
-    <div class="ms-toggle-row"><span class="ms-tlabel"><span style="color:#111">MATHS</span> to <span style="color:#2d6a4e">BIRDBOX</span> Frequency Ratio</span><span class="ms-fxwrap"><span class="ms-fx">×</span><span class="ms-num" id="bbFqRatioV" onclick="tapNum('bbFqRatioV',0.1,16,function(v){bbFqRatio=v;recomputeHarmonicPools();},false,2)">1.00</span></span></div>
+  <div id="muStage">
+    <img id="mathsImg" class="maths-img" src="sihirsharmoniclines.png" alt="" onclick="multiToggle()">
   </div>
   <div class="maths-sliders">
     <div id="muVsPanel">
@@ -690,6 +708,29 @@ input[type=range]::-moz-range-thumb{width:20px;height:20px;border-radius:50%;bac
       <input type="range" id="mMVolR" min="0" max="100" value="63" oninput="multiFilterFreq=+this.value;updateSliderVal('msMasterVal',this,fmtFilterHz(multiFilterFreq));if(multiFilter&&AC)multiFilter.frequency.setTargetAtTime(filterV2F(multiFilterFreq),AC.currentTime,.02)">
       <span class="ms-val" id="msMasterVal">1.6k</span>
     </div>
+  </div>
+  </div>
+  <!-- settings overlay sits outside #muCol: it must not scroll with the controls -->
+  <div class="maths-settings-panel" id="mathsSettings">
+    <div class="maths-slider-wrap" id="msDurWrap">
+      <span class="ms-unit">sec</span><span class="ms-label">transition time</span>
+      <input type="range" id="multiDurR" min="0" max="10000" value="4875" oninput="multiDur=expS(+this.value,0.10,30);updateSliderVal('msDurVal',this,multiDur.toFixed(2))">
+      <span class="ms-val" id="msDurVal">1.50</span>
+    </div>
+    <div class="maths-slider-wrap" id="msLfoWrap">
+      <span class="ms-unit">ms</span><span class="ms-label">tremolo</span>
+      <input type="range" id="multiLfoDurR" min="0" max="10000" value="6845" oninput="multiLfoDur=expS(+this.value,0.10,15);updateSliderVal('msLfoVal',this,Math.round(multiLfoDur*1000))">
+      <span class="ms-val" id="msLfoVal">3000</span>
+    </div>
+    <div class="maths-slider-wrap" id="msVolWrap">
+      <span class="ms-unit">%</span><span class="ms-label">vol chance range on roll</span>
+      <div id="multiDualRange" style="position:relative;height:36px;width:100%;touch-action:none"></div>
+      <span class="ms-val" id="msVolMinVal">65</span>
+      <span class="ms-val" id="msVolMaxVal">100</span>
+    </div>
+    <div class="ms-toggle-row"><span class="ms-tlabel">Multi-AutoGain</span><button class="ms-toggle on" id="mAutoBtn" onclick="toggleMultiAuto()">ON</button></div>
+    <div class="ms-toggle-row"><span class="ms-tlabel"><span style="color:#111">MATHS</span> to <span style="color:#2d6a4e">BIRDBOX</span> Duration</span><button class="ms-toggle on" id="mathsRatioBtn" onclick="toggleBbDurMode()">ON</button></div>
+    <div class="ms-toggle-row"><span class="ms-tlabel"><span style="color:#111">MATHS</span> to <span style="color:#2d6a4e">BIRDBOX</span> Frequency Ratio</span><span class="ms-fxwrap"><span class="ms-fx">×</span><span class="ms-num" id="bbFqRatioV" onclick="tapNum('bbFqRatioV',0.1,16,function(v){bbFqRatio=v;recomputeHarmonicPools();},false,2)">1.00</span></span></div>
   </div>
 </div>
 
@@ -1529,7 +1570,9 @@ function toggleMathsSettings(){
   mathsSettingsOn=!mathsSettingsOn;
   var p=document.getElementById('mathsSettings');
   if(p){
-    if(mathsSettingsOn){var g=document.getElementById('mathsGrid'),md=document.getElementById('modMulti');if(g&&md){var gr=g.getBoundingClientRect(),mr=md.getBoundingClientRect();p.style.top=(gr.top-mr.top-1)+'px';}}
+    if(mathsSettingsOn){var g=document.getElementById('mathsGrid'),md=document.getElementById('modMulti'),sl=document.querySelector('#modMulti .maths-sliders');if(g&&md){var gr=g.getBoundingClientRect(),mr=md.getBoundingClientRect();p.style.top=(gr.top-mr.top-1)+'px';
+      // cap the overlay at the footer instead of a hard-coded offset; it scrolls internally past that
+      if(sl)p.style.maxHeight=Math.max(120,sl.getBoundingClientRect().top-gr.top-8)+'px';}}
     p.classList.toggle('open',mathsSettingsOn);
   }
   var b=document.getElementById('mathsSettingsBtn');if(b)b.classList.toggle('on',mathsSettingsOn);
@@ -1648,9 +1691,21 @@ function multiLfoTick(){
   multiLfoRAF=requestAnimationFrame(multiLfoTick);
 }
 // ── MATHS volume-sweep LFO (muVs) — modelled on the noise nsVs LFO, applied to multiMGain ──
+// the open PULSE body is an upward overlay; --muvs-h is its height, used by the frame and the stage
+function muVsMeasure(){
+  var b=document.getElementById('muVsBody'),m=document.getElementById('modMulti'),st=document.getElementById('muStage');
+  if(!b||!m||!m.classList.contains('vs-open'))return;
+  var h=b.offsetHeight;
+  m.style.setProperty('--muvs-h',h+'px');
+  // never lift more than the stage can spare: keep >=34px of image, fully visible above the frame.
+  // the stage's outer height is set by flex, so it doesn't change as we vary the padding.
+  if(st)m.style.setProperty('--muvs-lift',Math.min(h,Math.max(0,st.getBoundingClientRect().height-44))+'px');
+}
 function muVsTogglePanel(){
   var p=document.getElementById('muVsPanel');if(!p)return;
   var open=p.classList.toggle('vs-open');
+  var m=document.getElementById('modMulti');if(m)m.classList.toggle('vs-open',open);
+  if(open)muVsMeasure();
   var b=document.getElementById('muVsLabelBtn');if(b){b.classList.toggle('open',open);b.setAttribute('aria-expanded',open?'true':'false');}
 }
 function muVsToggle(){
@@ -3170,7 +3225,12 @@ document.addEventListener('click',function(e){
   if(!e.target.closest('.msel'))document.querySelectorAll('.msel.open').forEach(function(s){s.classList.remove('open');});
   if(!e.target.closest('.mc-rclick')&&!e.target.closest('#mathsMenuLayer'))closeRatioMenu();
 });
-window.addEventListener('resize',function(){closeRatioMenu();});
+// --tab-h can't be derived in CSS (it depends on rendered font metrics), so measure it
+function measureTabH(){var t=document.querySelector('.tabs');if(t)document.documentElement.style.setProperty('--tab-h',t.offsetHeight+'px');}
+function onViewportResize(){closeRatioMenu();measureTabH();muVsMeasure();}
+window.addEventListener('resize',onViewportResize);
+window.addEventListener('orientationchange',onViewportResize);
+measureTabH();
 window.addEventListener('scroll',function(e){
   if(e.target&&e.target.nodeType===1&&e.target.closest&&e.target.closest('#mathsMenuLayer'))return;
   closeRatioMenu();
