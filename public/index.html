@@ -38,7 +38,7 @@
 html,body{height:100%;overflow:hidden;background:#ede7d4;font-family:'DM Mono',monospace;color:#7a8c6e}
 input,button,select{font-family:'DM Mono',monospace}
 #app{max-width:480px;margin:0 auto;height:100%;display:flex;flex-direction:column;overflow:hidden;position:relative}
-.tabs{display:flex;padding-top:env(safe-area-inset-top,8px);background:#ede7d4;flex-shrink:0}
+.tabs{display:flex;padding-top:env(safe-area-inset-top,8px);background:#ede7d4;flex-shrink:0;position:relative;z-index:200}
 .tab{flex:1;padding:var(--tab-pad) 0;border:none;background:transparent;color:#fff;font-size:10px;font-weight:400;cursor:pointer;letter-spacing:1.5px;transition:all .15s}
 .tab.active{font-weight:700}
 .tab.active[data-tab="birdbox"]{color:#2d6a4e}
@@ -60,12 +60,12 @@ input,button,select{font-family:'DM Mono',monospace}
 .plus-menu button:active{background:#ede7d4}
 .mix-col{display:flex;flex-direction:column;align-items:center;flex:1}
 .mix-col.mix-master{flex:none;align-items:center}
-.mix-track{position:relative;width:22px;flex:1;background:transparent;border-radius:0;cursor:pointer;touch-action:none}
-.mix-track::before{content:'';position:absolute;left:50%;top:0;bottom:0;width:7px;background:#ccc;border-radius:2px;transform:translateX(-50%)}
-.mix-fill{position:absolute;bottom:0;width:7px;left:50%;transform:translateX(-50%);background:#333;border-radius:2px;pointer-events:none}
-.mix-thumb{position:absolute;left:50%;width:18px;height:20px;background:#333;border-radius:1px;transform:translate(-50%,-50%);pointer-events:none}
-.mix-master .mix-fill{background:#aaa}
-.mix-master .mix-thumb{background:#aaa}
+/* vertical console fader — the .cfader skin (AUDIO FUNCTION) rotated 90deg:
+   groove shadow moves to the left edge, cap stripe runs horizontally. */
+.mix-track{position:relative;width:30px;flex:1;background:transparent;border-radius:0;cursor:pointer;touch-action:none}
+.mix-track::before{content:'';position:absolute;left:50%;top:0;bottom:0;width:10px;background:linear-gradient(90deg,#cbc4b0,#ece6d5);box-shadow:inset 1px 0 3px rgba(0,0,0,.4);border-radius:2px;transform:translateX(-50%)}
+.mix-thumb{position:absolute;left:50%;width:28px;height:18px;background:linear-gradient(180deg,#222 41%,#d8d0ba 41%,#d8d0ba 59%,#222 59%);border:1px solid #000;border-radius:3px;box-shadow:0 2px 4px rgba(0,0,0,.45);transform:translate(-50%,-50%);pointer-events:none}
+.mix-master .mix-thumb{background:linear-gradient(180deg,#4d4d4d 41%,#b8b8b8 41%,#b8b8b8 59%,#4d4d4d 59%);border-color:#2a2a2a}
 .tabs.mixer-active .tab{color:#333!important}
 .tabs.mixer-active .plus-btn{color:#333!important;border-bottom-color:#333!important}
 #modMixer.active{padding:16px 0 40px;flex:1;height:100%;overflow:hidden}
@@ -439,27 +439,58 @@ input[type=range]::-moz-range-thumb{width:20px;height:20px;border-radius:50%;bac
   #modMulti .maths-settings-panel{width:calc(92% + 20px);max-width:none}
 }
 /* ═══ SCORES ═══ */
-/* see-through overlay HUD */
+/* ghost tab — the collapsed handle, docked to an edge of the app column */
+#scoreTab{
+  position:absolute;left:0;top:50%;width:24px;height:60px;z-index:140;
+  display:none;align-items:center;justify-content:center;
+  background:rgba(248,244,235,.35);
+  border:1px solid #c2ccb6;border-left:none;border-radius:0 3px 3px 0;
+  touch-action:none;cursor:grab;transition:opacity .18s;
+}
+#scoreTab.right{border-left:1px solid #c2ccb6;border-right:none;border-radius:3px 0 0 3px}
+#scoreTab.snap{transition:left .18s ease,top .18s ease,opacity .18s}
+#scoreTab.grab{cursor:grabbing}
+/* 44x76 touch target, no visual change */
+#scoreTab::before{content:'';position:absolute;top:-8px;bottom:-8px;left:-10px;right:-10px}
+#scoreTab .st-g{display:block;pointer-events:none}
+#scoreTab .st-g i{display:block;width:11px;height:1px;background:#a0ad95;margin:2px 0}
+#scoreTab .st-g i:last-child{width:7px}
+#app.score-tab-on:not(.on-scores) #scoreTab{display:flex}
+#app.score-open #scoreTab{opacity:0;pointer-events:none}
+/* frosted panel */
 #scorePanelWrap{display:none}
 #app.score-open #scorePanelWrap{display:block}
 .score-panel{
-  position:fixed;top:56px;left:12px;right:12px;bottom:16px;
-  background:rgba(255,255,255,0.72);
+  position:absolute;top:calc(var(--tab-h) + 15px);left:15px;right:15px;bottom:21px;
+  background:rgba(255,255,255,0.88);
   -webkit-backdrop-filter:blur(2px);backdrop-filter:blur(2px);
-  border:1px solid rgba(0,0,0,0.3);
-  border-radius:4px;
+  border:1px solid rgba(0,0,0,0.18);
+  border-radius:3px;
   z-index:150;
   padding:16px;
   overflow:hidden;
   color:#111;
-  max-width:448px;margin:0 auto;
-  pointer-events:none;
+  max-width:442px;margin:0 auto;
+  pointer-events:auto;
+  animation:scoreIn .14s ease-out;
 }
+@keyframes scoreIn{from{opacity:0;transform:scale(.985)}to{opacity:1;transform:none}}
+.score-close{
+  position:absolute;top:4px;right:4px;width:34px;height:34px;z-index:2;
+  display:flex;align-items:center;justify-content:center;padding:0;
+  background:transparent;border:none;
+  color:#7a8c6e;font-size:20px;line-height:1;cursor:pointer;font-family:inherit;
+}
+.score-close:active{opacity:.55}
 #scoreOverlayText{
-  width:100%;height:100%;overflow:hidden;
+  width:100%;height:100%;overflow-y:auto;-webkit-overflow-scrolling:touch;touch-action:pan-y;
   white-space:pre-wrap;word-break:break-word;
   font-family:'DM Mono',monospace;font-size:16px;line-height:1.5;color:#111;
+  -webkit-user-select:text;user-select:text;
+  /* the bar is hidden, the score still scrolls */
+  scrollbar-width:none;-ms-overflow-style:none;
 }
+#scoreOverlayText::-webkit-scrollbar{display:none}
 /* SCORES editor view */
 #modScores.active{gap:14px;padding-top:22px}
 .score-toprow{display:flex;gap:8px;align-items:center;width:100%;max-width:360px}
@@ -785,7 +816,7 @@ input[type=range]::-moz-range-thumb{width:20px;height:20px;border-radius:50%;bac
     <input type="range" id="scoreSizeSL" min="0" max="1000" value="143" oninput="scoreSetSize(+this.value)">
   </div>
   <div class="score-botrow">
-    <div class="af-btoggle" id="scoreOverlayToggle" onclick="scoreToggleOverlay()"><span class="af-sw"></span>SHOW OVERLAY</div>
+    <div class="af-btoggle" id="scoreTabToggle" onclick="scoreToggleTab()"><span class="af-sw"></span>SHOW SCORE TAB</div>
     <button class="score-delbtn" onclick="scoreDelete()">DELETE</button>
   </div>
 </div>
@@ -818,8 +849,9 @@ input[type=range]::-moz-range-thumb{width:20px;height:20px;border-radius:50%;bac
 </div>
 
 </div>
-<!-- SCORE overlay (see-through HUD) -->
-<div id="scorePanelWrap"><div class="score-panel"><div id="scoreOverlayText"></div></div></div>
+<!-- SCORE ghost tab (collapsed) + frosted panel (opened) -->
+<div id="scoreTab" role="button" aria-label="Open score"><span class="st-g"><i></i><i></i><i></i><i></i></span></div>
+<div id="scorePanelWrap"><div class="score-panel"><button class="score-close" onclick="scoreClosePanel()" aria-label="Close score">✕</button><div id="scoreOverlayText"></div></div></div>
 </div>
 
 <script src="/socket.io/socket.io.js" onerror=""></script>
@@ -901,6 +933,9 @@ function switchTab(t){
   document.querySelector('.plus-btn').classList.toggle('active',plusTabs.includes(t));
   document.querySelector('.tabs').classList.toggle('mixer-active',t==='mixer');
   TN.forEach(n=>{const m=document.getElementById('mod'+n.charAt(0).toUpperCase()+n.slice(1));if(m)m.classList.toggle('active',n===t);});
+  const scApp=document.getElementById('app');
+  scApp.classList.toggle('on-scores',t==='scores');
+  if(t==='scores')scApp.classList.remove('score-open');else scoreTabPlace();
   closePlusMenu();
   document.querySelector('.content').style.overflow=(t==='birdbox'||t==='noise'||t==='multi'||t==='mixer')?'hidden':'';
   if(t==='birdbox'&&!bbInitialized){bbInitialized=true;randomizeBirdbox();}
@@ -959,12 +994,14 @@ function scoreLoad(ts){
   scoreActiveId=ts;scoreApplyEditor(scoreRec(ts));
   renderScoreList();scoreRefreshOverlay();
   var ui=scoreGetUI();ui.activeId=ts;scoreSetUI(ui);
+  scoreTabSync();
 }
 function scoreNew(){
   var o={_t:scoreNextId(),_n:'Untitled',text:'',size:scoreCurSize};
   scoreWrite(o);scoreActiveId=o._t;scoreApplyEditor(o);
   renderScoreList();scoreRefreshOverlay();
   var ui=scoreGetUI();ui.activeId=o._t;scoreSetUI(ui);
+  scoreTabSync();
   var ed=document.getElementById('scoreEditor');if(ed)ed.focus();
 }
 function scoreOnInput(){
@@ -989,33 +1026,99 @@ function scoreDelete(){
   localStorage.removeItem(scoreKey(scoreActiveId));
   var all=getAllScores();
   if(all.length){scoreLoad(all[0]._t);}
-  else{scoreActiveId=null;scoreApplyEditor(null);renderScoreList();scoreRefreshOverlay();var ui=scoreGetUI();ui.activeId=null;scoreSetUI(ui);}
+  else{scoreActiveId=null;scoreApplyEditor(null);renderScoreList();scoreRefreshOverlay();var ui=scoreGetUI();ui.activeId=null;scoreSetUI(ui);scoreClosePanel();scoreTabSync();}
 }
-function scoreToggleOverlay(){
-  var on=!document.getElementById('app').classList.contains('score-open');
-  document.getElementById('app').classList.toggle('score-open',on);
-  var tg=document.getElementById('scoreOverlayToggle');if(tg)tg.classList.toggle('on',on);
-  if(on)scoreRefreshOverlay();
-  var ui=scoreGetUI();ui.overlayOn=on;scoreSetUI(ui);
+/* ── ghost tab: geometry, drag, open/close ── */
+/* SC_TAB_W/H must match #scoreTab in the stylesheet */
+var SC_TAB_W=24,SC_TAB_H=60,SC_TAB_EDGE=8;
+var scoreTabOn=false,scTabSide='l',scTabYFrac=0.5,scTabDrag=null;
+function scoreTabMetrics(){
+  var r=document.getElementById('app').getBoundingClientRect();
+  var tb=document.querySelector('.tabs');
+  var th=(tb&&tb.offsetHeight)||46;
+  var minY=th+SC_TAB_EDGE,maxY=Math.max(minY,r.height-SC_TAB_H-SC_TAB_EDGE);
+  return {left:r.left,top:r.top,w:r.width,minY:minY,maxY:maxY};
+}
+function scoreTabPlace(){
+  var el=document.getElementById('scoreTab');if(!el)return;
+  var m=scoreTabMetrics();
+  el.style.left=Math.round(scTabSide==='r'?m.w-SC_TAB_W:0)+'px';
+  el.style.top=Math.round(m.minY+(m.maxY-m.minY)*scTabYFrac)+'px';
+  el.classList.toggle('right',scTabSide==='r');
+}
+function scoreTabSync(){
+  var app=document.getElementById('app');
+  app.classList.toggle('score-tab-on',!!scoreTabOn&&scoreActiveId!=null);
+  var tg=document.getElementById('scoreTabToggle');if(tg)tg.classList.toggle('on',!!scoreTabOn);
+  scoreTabPlace();
+}
+function scoreOpenPanel(){
+  if(scoreActiveId==null)return;
+  document.getElementById('app').classList.add('score-open');
+  scoreRefreshOverlay();
+}
+function scoreClosePanel(){document.getElementById('app').classList.remove('score-open');}
+function scoreToggleTab(){
+  scoreTabOn=!scoreTabOn;
+  if(!scoreTabOn)scoreClosePanel();
+  var ui=scoreGetUI();ui.tabOn=scoreTabOn;scoreSetUI(ui);
+  scoreTabSync();
+}
+function initScoreTab(){
+  var el=document.getElementById('scoreTab');if(!el)return;
+  el.addEventListener('pointerdown',function(e){
+    e.preventDefault();
+    scTabDrag={x:e.clientX,y:e.clientY,moved:false,lx:0,ly:0};
+    try{el.setPointerCapture(e.pointerId);}catch(_){}
+    el.classList.add('grab');el.classList.remove('snap');
+  });
+  document.addEventListener('pointermove',function(e){
+    var d=scTabDrag;if(!d)return;
+    var dx=e.clientX-d.x,dy=e.clientY-d.y;
+    if(!d.moved&&Math.sqrt(dx*dx+dy*dy)>6)d.moved=true;
+    if(!d.moved)return;
+    var m=scoreTabMetrics();
+    d.lx=e.clientX-m.left-SC_TAB_W/2;
+    d.ly=Math.max(m.minY,Math.min(m.maxY,e.clientY-m.top-SC_TAB_H/2));
+    el.style.left=Math.round(d.lx)+'px';el.style.top=Math.round(d.ly)+'px';
+  });
+  document.addEventListener('pointerup',function(e){
+    var d=scTabDrag;if(!d)return;
+    scTabDrag=null;el.classList.remove('grab');
+    try{el.releasePointerCapture(e.pointerId);}catch(_){}
+    if(!d.moved){scoreOpenPanel();return;}
+    var m=scoreTabMetrics();
+    scTabSide=(d.lx+SC_TAB_W/2)<m.w/2?'l':'r';
+    scTabYFrac=m.maxY>m.minY?Math.max(0,Math.min(1,(d.ly-m.minY)/(m.maxY-m.minY))):0;
+    el.classList.add('snap');scoreTabPlace();
+    var ui=scoreGetUI();ui.side=scTabSide;ui.tabY=scTabYFrac;scoreSetUI(ui);
+  });
+  window.addEventListener('resize',scoreTabPlace);
 }
 function renderScores(){
-  var ui=scoreGetUI();var all=getAllScores();
+  var ui=scoreGetUI();
+  if(ui.tabOn===undefined&&ui.overlayOn!==undefined){ui.tabOn=!!ui.overlayOn;delete ui.overlayOn;scoreSetUI(ui);}
+  var all=getAllScores();
   var id=ui.activeId;
   if(id==null||!scoreRec(id))id=all.length?all[0]._t:null;
   scoreActiveId=id;scoreApplyEditor(id!=null?scoreRec(id):null);
   renderScoreList();scoreRefreshOverlay();
-  var on=!!ui.overlayOn;
-  document.getElementById('app').classList.toggle('score-open',on);
-  var tg=document.getElementById('scoreOverlayToggle');if(tg)tg.classList.toggle('on',on);
+  scoreTabOn=!!ui.tabOn;
+  scTabSide=ui.side==='r'?'r':'l';
+  scTabYFrac=typeof ui.tabY==='number'?Math.max(0,Math.min(1,ui.tabY)):0.5;
+  document.getElementById('app').classList.remove('score-open');
+  scoreTabSync();
 }
 
 /* ═══════ MIXER ═══════ */
+/* Columns are flex:1 like .tab, so this order must track the tab bar: VOICE, MATHS, BIRDBOX, NOISE,
+   then MASTER under the + button. AUDIO FUNCTION has no fader here — it lives in the + menu and
+   carries its own VOLUME slider (#rsMVolR). */
 var MIX_CH=[
   {key:'voice',label:'VOICE',get:function(){return vtVol;},set:function(v){vtVol=v;document.getElementById('vtVolR').value=v;if(vtMGn&&AC)vtMGn.gain.setTargetAtTime(v2g(v),AC.currentTime,.02);}},
   {key:'multi',label:'MATHS',get:function(){return multiMVol;},set:function(v){multiMVol=v;var el=document.getElementById('multiMVolR');if(el){el.value=v;updateSliderVal('msVolumeVal',el,v);}if(multiMGain&&AC)multiMGain.gain.setTargetAtTime(v2g(v),AC.currentTime,.02);}},
-  {key:'noise',label:'NOISE',get:function(){return Math.round(nMixPost*100);},set:function(v){nMixPost=v/100;if(nMGain&&AC)nMGain.gain.setTargetAtTime(v2g(nVol)*nMixPost,AC.currentTime,.02);}},
-  {key:'riser',label:'AUDIO FN',get:function(){return rsMVol;},set:function(v){rsMVol=v;document.getElementById('rsMVolL').textContent='VOLUME \u2014 '+v+'%';document.getElementById('rsMVolR').value=v;if(rsMGn&&AC)rsMGn.gain.setTargetAtTime(v2g(v),AC.currentTime,.02);}},
   {key:'birdbox',label:'BIRDBOX',get:function(){return swpMVol;},set:function(v){swpMVol=v;document.getElementById('swpMVolL').textContent='VOLUME \u2014 '+v+'%';document.getElementById('swpMVolR').value=v;if(swpMGn&&AC)swpMGn.gain.setTargetAtTime(v2g(v),AC.currentTime,.02);}},
+  {key:'noise',label:'NOISE',get:function(){return Math.round(nMixPost*100);},set:function(v){nMixPost=v/100;if(nMGain&&AC)nMGain.gain.setTargetAtTime(v2g(nVol)*nMixPost,AC.currentTime,.02);}},
   {key:'master',label:'MASTER',master:true,get:function(){return appMasterVol;},set:function(v){appMasterVol=v;if(appMaster&&AC)appMaster.gain.setTargetAtTime(v2g(v),AC.currentTime,.02);}}
 ];
 /* ═══════ AUTOGAIN ═══════ */
@@ -1082,9 +1185,8 @@ function initMixer(){
   MIX_CH.forEach(function(ch,i){
     var col=document.createElement('div');col.className='mix-col'+(ch.master?' mix-master':'');
     var tk=document.createElement('div');tk.className='mix-track';tk.dataset.i=i;
-    var fl=document.createElement('div');fl.className='mix-fill';fl.id='mxF'+i;
     var th=document.createElement('div');th.className='mix-thumb';th.id='mxT'+i;
-    tk.appendChild(fl);tk.appendChild(th);
+    tk.appendChild(th);
     col.appendChild(tk);c.appendChild(col);
     mixTracks.push(tk);
     setMixV(i,ch.get());
@@ -1095,7 +1197,7 @@ function initMixer(){
   });
   var pw=document.querySelector('.plus-wrap');
   var mc=c.querySelector('.mix-master');
-  if(pw&&mc)mc.style.width=pw.offsetWidth+'px';
+  if(pw&&mc)mc.style.width=Math.max(pw.offsetWidth,30)+'px'; /* 30 = fader cap width, else it clips */
   if(mc&&!document.getElementById('appAutoBtn')){
     var ab=document.createElement('button');ab.className='ag-btn'+(appAutoOn?' on':'');ab.id='appAutoBtn';ab.textContent='AG';
     ab.style.cssText='margin-top:8px;align-self:center';
@@ -1112,7 +1214,7 @@ function initMixer(){
   document.addEventListener('mouseup',function(){mixDrag=-1;});
 }
 function mixY(tk,y){var r=tk.getBoundingClientRect();return Math.round((1-Math.max(0,Math.min(1,(y-r.top)/r.height)))*100);}
-function setMixV(i,v){v=Math.round(v);document.getElementById('mxF'+i).style.height=v+'%';document.getElementById('mxT'+i).style.top=(100-v)+'%';}
+function setMixV(i,v){v=Math.round(v);document.getElementById('mxT'+i).style.top=(100-v)+'%';}
 function updMix(i,v){v=Math.round(v);MIX_CH[i].set(v);setMixV(i,v);}
 function syncMixerUI(){MIX_CH.forEach(function(ch,i){setMixV(i,ch.get());});var ab=document.getElementById('appAutoBtn');if(ab)ab.classList.toggle('on',appAutoOn);var lb=document.getElementById('appLimBtn');if(lb)lb.classList.toggle('on',appLimOn);}
 
@@ -3220,7 +3322,7 @@ nsVsRenderDir();
 mkDirBtns('swpFqDirBtns','r',function(d){swpFqDir=d;swpBloopReturn=false;swpRepCount=0;if(swpPausing){swpPausing=false;swpFqFwd=parsDir(d).base!=='left';swpFqStart=performance.now();if(swpSigGn&&AC)swpSigGn.gain.setTargetAtTime(1,AC.currentTime,.01);}},BB_DIRS.map(function(d){return d.k;}));
 initSwpTypeSel('muVsTypeSel','linear',function(t){muVsType=t;muVsRewave();});
 muVsRefreshFader();muVsUpdModes();muVsRenderDir();
-initEQ();initNP();multiInit();initMselWave();initMselFilter();initMultiHarmonics();recomputeHarmonicPools();initMultiDualRange();syncMultiUI();renderArchive();initMixer();initBBTempoWheel();renderScores();
+initEQ();initNP();multiInit();initMselWave();initMselFilter();initMultiHarmonics();recomputeHarmonicPools();initMultiDualRange();syncMultiUI();renderArchive();initMixer();initBBTempoWheel();renderScores();initScoreTab();
 document.addEventListener('click',function(e){
   if(!e.target.closest('.msel'))document.querySelectorAll('.msel.open').forEach(function(s){s.classList.remove('open');});
   if(!e.target.closest('.mc-rclick')&&!e.target.closest('#mathsMenuLayer'))closeRatioMenu();

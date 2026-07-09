@@ -36,25 +36,28 @@ Both are absolutely-positioned children of `#app` (already `position:relative`),
 
 ### `#scoreTab` — the collapsed ghost
 
-- 20×50, `background:rgba(248,244,235,.35)`, `border:1px solid #c2ccb6` with the docked side's border removed, `border-radius:0 3px 3px 0` (mirrored when docked right).
-- Glyph: four stacked 1px `#a0ad95` rules, 9/9/9/6 px wide — a miniature of lines of text.
-- Touch target: `::before{content:'';position:absolute;inset:-13px -12px}` yields 44×76 of hit area with no visual change.
+- 24×60, `background:rgba(248,244,235,.35)`, `border:1px solid #c2ccb6` with the docked side's border removed, `border-radius:0 3px 3px 0` (mirrored when docked right).
+- Glyph: four stacked 1px `#a0ad95` rules, 11/11/11/7 px wide — a miniature of lines of text.
+- Touch target: `::before{content:'';position:absolute;inset:-8px -10px}` yields 44×76 of hit area with no visual change.
+- The dimensions are mirrored in JS as `SC_TAB_W` / `SC_TAB_H` / `SC_TAB_EDGE`, which drive the grab offset, the dock position (`m.w - SC_TAB_W`) and the vertical clamp. Changing the size means changing both the stylesheet and those constants.
 - `touch-action:none`, `z-index:140`.
 - Hidden (`opacity:0; pointer-events:none`) while the panel is open, with a 0.18s fade.
 
 ### `.score-panel` — the opened panel
 
-- Converted from `position:fixed` to `position:absolute`; same insets (`top:56px left:12px right:12px bottom:16px`, `max-width:448px`, `margin:0 auto`) so the geometry is unchanged. Auto margins still centre it because `left` and `right` are both set and `max-width` resolves the width.
+- Converted from `position:fixed` to `position:absolute`. Insets are the original geometry pulled in by 5px vertically and 3px horizontally: `top:calc(var(--tab-h) + 15px) left:15px right:15px bottom:21px`, with `max-width` dropped 448px → **442px** so the 3px side inset still holds once the column is wide enough for the cap to bind. The `--tab-h` token comes from the vertical-density work already in the tree; the drag code measures `.tabs` directly rather than trusting it. Auto margins still centre it because `left` and `right` are both set and `max-width` resolves the width.
 - `pointer-events:auto` (was `none`).
-- Material: keeps `background:rgba(255,255,255,.72)` and `backdrop-filter:blur(2px)`. Border softens from `rgba(0,0,0,.3)` to `rgba(0,0,0,.18)`; radius goes 4px → 6px.
+- Material: `background:rgba(255,255,255,.88)` over `backdrop-filter:blur(2px)` — frosted, but opaque enough to read a score against a moving module. Border softens from `rgba(0,0,0,.3)` to `rgba(0,0,0,.18)`; radius 4px → **3px**.
 - `z-index:150`. Opens with a 0.14s `opacity 0→1, scale .985→1`.
 - `#scoreOverlayText` becomes the scroll container: `height:100%; overflow-y:auto; -webkit-overflow-scrolling:touch; touch-action:pan-y; -webkit-user-select:text; user-select:text`.
+- **The scrollbar is hidden entirely, and the score still scrolls.** `::-webkit-scrollbar{display:none}` for WebKit, `scrollbar-width:none` for Firefox, `-ms-overflow-style:none` for legacy Edge. `overflow-y:auto` and `touch-action:pan-y` are untouched, so touch, wheel, and trackpad scrolling all still work — there is simply no visible indicator.
+- This also settles the collision with the bare ✕ for free: a bar that isn't painted cannot run underneath the glyph, in any browser. Do **not** reintroduce `padding-top` on `#scoreOverlayText` to create clearance — it would shorten the scrollable viewport and push the text down.
 
 ### `.score-close` — the ✕
 
-- 30×30, absolute at `top:6px right:6px`, `border-radius:50%`, `background:rgba(255,255,255,.85)`, `border:1px solid rgba(0,0,0,.12)`, glyph `✕` 13px in `#7a8c6e`, `z-index:2`.
-- The cream halo keeps score text legible where it scrolls underneath.
-- The ✕ is the only dismiss target. The 12px gutter around the panel does not close it.
+- A bare glyph, no bubble: 34×34 hit box absolute at `top:4px right:4px`, `background:transparent`, `border:none`, glyph `✕` 20px in `#7a8c6e`, `z-index:2`. `:active` dims it to `opacity:.55` rather than painting a square behind it.
+- The ✕ is the only dismiss target. The gutter around the panel does not close it.
+- Because the glyph has no backing plate, the scrollbar must not run underneath it — see the track inset below.
 
 ### Visibility classes on `#app`
 
