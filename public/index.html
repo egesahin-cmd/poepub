@@ -42,7 +42,7 @@ input,button,select{font-family:'DM Mono',monospace}
 .tab{flex:1;padding:var(--tab-pad) 0;border:none;background:transparent;color:#fff;font-size:10px;font-weight:400;cursor:pointer;letter-spacing:1.5px;transition:all .15s}
 .tab.active{font-weight:700}
 .tab.active[data-tab="birdbox"]{color:#2d6a4e}
-.tab.active[data-tab="noise"]{color:#555}
+.tab.active[data-tab="noise"]{color:#fff}
 .tab.active[data-tab="multi"]{color:#111}
 .tab.active[data-tab="voice"]{color:#d9a0d5}
 .plus-wrap{position:relative;flex-shrink:0;display:flex;align-items:stretch}
@@ -300,7 +300,7 @@ input[type=range]::-moz-range-thumb{width:20px;height:20px;border-radius:50%;bac
 #modNoise.active{display:flex;flex-direction:column;align-items:center;height:100%;padding:0;overflow:hidden;position:relative;}
 #nsStage{position:relative;flex:1;min-height:0;width:100%;overflow:hidden;z-index:1;}
 #nsBg{position:absolute;inset:0;z-index:0;background-color:#000;}
-#nsBird{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:40%;height:40%;object-fit:contain;pointer-events:none;z-index:2;opacity:1;}
+#nsBird{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:40%;height:40%;object-fit:contain;pointer-events:none;z-index:2;opacity:1;filter:brightness(0);}
 #nsControls{display:none;}
 #nsHidden{display:none;}
 #nsPlayBtn{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:25%;aspect-ratio:1;border-radius:50%;z-index:4;cursor:pointer;}
@@ -542,9 +542,9 @@ input[type=range]::-moz-range-thumb{width:20px;height:20px;border-radius:50%;bac
   <div class="plus-wrap">
     <button class="plus-btn" onclick="togglePlusMenu(event)">+</button>
     <div class="plus-menu" id="plusMenu">
-      <button onclick="switchTab('riser')">AUDIO FUNCTION</button>
+      <button onclick="switchTab('riser')">TONE GEN</button>
       <button onclick="switchTab('mixer')">MIXER</button>
-      <button onclick="switchTab('call')">CALL</button>
+      <button onclick="switchTab('call')">GROUP CALL</button>
       <button onclick="switchTab('archive')">ARCHIVE</button>
       <button onclick="switchTab('scores')">SCORES</button>
       <button onclick="switchTab('qr')">QR</button>
@@ -556,7 +556,7 @@ input[type=range]::-moz-range-thumb{width:20px;height:20px;border-radius:50%;bac
 
 <!-- ═══ AUDIO FUNCTION (riser) ═══ -->
 <div class="mod" id="modRiser">
-  <div class="af-title">AUDIO FUNCTION</div>
+  <div class="af-title">TONE GEN</div>
 
   <button class="pbtn" id="rsPB" onclick="toggleRiser()"><svg id="rsPI" width="20" height="20" viewBox="0 0 24 24"><polygon points="6,3 20,12 6,21" fill="#2d6a4e"/></svg><svg id="rsSI" width="18" height="18" viewBox="0 0 24 24" style="display:none"><rect x="4" y="4" width="16" height="16" rx="2" fill="#ede7d4"/></svg></button>
   <div class="lbl" id="rsPL">PLAY</div>
@@ -793,6 +793,7 @@ input[type=range]::-moz-range-thumb{width:20px;height:20px;border-radius:50%;bac
     <div style="text-align:center"><div style="font-size:16px;font-weight:500;letter-spacing:2px">GROUP CALL</div><div style="font-size:10px;color:#999;margin-top:3px;display:none">enter a room name</div></div>
     <input type="text" id="roomInput" class="call-input" placeholder="room name..." style="display:none" oninput="document.getElementById('enterBtn').classList.toggle('on',!!this.value.trim())" onkeydown="if(event.key==='Enter')joinRoom()">
     <button class="bsm on" id="enterBtn" onclick="openWhatsAppCall()" style="padding:10px 40px">ENTER</button>
+    <div style="font-size:11px;font-weight:500;letter-spacing:1.5px;color:#111;text-align:center;line-height:1.8;border-top:1px dashed #ccc;border-bottom:1px dashed #ccc;padding:8px 14px;margin-top:4px">AFTER JOINING:<br>TURN ON SPEAKERPHONE</div>
     <div id="callErr" style="color:#b04a3a;font-size:10px;display:none"></div>
   </div>
   <div id="callRoom" style="display:none;flex-direction:column;align-items:center;gap:12px;padding-top:6px">
@@ -1117,20 +1118,26 @@ function initScoreTab(){
   window.addEventListener('resize',scoreTabPlace);
 }
 /* ── default score: seeded once per device so it ships on every phone.
-   ui.seeded guards re-seeding, so a user who deletes it keeps it deleted. ── */
+   Bump SCORE_SEED_V when the text changes: devices seeded with an older version get the
+   record refreshed in place (font size kept); same-version deletions stay deleted. ── */
 var SCORE_SEED_ID=1783900800000; /* 2026-07-12 */
-var SCORE_SEED_TEXT='PESARO - 12 JULY\n\n*In each section, play ONLY what is written.\n\n*Go to the next section ONLY when the whistle blows.\n\n1   PLAY BIRDBOX\n1s  -silence-\n2   PLAY MATHS\n3   PLAY MATHS & BIRDBOX\n3s  -silence-\n4   PLAY NOISE\n5   PLAY NOISE & MATHS\n5s  -silence-\n6   ENTER CALL\n\n**Let new people in by QR code.';
+var SCORE_SEED_V=3;
+var SCORE_SEED_TEXT='PESARO - 12 JULY\n\n*In each section, play ONLY what is written.\n\n*Go to the next section ONLY when the whistle blows.\n\n1   PLAY BIRDBOX\n1s  -silence-\n2   PLAY MATHS\n3   PLAY MATHS & BIRDBOX\n3s  -silence-\n4   PLAY NOISE\n5   PLAY NOISE & MATHS\n5s  -silence-\n6   ENTER GROUP CALL\n\n**Let new people in by QR code.\n\n///\n\n- In BirdBox, swipe up to change the bird type.\n\n- In Maths, press Roll to change the set.\n\n- Press [+] for the menu including Group Call.';
 function seedDefaultScore(){
   var ui=scoreGetUI();
-  if(ui.seeded>=1)return;
-  ui.seeded=1;
-  var dup=getAllScores().some(function(o){return (o._n||scoreName(o.text))==='PESARO - 12 JULY';});
-  if(!dup){
-    scoreWrite({_t:SCORE_SEED_ID,_n:'PESARO - 12 JULY',size:16,text:SCORE_SEED_TEXT});
-    if(ui.activeId==null||!scoreRec(ui.activeId))ui.activeId=SCORE_SEED_ID;
-    if(ui.tabOn===undefined&&ui.overlayOn===undefined)ui.tabOn=true;
+  if(ui.seeded>=SCORE_SEED_V)return;
+  var prev=scoreRec(SCORE_SEED_ID);
+  if(prev){
+    prev._n='PESARO - 12 JULY';prev.text=SCORE_SEED_TEXT;scoreWrite(prev);
+  }else{
+    var dup=getAllScores().some(function(o){return (o._n||scoreName(o.text))==='PESARO - 12 JULY';});
+    if(!dup){
+      scoreWrite({_t:SCORE_SEED_ID,_n:'PESARO - 12 JULY',size:16,text:SCORE_SEED_TEXT});
+      if(ui.activeId==null||!scoreRec(ui.activeId))ui.activeId=SCORE_SEED_ID;
+      if(ui.tabOn===undefined&&ui.overlayOn===undefined)ui.tabOn=true;
+    }
   }
-  scoreSetUI(ui);
+  ui.seeded=SCORE_SEED_V;scoreSetUI(ui);
 }
 function renderScores(){
   var ui=scoreGetUI();
@@ -1581,7 +1588,7 @@ function showNsBirdFlash(){
     bird.style.filter='url(#toEde7d4exact)';
   }else{
     bird.style.transition='none';
-    bird.style.filter='none';
+    bird.style.filter='brightness(0)';
   }
 }
 function nsVsToggle(){
@@ -1665,7 +1672,7 @@ function multiToggle(){
     if(multiLfoRAF)cancelAnimationFrame(multiLfoRAF);
     multiLfoActive=false;multiLfoRAF=null;
     muVsStop(false);
-    multiPlaying=false;var _img=document.getElementById('mathsImg');if(_img){_img.style.transition='none';_img.style.filter='brightness(5)';}renderMulti();multiAutoRecalc();appAutoRecalc();return;
+    multiPlaying=false;var _img=document.getElementById('mathsImg');if(_img){_img.style.transition='none';_img.style.filter='none';}renderMulti();multiAutoRecalc();appAutoRecalc();return;
   }
   if(!multiMGain){multiMGain=c.createGain();multiAutoGn=c.createGain();multiAutoGn.gain.value=1.0;multiFilter=c.createBiquadFilter();multiFilter.type=multiFilterType;multiFilter.frequency.value=filterV2F(multiFilterFreq);multiFilter.Q.value=0.707;
     muTremGain=c.createGain();muTremGain.gain.value=1;muTremDepth=c.createGain();muTremDepth.gain.value=0;muTremSrc=c.createBufferSource();muTremSrc.buffer=muVsWaveBuf(muVsType);muTremSrc.loop=true;muTremSrc.connect(muTremDepth);muTremDepth.connect(muTremGain.gain);muTremSrc.start();
@@ -1683,7 +1690,7 @@ function multiToggle(){
     o.osc.frequency.setValueAtTime(o.freq,c.currentTime);
     o.osc.connect(o.gain);o.osc.start();
   });
-  multiPlaying=true;var _img=document.getElementById('mathsImg');if(_img){_img.style.transition='none';_img.style.filter='none';}renderMulti();multiAutoRecalc();appAutoRecalc();
+  multiPlaying=true;var _img=document.getElementById('mathsImg');if(_img){_img.style.transition='none';_img.style.filter='brightness(5)';}renderMulti();multiAutoRecalc();appAutoRecalc();
   muVsApplyTrem();muVsStart();
 }
 function multiMuteToggle(idx){
@@ -2107,7 +2114,7 @@ function renderMulti(){
   });
   closeRatioMenu();
   var img=document.getElementById('mathsImg');
-  if(img){img.style.transition='none';img.style.filter=multiPlaying?'none':'brightness(5)';}
+  if(img){img.style.transition='none';img.style.filter=multiPlaying?'brightness(5)':'none';}
 }
 function renderMultiRows(){
   for(var i=0;i<8;i++){
