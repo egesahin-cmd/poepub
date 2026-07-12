@@ -509,9 +509,30 @@ input[type=range]::-moz-range-thumb{width:20px;height:20px;border-radius:50%;bac
 .score-botrow{display:flex;gap:12px;align-items:center;justify-content:space-between;width:100%;max-width:360px}
 .score-delbtn{padding:7px 14px;border-radius:6px;background:#f8f4eb;border:1px solid #dcc0b8;color:#b04a3a;font-size:11px;font-weight:500;letter-spacing:1px;cursor:pointer;font-family:inherit}
 .score-delbtn:active{background:#f5ebe8}
+/* ═══ LANDING OVERLAY ═══ */
+#landingOverlay{position:fixed;inset:0;background:rgba(237,231,212,0.95);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);display:flex;align-items:center;justify-content:center;z-index:3000;padding:24px}
+#landingOverlay.hidden{display:none}
+#landingOverlay .lp-card{display:flex;flex-direction:column;align-items:center;gap:20px;max-width:320px;width:100%}
+#landingOverlay #lpQR{padding:12px;background:#ede7d4;border:2px solid #000;border-radius:2px;line-height:0}
+#landingOverlay #lpQR img,#landingOverlay #lpQR canvas{display:block}
+#landingOverlay .lp-instr{font-family:'DM Mono',monospace;font-size:12px;font-weight:500;letter-spacing:1.5px;color:#000;text-align:center;line-height:1.8}
+#landingOverlay .lp-enter{font-family:'DM Mono',monospace;font-size:14px;font-weight:700;letter-spacing:3px;color:#ede7d4;background:#000;border:2px solid #000;border-radius:2px;padding:14px 40px;cursor:pointer;transition:all .12s}
+#landingOverlay .lp-enter:active{transform:scale(.95)}
 </style>
 </head>
 <body>
+<div id="landingOverlay">
+  <div class="lp-card">
+    <div class="lp-instr">
+      SHOW QR TO LET OTHERS IN<br>
+      TURN OFF SILENT MODE<br>
+      PUT ON MAX VOLUME
+    </div>
+    <div id="lpQR"></div>
+    <div class="lp-instr">READ THE SCORE (hanging on the left)</div>
+    <button class="lp-enter" onclick="dismissLanding()">ENTER</button>
+  </div>
+</div>
 <div id="app">
 <div class="tabs">
   <button class="tab active" data-tab="voice" onclick="switchTab('voice')">VOICE</button>
@@ -599,7 +620,7 @@ input[type=range]::-moz-range-thumb{width:20px;height:20px;border-radius:50%;bac
 
   <img id="bbBird" src="henningchristiansen-bird-nobackground.svg" alt="">
   <div id="bbPlayBtn" onclick="toggleSweep()"></div>
-  <div id="bbTempoWheel"><div id="bbTempoTicks"></div><div id="bbTempoVal">100</div></div>
+  <div id="bbTempoWheel"><div id="bbTempoTicks"></div><div id="bbTempoVal">93</div></div>
   <div id="bbControls">
     <div style="display:flex;flex-direction:column;align-items:center;gap:4px">
       <button class="pbtn" id="swpPB" onclick="toggleSweep()"><svg id="swpPI" width="20" height="20" viewBox="0 0 24 24"><polygon points="6,3 20,12 6,21" fill="#2d6a4e"/></svg><svg id="swpSI" width="18" height="18" viewBox="0 0 24 24" style="display:none"><rect x="4" y="4" width="16" height="16" rx="2" fill="#ede7d4"/></svg></button>
@@ -624,8 +645,8 @@ input[type=range]::-moz-range-thumb{width:20px;height:20px;border-radius:50%;bac
       <div style="display:flex;gap:6px" id="swpFqDirBtns"></div>
     </div>
     <div class="rr">
-      <div class="lbl-row lbl"><span>0%</span><span id="swpMVolL">VOLUME — 70%</span><span>100%</span></div>
-      <input type="range" id="swpMVolR" min="0" max="100" value="70" oninput="swpMVol=+this.value;document.getElementById('swpMVolL').textContent='VOLUME \u2014 '+swpMVol+'%';if(swpMGn&&AC)swpMGn.gain.setTargetAtTime(v2g(swpMVol),AC.currentTime,.02);syncMixerUI()">
+      <div class="lbl-row lbl"><span>0%</span><span id="swpMVolL">VOLUME — 100%</span><span>100%</span></div>
+      <input type="range" id="swpMVolR" min="0" max="100" value="100" oninput="swpMVol=+this.value;document.getElementById('swpMVolL').textContent='VOLUME \u2014 '+swpMVol+'%';if(swpMGn&&AC)swpMGn.gain.setTargetAtTime(v2g(swpMVol),AC.currentTime,.02);syncMixerUI()">
     </div>
   </div>
 </div>
@@ -680,9 +701,9 @@ input[type=range]::-moz-range-thumb{width:20px;height:20px;border-radius:50%;bac
   <div id="muCol">
   <div id="muContent">
     <div class="maths-ctrlrow">
-      <span class="vnum" id="multiFundV" style="font-size:20px;letter-spacing:0;color:#111" onclick="tapNum('multiFundV',1,20000,function(v){multiSetFundamental(v)})">30.00</span><span class="vunit" style="color:#999;margin-right:6px">Hz</span>
+      <span class="vnum" id="multiFundV" style="font-size:20px;letter-spacing:0;color:#111" onclick="tapNum('multiFundV',1,20000,function(v){multiSetFundamental(v)})">49.00</span><span class="vunit" style="color:#999;margin-right:6px">Hz</span>
       <div class="msel" id="mathsWaveSel" onclick="this.classList.toggle('open')">
-        <div class="msel-head"><span id="mselWaveText">SINE</span><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" class="msel-arrow"><path d="M233.4 406.6c12.5 12.5 32.8 12.5 45.3 0l192-192c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0L256 338.7 86.6 169.4c-12.5-12.5-32.8-12.5-45.3 0s-12.5 32.8 0 45.3l192 192z"/></svg></div>
+        <div class="msel-head"><span id="mselWaveText">TRI</span><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" class="msel-arrow"><path d="M233.4 406.6c12.5 12.5 32.8 12.5 45.3 0l192-192c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0L256 338.7 86.6 169.4c-12.5-12.5-32.8-12.5-45.3 0s-12.5 32.8 0 45.3l192 192z"/></svg></div>
         <div class="msel-opts" id="mselWaveOpts"></div>
       </div>
       <button class="maths-settings-btn" id="mathsSettingsBtn" onclick="toggleMathsSettings()" aria-label="settings"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><path d="M495.9 166.6c3.2 8.7 .5 18.4-6.4 24.6l-43.3 39.4c1.1 8.3 1.7 16.8 1.7 25.4s-.6 17.1-1.7 25.4l43.3 39.4c6.9 6.2 9.6 15.9 6.4 24.6c-4.4 11.9-9.7 23.3-15.8 34.3l-4.7 8.1c-6.6 11-14 21.4-22.1 31.2c-5.9 7.2-15.7 9.6-24.5 6.8l-55.7-17.7c-13.4 10.3-28.2 18.9-44 25.4l-12.5 57.1c-2 9.1-9 16.3-18.2 17.8c-13.8 2.3-28 3.5-42.5 3.5s-28.7-1.2-42.5-3.5c-9.2-1.5-16.2-8.7-18.2-17.8l-12.5-57.1c-15.8-6.5-30.6-15.1-44-25.4L83.1 425.9c-8.8 2.8-18.6 .3-24.5-6.8c-8.1-9.8-15.5-20.2-22.1-31.2l-4.7-8.1c-6.1-11-11.4-22.4-15.8-34.3c-3.2-8.7-.5-18.4 6.4-24.6l43.3-39.4C64.6 273.1 64 264.6 64 256s.6-17.1 1.7-25.4L22.4 191.2c-6.9-6.2-9.6-15.9-6.4-24.6c4.4-11.9 9.7-23.3 15.8-34.3l4.7-8.1c6.6-11 14-21.4 22.1-31.2c5.9-7.2 15.7-9.6 24.5-6.8l55.7 17.7c13.4-10.3 28.2-18.9 44-25.4l12.5-57.1c2-9.1 9-16.3 18.2-17.8C227.3 1.2 241.5 0 256 0s28.7 1.2 42.5 3.5c9.2 1.5 16.2 8.7 18.2 17.8l12.5 57.1c15.8 6.5 30.6 15.1 44 25.4l55.7-17.7c8.8-2.8 18.6-.3 24.5 6.8c8.1 9.8 15.5 20.2 22.1 31.2l4.7 8.1c6.1 11 11.4 22.4 15.8 34.3zM256 336a80 80 0 1 0 0-160 80 80 0 1 0 0 160z"/></svg></button>
@@ -700,7 +721,7 @@ input[type=range]::-moz-range-thumb{width:20px;height:20px;border-radius:50%;bac
   <div class="maths-sliders">
     <div id="muVsPanel">
       <div id="muVsBody">
-        <div id="muVsABrow">
+        <div id="muVsABrow" class="ns-dim">
           <div style="text-align:left"><span class="vnum" id="muVsAV" style="font-size:18px" onclick="tapNum('muVsAV',1,100000,function(v){muVsA=v/1000;muVsRefreshFader();},true)">1</span><span class="vunit">ms</span></div>
           <div id="muVsCenter">
             <button class="ns-cell" id="muVsAutoBtn" onclick="muVsToggleAuto()">AUTO</button>
@@ -716,19 +737,19 @@ input[type=range]::-moz-range-thumb{width:20px;height:20px;border-radius:50%;bac
           <button class="ms-toggle" id="muVsEnableBtn" onclick="muVsToggle()">OFF</button>
           <div class="msel" id="muVsTypeSel" onclick="this.classList.toggle('open')"><div class="msel-head"><span id="muVsTypeText">LINEAR</span><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" class="msel-arrow"><path d="M233.4 406.6c12.5 12.5 32.8 12.5 45.3 0l192-192c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0L256 338.7 86.6 169.4c-12.5-12.5-32.8-12.5-45.3 0s-12.5 32.8 0 45.3l192 192z"/></svg></div><div class="msel-opts" id="muVsTypeOpts"></div></div>
           <div id="muVsRight">
-            <div id="muVsPerOscRow"><span class="ms-tlabel">Per Osc Ratio</span><button class="ms-toggle" id="muVsPerOscBtn" onclick="muVsTogglePerOsc()">OFF</button></div>
-            <span id="muVsFaderNum"><span class="mvfn-v" id="muVsFaderNumV">1</span><span class="mvfn-u" id="muVsFaderNumU">ms</span></span>
+            <div id="muVsPerOscRow"><span class="ms-tlabel">Per Osc Ratio</span><button class="ms-toggle on" id="muVsPerOscBtn" onclick="muVsTogglePerOsc()">ON</button></div>
+            <span id="muVsFaderNum"><span class="mvfn-v" id="muVsFaderNumV">10</span><span class="mvfn-u" id="muVsFaderNumU">s</span></span>
           </div>
         </div>
         <div class="maths-slider-wrap" id="muVsFaderWrap">
-          <input type="range" id="muVsFaderR" min="0" max="1000" value="0" oninput="muVsFader=+this.value/1000;muVsRefreshFader()">
+          <input type="range" id="muVsFaderR" min="0" max="1000" value="500" oninput="muVsFader=+this.value/1000;muVsRefreshFader()">
         </div>
       </div>
     </div>
     <div class="maths-slider-wrap" id="msVolumeWrap">
       <span class="ms-unit">%</span><span class="ms-label">volume</span>
-      <input type="range" id="multiMVolR" min="0" max="100" value="80" oninput="multiSetMasterVol(+this.value)">
-      <span class="ms-val" id="msVolumeVal">80</span>
+      <input type="range" id="multiMVolR" min="0" max="100" value="100" oninput="multiSetMasterVol(+this.value)">
+      <span class="ms-val" id="msVolumeVal">100</span>
     </div>
     <div class="maths-slider-wrap" id="msMasterWrap">
       <span class="ms-label">filter</span>
@@ -736,8 +757,8 @@ input[type=range]::-moz-range-thumb{width:20px;height:20px;border-radius:50%;bac
         <div class="msel-head"><span id="mselFiltText">LOWPASS</span><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" class="msel-arrow"><path d="M233.4 406.6c12.5 12.5 32.8 12.5 45.3 0l192-192c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0L256 338.7 86.6 169.4c-12.5-12.5-32.8-12.5-45.3 0s-12.5 32.8 0 45.3l192 192z"/></svg></div>
         <div class="msel-opts" id="mselFiltOpts"></div>
       </div>
-      <input type="range" id="mMVolR" min="0" max="100" value="63" oninput="multiFilterFreq=+this.value;updateSliderVal('msMasterVal',this,fmtFilterHz(multiFilterFreq));if(multiFilter&&AC)multiFilter.frequency.setTargetAtTime(filterV2F(multiFilterFreq),AC.currentTime,.02)">
-      <span class="ms-val" id="msMasterVal">1.6k</span>
+      <input type="range" id="mMVolR" min="0" max="100" value="90" oninput="multiFilterFreq=+this.value;updateSliderVal('msMasterVal',this,fmtFilterHz(multiFilterFreq));if(multiFilter&&AC)multiFilter.frequency.setTargetAtTime(filterV2F(multiFilterFreq),AC.currentTime,.02)">
+      <span class="ms-val" id="msMasterVal">10.0k</span>
     </div>
   </div>
   </div>
@@ -745,13 +766,13 @@ input[type=range]::-moz-range-thumb{width:20px;height:20px;border-radius:50%;bac
   <div class="maths-settings-panel" id="mathsSettings">
     <div class="maths-slider-wrap" id="msDurWrap">
       <span class="ms-unit">sec</span><span class="ms-label">transition time</span>
-      <input type="range" id="multiDurR" min="0" max="10000" value="4875" oninput="multiDur=expS(+this.value,0.10,30);updateSliderVal('msDurVal',this,multiDur.toFixed(2))">
-      <span class="ms-val" id="msDurVal">1.50</span>
+      <input type="range" id="multiDurR" min="0" max="10000" value="6859" oninput="multiDur=expS(+this.value,0.10,30);updateSliderVal('msDurVal',this,multiDur.toFixed(2))">
+      <span class="ms-val" id="msDurVal">5.00</span>
     </div>
     <div class="maths-slider-wrap" id="msLfoWrap">
       <span class="ms-unit">ms</span><span class="ms-label">tremolo</span>
-      <input type="range" id="multiLfoDurR" min="0" max="10000" value="6845" oninput="multiLfoDur=expS(+this.value,0.10,15);updateSliderVal('msLfoVal',this,Math.round(multiLfoDur*1000))">
-      <span class="ms-val" id="msLfoVal">3000</span>
+      <input type="range" id="multiLfoDurR" min="0" max="10000" value="8617" oninput="multiLfoDur=expS(+this.value,0.10,15);updateSliderVal('msLfoVal',this,Math.round(multiLfoDur*1000))">
+      <span class="ms-val" id="msLfoVal">7500</span>
     </div>
     <div class="maths-slider-wrap" id="msVolWrap">
       <span class="ms-unit">%</span><span class="ms-label">vol chance range on roll</span>
@@ -761,7 +782,7 @@ input[type=range]::-moz-range-thumb{width:20px;height:20px;border-radius:50%;bac
     </div>
     <div class="ms-toggle-row"><span class="ms-tlabel">Multi-AutoGain</span><button class="ms-toggle on" id="mAutoBtn" onclick="toggleMultiAuto()">ON</button></div>
     <div class="ms-toggle-row"><span class="ms-tlabel"><span style="color:#111">MATHS</span> to <span style="color:#2d6a4e">BIRDBOX</span> Duration</span><button class="ms-toggle on" id="mathsRatioBtn" onclick="toggleBbDurMode()">ON</button></div>
-    <div class="ms-toggle-row"><span class="ms-tlabel"><span style="color:#111">MATHS</span> to <span style="color:#2d6a4e">BIRDBOX</span> Frequency Ratio</span><span class="ms-fxwrap"><span class="ms-fx">×</span><span class="ms-num" id="bbFqRatioV" onclick="tapNum('bbFqRatioV',0.1,16,function(v){bbFqRatio=v;recomputeHarmonicPools();},false,2)">1.00</span></span></div>
+    <div class="ms-toggle-row"><span class="ms-tlabel"><span style="color:#111">MATHS</span> to <span style="color:#2d6a4e">BIRDBOX</span> Frequency Ratio</span><span class="ms-fxwrap"><span class="ms-fx">×</span><span class="ms-num" id="bbFqRatioV" onclick="tapNum('bbFqRatioV',0.1,16,function(v){bbFqRatio=v;recomputeHarmonicPools();},false,2)">2.00</span></span></div>
   </div>
 </div>
 
@@ -769,9 +790,9 @@ input[type=range]::-moz-range-thumb{width:20px;height:20px;border-radius:50%;bac
 <div class="mod" id="modCall">
   <div id="callLobby" style="display:flex;flex-direction:column;align-items:center;gap:14px;padding-top:10px">
     <div style="width:56px;height:56px;border-radius:50%;border:1.5px solid #ccc;display:flex;align-items:center;justify-content:center"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#999" stroke-width="1.5"><path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07 19.5 19.5 0 01-6-6 19.79 19.79 0 01-3.07-8.67A2 2 0 014.11 2h3a2 2 0 012 1.72c.127.96.361 1.903.7 2.81a2 2 0 01-.45 2.11L8.09 9.91a16 16 0 006 6l1.27-1.27a2 2 0 012.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0122 16.92z"/></svg></div>
-    <div style="text-align:center"><div style="font-size:16px;font-weight:500;letter-spacing:2px">GROUP CALL</div><div style="font-size:10px;color:#999;margin-top:3px">enter a room name</div></div>
-    <input type="text" id="roomInput" class="call-input" placeholder="room name..." oninput="document.getElementById('enterBtn').classList.toggle('on',!!this.value.trim())" onkeydown="if(event.key==='Enter')joinRoom()">
-    <button class="bsm" id="enterBtn" onclick="joinRoom()" style="padding:10px 40px">ENTER</button>
+    <div style="text-align:center"><div style="font-size:16px;font-weight:500;letter-spacing:2px">GROUP CALL</div><div style="font-size:10px;color:#999;margin-top:3px;display:none">enter a room name</div></div>
+    <input type="text" id="roomInput" class="call-input" placeholder="room name..." style="display:none" oninput="document.getElementById('enterBtn').classList.toggle('on',!!this.value.trim())" onkeydown="if(event.key==='Enter')joinRoom()">
+    <button class="bsm on" id="enterBtn" onclick="openWhatsAppCall()" style="padding:10px 40px">ENTER</button>
     <div id="callErr" style="color:#b04a3a;font-size:10px;display:none"></div>
   </div>
   <div id="callRoom" style="display:none;flex-direction:column;align-items:center;gap:12px;padding-top:6px">
@@ -843,7 +864,7 @@ input[type=range]::-moz-range-thumb{width:20px;height:20px;border-radius:50%;bac
   <button class="bsm" id="vtAlwaysVoiceBtn" onclick="vtToggleAlwaysVoice()">always voice</button>
   <div class="rr">
     <div class="lbl" style="text-align:center;font-family:Arial,sans-serif;font-size:11px;margin-bottom:3px">volume</div>
-    <input type="range" id="vtVolR" min="0" max="100" value="70" oninput="vtVol=+this.value;if(vtMGn&&AC)vtMGn.gain.setTargetAtTime(v2g(vtVol),AC.currentTime,.02);syncMixerUI()">
+    <input type="range" id="vtVolR" min="0" max="100" value="100" oninput="vtVol=+this.value;if(vtMGn&&AC)vtMGn.gain.setTargetAtTime(v2g(vtVol),AC.currentTime,.02);syncMixerUI()">
   </div>
   <div style="margin-top:auto;padding-top:8px;font-family:Arial,sans-serif;font-size:11px;color:#d9a0d5;text-align:center">*This is a replica of Neil Thapen's Pink Thrombone</div>
 </div>
@@ -858,8 +879,8 @@ input[type=range]::-moz-range-thumb{width:20px;height:20px;border-radius:50%;bac
 <script>
 /* ═══════ UTILS ═══════ */
 let AC=null,appMaster=null,appMasterVol=100;
-let appAutoGn=null,appAutoOn=false;
-let appLimiter=null,appLimOn=false;
+let appAutoGn=null,appAutoOn=true;
+let appLimiter=null,appLimOn=true;
 function getAC(){if(!AC){AC=new(window.AudioContext||window.webkitAudioContext)();appMaster=AC.createGain();appAutoGn=AC.createGain();appAutoGn.gain.value=1.0;appLimiter=AC.createDynamicsCompressor();appLimiter.threshold.value=appLimOn?-1:0;appLimiter.knee.value=0;appLimiter.ratio.value=appLimOn?20:1;appLimiter.attack.value=0.003;appLimiter.release.value=0.05;appMaster.connect(appAutoGn);appAutoGn.connect(appLimiter);appLimiter.connect(AC.destination);startKeepAlive();}if(AC.state==='suspended')AC.resume();return AC;}
 var keepAliveEl=null;
 function startKeepAlive(){if(keepAliveEl||!AC)return;var o=AC.createOscillator();var g=AC.createGain();g.gain.value=0;o.connect(g);var d=AC.createMediaStreamDestination();g.connect(d);keepAliveEl=new Audio();keepAliveEl.srcObject=d.stream;keepAliveEl.play().catch(function(){});o.start();}
@@ -1095,6 +1116,22 @@ function initScoreTab(){
   });
   window.addEventListener('resize',scoreTabPlace);
 }
+/* ── default score: seeded once per device so it ships on every phone.
+   ui.seeded guards re-seeding, so a user who deletes it keeps it deleted. ── */
+var SCORE_SEED_ID=1783900800000; /* 2026-07-12 */
+var SCORE_SEED_TEXT='PESARO - 12 JULY\n\n*In each section, play ONLY what is written.\n\n*Go to the next section ONLY when the whistle blows.\n\n1   PLAY BIRDBOX\n1s  -silence-\n2   PLAY MATHS\n3   PLAY MATHS & BIRDBOX\n3s  -silence-\n4   PLAY NOISE\n5   PLAY NOISE & MATHS\n5s  -silence-\n6   ENTER CALL\n\n**Let new people in by QR code.';
+function seedDefaultScore(){
+  var ui=scoreGetUI();
+  if(ui.seeded>=1)return;
+  ui.seeded=1;
+  var dup=getAllScores().some(function(o){return (o._n||scoreName(o.text))==='PESARO - 12 JULY';});
+  if(!dup){
+    scoreWrite({_t:SCORE_SEED_ID,_n:'PESARO - 12 JULY',size:16,text:SCORE_SEED_TEXT});
+    if(ui.activeId==null||!scoreRec(ui.activeId))ui.activeId=SCORE_SEED_ID;
+    if(ui.tabOn===undefined&&ui.overlayOn===undefined)ui.tabOn=true;
+  }
+  scoreSetUI(ui);
+}
 function renderScores(){
   var ui=scoreGetUI();
   if(ui.tabOn===undefined&&ui.overlayOn!==undefined){ui.tabOn=!!ui.overlayOn;delete ui.overlayOn;scoreSetUI(ui);}
@@ -1268,7 +1305,7 @@ const HARMONIC_LISTS=[
   {name:'Partitions',ratios:[1,2,3,5,7,11,15,22,30,42,56,77,101,135,176,231,297,385,490,627,792,1002,1255,1575,1958,2436,3010,3718,4565,5604,6842,8349]},
   {name:'Pell',ratios:[1,2,5,12,29,70,169,408,985,2378,5741,13860,33461,80782,195025,470832,1136689,2744210,6625109,15994428,38613965,93222358,225058681,543339720,1311738121,3166815962,7645370045,18457556052,44560482149,107578520350,259717522849,627013566048]},
 
-  {name:'Perrin',ratios:[3,0,2,3,2,5,5,7,10,12,17,22,29,39,51,68,90,119,158,209,277,367,486,644,853,1130,1497,1983,2627,3480,4610,6107]},
+  {name:'Perrin',ratios:[3,2,3,2,5,5,7,10,12,17,22,29,39,51,68,90,119,158,209,277,367,486,644,853,1130,1497,1983,2627,3480,4610,6107,8090]},
   {name:'Heptagonal',ratios:[1,7,18,34,55,81,112,148,189,235,286,342,403,469,540,616,697,783,874,970,1071,1177,1288,1404,1525,1651,1782,1918,2059,2205,2356,2512]},
   {name:'Hexagonal',ratios:[1,6,15,28,45,66,91,120,153,190,231,276,325,378,435,496,561,630,703,780,861,946,1035,1128,1225,1326,1431,1540,1653,1770,1891,2016]},
   {name:'Pentagonal',ratios:[1,5,12,22,35,51,70,92,117,145,176,210,247,287,330,376,425,477,532,590,651,715,782,852,925,1001,1080,1162,1247,1335,1426,1520]},
@@ -1285,10 +1322,10 @@ const RS_FREQS_A=[50,100,150,200,250,300,350,400];
 const RS_FREQS_B=[4000,5000,6000,7000,8000,9000,10000,11000,12000,13000,14000,15000,16000];
 const RS_DURS=[30,45,60,80,90,100,120,150,200,250,300,400,500];
 let bbFreqPool=BB_FREQS.slice();
-let bbFqRatio=1;
+let bbFqRatio=2;
 let bbDurPool=BB_DURS.slice();
 let bbDurHarmonic=true;
-let bbTempo=100,bbTempoPos=6667;
+let bbTempo=8,bbTempoPos=4515;
 let bbDurPoolPool=BB_DURS.slice();
 let rsFreqPoolA=RS_FREQS_A.slice();
 let rsFreqPoolB=RS_FREQS_B.slice();
@@ -1306,7 +1343,7 @@ const BB_DIRS=(function(){
 function parsDir(k){var d=BB_DIRS.find(function(x){return x.k===k;});return d||{base:'right',sm:1,pm:0};}
 const VSTYPES=['linear','log','meandering'];
 function initVsTypes(containerId,active,cb){const c=document.getElementById(containerId);VSTYPES.forEach(t=>{const b=document.createElement('button');b.className='preset'+(t===active?' on':'');b.textContent=t.toUpperCase();b.onclick=()=>{cb(t);c.querySelectorAll('.preset').forEach(x=>x.classList.toggle('on',x.textContent===t.toUpperCase()));};c.appendChild(b);});}
-let swpWv=0,swpMVol=70;
+let swpWv=0,swpMVol=100;
 // Freq sweep params
 let swpFqMin=20,swpFqMax=2000,swpFqDur=5,swpFqType='linear',swpFqDir='r';
 let swpPausing=false,swpBloopReturn=false,swpRepCount=0;
@@ -1581,29 +1618,29 @@ function nsVsDirIcon(d){var a='width="15" height="15" viewBox="0 0 24 24" fill="
 function nsVsRenderDir(){var b=document.getElementById('nsVsDirCycle');if(b)b.innerHTML=nsVsDirIcon(nsVsDir);}
 function nsVsCycleDir(){var i=NS_DIR_ORDER.indexOf(nsVsDir);nsVsDir=NS_DIR_ORDER[(i+1)%NS_DIR_ORDER.length];nsVsRenderDir();}
 /* ═══════ MULTI ═══════ */
-let multiMGain=null,multiMVol=80,multiWv=0;
+let multiMGain=null,multiMVol=100,multiWv=3;
 let multiAutoGn=null,multiAutoOn=true;
-let multiFilter=null,multiFilterFreq=63,multiFilterType='lowpass';
+let multiFilter=null,multiFilterFreq=90,multiFilterType='lowpass';
 let mathsSettingsOn=false;
 function filterV2F(v){return 20*Math.pow(1000,v/100);}
 function fmtFilterHz(v){var f=filterV2F(v);return f>=1000?(f/1000).toFixed(1)+'k':Math.round(f);}
 let multiOscs=[];
-let multiPlaying=false,multiDur=1.50;
+let multiPlaying=false,multiDur=5;
 let multiVolMin=65,multiVolMax=100;
 let multiSweepActive=false,multiSweepRAF=null,multiSweepLastFrame=0;
 let multiSweepVolType='linear';
 let multiFreqFrom=[],multiFreqTo=[],multiVolFrom=[],multiVolTo=[];
 let multiFreqTypes=[];
-let multiLfoDur=3.00,multiLfoOn=true;
+let multiLfoDur=7.5,multiLfoOn=true;
 let multiLfoActive=false,multiLfoRAF=null,multiLfoLastFrame=0,multiLfoPhase=[];
 // MATHS volume-sweep LFO (muVs) — tremolo on multiMGain whose PERIOD is the swept quantity
-let muVsOn=false,muVsAuto=false,muVsA=0.001,muVsB=10,muVsFader=0;
+let muVsOn=false,muVsAuto=false,muVsA=0.001,muVsB=10,muVsFader=0.5;
 let muTremGain=null,muTremSrc=null,muTremDepth=null;
 let muVsDur=10,muVsDir='fwd',muVsType='linear',muVsAutoStart=0,muVsPhase=0;
-let muVsPerOsc=false,muVsOscPhase=[];   // per-osc mode: period(ms) = x/ratio
+let muVsPerOsc=true,muVsOscPhase=[];   // per-osc mode: period(ms) = x/ratio
 let muVsActive=false,muVsRAF=null,muVsLastFrame=0;
 let multiHarmonicIdx=1;
-let multiFundamental=30.00,multiFundFrom=30.00,multiFundTo=30.00;
+let multiFundamental=49.00,multiFundFrom=49.00,multiFundTo=49.00;
 let multiHarmonicSweep=false;
 let multiOscRatios=[];
 var multiFrameCount=0;
@@ -2236,6 +2273,8 @@ const MAX_CONCURRENT_PEERS=3,PEER_STAGGER_MS=200;
 let micOn=true,speakerOn=true,spkrOn=true,inRoom=false;
 let callAn=null,meterRAF=null,callMon=null;
 const ICE=[{urls:'stun:stun.l.google.com:19302'},{urls:'stun:stun1.l.google.com:19302'}];
+const WA_CALL_URL='https://call.whatsapp.com/voice/bvrwYOhmA2H2TatG4wC449';
+function openWhatsAppCall(){const w=window.open(WA_CALL_URL,'_blank','noopener');if(!w)location.href=WA_CALL_URL;}
 async function joinRoom(){
   const name=document.getElementById('roomInput').value.trim();if(!name)return;
   document.getElementById('callErr').style.display='none';
@@ -2587,7 +2626,7 @@ function updateBBBird(){
   if(!bird)return;
   bird.style.transition='none';
   if(swpPlaying){                                  // ON = beige, wheel-opacity + per-roll brightness
-    var op=1-bbTempoPos/10000;                     // faster(wheel→1)=solid, slower(→1000)=invisible
+    var op=1-bbTempoPos/10000;                     // faster(value→1, reads 100)=solid, slower(value→100, reads 1)=invisible
     var pool=bbDurHarmonic?bbDurPool:bbDurPoolPool;
     var dMin=Math.min.apply(null,pool),dMax=Math.max.apply(null,pool);
     var t=dMax>dMin?Math.max(0,Math.min(1,(swpFqDur-dMin)/(dMax-dMin))):0;
@@ -2606,10 +2645,10 @@ function toggleBbDurMode(){
 }
 function bbSetTempo(pos){
   bbTempoPos=Math.max(0,Math.min(10000,pos));
-  bbTempo=Math.max(1,Math.min(1000,Math.round(expS(bbTempoPos,1,1000))));
+  bbTempo=Math.max(1,Math.min(100,Math.round(expS(bbTempoPos,1,100))));
   bbDurPoolPool=BB_DURS.map(function(d){return r2(Math.min(300,d*bbTempo/100));});
   recomputeHarmonicPools();
-  var v=document.getElementById('bbTempoVal');if(v)v.textContent=bbTempo;
+  var v=document.getElementById('bbTempoVal');if(v)v.textContent=101-bbTempo; // display mirrored: value 1 reads 100, value 2 reads 99 ... value 100 reads 1
   var t=document.getElementById('bbTempoTicks');if(t)t.style.backgroundPositionX=((bbTempoPos-5000)/10000*300)+'px';
   updateBBBird();
 }
@@ -2768,7 +2807,7 @@ function toggleRiser(){
 
 
 /* ═══════ VOICE (Pink Trombone) ═══════ */
-var vtInitialized=false,vtMounted=false,vtRAF=null,vtMGn=null,vtSigGn=null,vtVol=70;
+var vtInitialized=false,vtMounted=false,vtRAF=null,vtMGn=null,vtSigGn=null,vtVol=100;
 var vtRedraw=null;
 var VT=(function(){
 var backCanvas,backCtx,tractCanvas,tractCtx;
@@ -3322,7 +3361,7 @@ nsVsRenderDir();
 mkDirBtns('swpFqDirBtns','r',function(d){swpFqDir=d;swpBloopReturn=false;swpRepCount=0;if(swpPausing){swpPausing=false;swpFqFwd=parsDir(d).base!=='left';swpFqStart=performance.now();if(swpSigGn&&AC)swpSigGn.gain.setTargetAtTime(1,AC.currentTime,.01);}},BB_DIRS.map(function(d){return d.k;}));
 initSwpTypeSel('muVsTypeSel','linear',function(t){muVsType=t;muVsRewave();});
 muVsRefreshFader();muVsUpdModes();muVsRenderDir();
-initEQ();initNP();multiInit();initMselWave();initMselFilter();initMultiHarmonics();recomputeHarmonicPools();initMultiDualRange();syncMultiUI();renderArchive();initMixer();initBBTempoWheel();renderScores();initScoreTab();
+initEQ();initNP();multiInit();initMselWave();initMselFilter();initMultiHarmonics();recomputeHarmonicPools();initMultiDualRange();syncMultiUI();renderArchive();initMixer();initBBTempoWheel();seedDefaultScore();renderScores();initScoreTab();
 document.addEventListener('click',function(e){
   if(!e.target.closest('.msel'))document.querySelectorAll('.msel.open').forEach(function(s){s.classList.remove('open');});
   if(!e.target.closest('.mc-rclick')&&!e.target.closest('#mathsMenuLayer'))closeRatioMenu();
@@ -3352,10 +3391,15 @@ document.addEventListener('visibilitychange',function(){
 });
 
 // ═══ LANDING OVERLAY ═══
-switchTab('voice');
+function dismissLanding(){
+  var o=document.getElementById('landingOverlay');
+  if(o)o.classList.add('hidden');
+}
+switchTab('birdbox');
 (function initQRCodes(){
   if(typeof QRCode==='undefined')return;
   var qrOpts={text:'https://poepub.onrender.com/',width:200,height:200,colorDark:'#000000',colorLight:'#ede7d4',correctLevel:QRCode.CorrectLevel.H};
+  var lp=document.getElementById('lpQR');if(lp)new QRCode(lp,qrOpts);
   var app=document.getElementById('appQR');if(app)new QRCode(app,qrOpts);
 })();
 </script>
