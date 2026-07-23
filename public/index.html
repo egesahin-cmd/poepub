@@ -632,7 +632,6 @@ input[type=range]::-moz-range-thumb{width:20px;height:20px;border-radius:50%;bac
     </div>
   </div>
   <div id="bbHidden">
-    <div id="swpWaves"></div>
     <div class="swp-section">
       <div class="lbl">BIRDBOX</div>
       <div style="display:flex;gap:14px;align-items:center">
@@ -1350,7 +1349,8 @@ const BB_DIRS=(function(){
 function parsDir(k){var d=BB_DIRS.find(function(x){return x.k===k;});return d||{base:'right',sm:1,pm:0};}
 const VSTYPES=['linear','log','meandering'];
 function initVsTypes(containerId,active,cb){const c=document.getElementById(containerId);VSTYPES.forEach(t=>{const b=document.createElement('button');b.className='preset'+(t===active?' on':'');b.textContent=t.toUpperCase();b.onclick=()=>{cb(t);c.querySelectorAll('.preset').forEach(x=>x.classList.toggle('on',x.textContent===t.toUpperCase()));};c.appendChild(b);});}
-let swpWv=0,swpMVol=100;
+const swpWv=0; // BIRDBOX is sine-only
+let swpMVol=100;
 // Freq sweep params
 let swpFqMin=20,swpFqMax=2000,swpFqDur=5,swpFqType='linear',swpFqDir='r';
 let swpPausing=false,swpBloopReturn=false,swpRepCount=0;
@@ -1359,7 +1359,6 @@ let swpPlaying=false,swpOsc=null,swpSigGn=null,swpMGn=null,swpRAF=null,swpStart=
 var swpTickFn=null;
 let swpFqFwd=true,swpFqStart=0;
 
-function initSwpW(){const c=document.getElementById('swpWaves');WF.forEach((_,i)=>{const b=document.createElement('button');b.className='wbtn'+(i===0?' on':'');b.innerHTML='<span style="font-size:20px;line-height:1">'+WI[i]+'</span>';b.onclick=()=>{swpWv=i;document.querySelectorAll('#swpWaves .wbtn').forEach((x,j)=>x.classList.toggle('on',j===i));if(swpOsc)swpOsc.type=WF[i];};c.appendChild(b);});}
 function initSwpTypes(containerId,active,cb){const c=document.getElementById(containerId);STYPES.forEach(t=>{const b=document.createElement('button');b.className='preset'+(t===active?' on':'');b.textContent=t.toUpperCase();b.onclick=()=>{cb(t);c.querySelectorAll('.preset').forEach(x=>x.classList.toggle('on',x.textContent===t.toUpperCase()));};c.appendChild(b);});}
 function setSwpTypeSel(selId,t){var sel=document.getElementById(selId);if(!sel)return;var head=sel.querySelector('.msel-head>span');if(head)head.textContent=t.toUpperCase();sel.querySelectorAll('.msel-opt').forEach(function(x){x.classList.toggle('active',x.dataset.val===t);});}
 function initSwpTypeSel(selId,active,cb){var sel=document.getElementById(selId);if(!sel)return;var opts=sel.querySelector('.msel-opts');opts.innerHTML='';STYPES.forEach(function(t){var d=document.createElement('div');d.className='msel-opt'+(t===active?' active':'');d.dataset.val=t;d.textContent=t.toUpperCase();d.onclick=function(e){e.stopPropagation();cb(t);setSwpTypeSel(selId,t);sel.classList.remove('open');};opts.appendChild(d);});setSwpTypeSel(selId,active);}
@@ -1470,6 +1469,7 @@ let nsVsA=0.001,nsVsB=10;          // period targets in seconds (A=fast 1ms … 
 let nsVsFader=0;                   // 0..1 manual position between A and B
 let nsVsDur=10,nsVsDir='fwd',nsVsType='linear';
 let nsVsAutoStart=0,nsVsPhase=0;
+let nsVsActive=false,nsVsRAF=null,nsVsLastFrame=0;   // dedicated pulse-LFO steering loop, independent of the roll transition
 var nsMobile=window.matchMedia('(hover:none) and (pointer:coarse)').matches;
 const NS_PRESETS=Object.keys(PRESETS);
 function initEQ(){
@@ -1506,7 +1506,7 @@ function applyNP(name){
 function toggleNoise(){
   showNsBirdFlash();
   const c=getAC();
-  if(nOn){nNodes.forEach(n=>{try{n.src.stop();}catch(e){}});nNodes=[];nTransActive=false;if(nTransRAF){cancelAnimationFrame(nTransRAF);nTransRAF=null;}nOn=false;setPB('n',false);showNsBirdFlash();appAutoRecalc();return;}
+  if(nOn){nNodes.forEach(n=>{try{n.src.stop();}catch(e){}});nNodes=[];nTransActive=false;if(nTransRAF){cancelAnimationFrame(nTransRAF);nTransRAF=null;}nsVsStop();nOn=false;setPB('n',false);showNsBirdFlash();appAutoRecalc();return;}
   if(!nMGain){nMGain=c.createGain();
     nsTremGain=c.createGain();nsTremGain.gain.value=1;         // tremolo node — pass-through when off
     nsTremDepth=c.createGain();nsTremDepth.gain.value=0;       // depth (silent when off)
@@ -1520,6 +1520,7 @@ function toggleNoise(){
   const buf=mkNB(c);
   nNodes=BANDS.map((fc,i)=>{const s=c.createBufferSource();s.buffer=buf;s.loop=true;const f=c.createBiquadFilter();f.type='bandpass';f.frequency.value=fc;f.Q.value=fc<100?.5:1.2;const g=c.createGain();g.gain.value=v2g(nSl[i]);s.connect(f);f.connect(g);g.connect(nMGain);s.start();return{src:s,gain:g};});
   nOn=true;setPB('n',true);showNsBirdFlash();appAutoRecalc();
+  if(nsTremGain&&AC)tremEngage(nsTremGain,nsTremDepth,nsVsOn);nsVsStart();
 }
 function randomizeNoise(){
   nTransStartSl=nSl.slice();
@@ -1553,11 +1554,7 @@ function nsTransTick(){
     nSl[i]=Math.round(sweepVal(nTransType,t,nTransStartSl[i],nTransTargetSl[i]));
   }
   nVol=sweepVal(nTransType,t,nTransStartVol,nTransTargetVol);
-  // Volume-Sweep tremolo LFO — audio-rate; per frame we only steer the LFO frequency (= 1/period)
-  if(nsVsOn){
-    var P=nsVsAuto?sweepPeriod(nsVsType,rsPhase(nsVsAutoStart,nsVsDur,nsVsDir,now),nsVsA,nsVsB):nsVsFaderToPeriod(nsVsFader);
-    if(nsTremOsc&&AC)nsTremOsc.frequency.setTargetAtTime(periodToFreq(P),AC.currentTime,.02);
-  }
+  // Pulse (volume-sweep) LFO frequency is steered by its own loop (nsVsTick), not the roll transition.
   if(++nsFrameCount%(nsMobile?4:2)===0){
     for(var j=0;j<10;j++){if(nNodes[j]&&AC)nNodes[j].gain.gain.setTargetAtTime(v2g(nSl[j]),AC.currentTime,.02);}
     if(nMGain&&AC)nMGain.gain.setTargetAtTime(v2g(nVol)*nMixPost,AC.currentTime,.02);
@@ -1597,6 +1594,7 @@ function nsVsToggle(){
   nsVsSyncDim();
   if(nsVsOn)nsVsAutoStart=performance.now();
   tremEngage(nsTremGain,nsTremDepth,nsVsOn);
+  if(nsVsOn)nsVsStart();else nsVsStop();
 }
 function nsVsSyncDim(){
   var lab=document.getElementById('nsVsLabelBtn');if(lab)lab.classList.toggle('ns-half',!nsVsOn);
@@ -1620,12 +1618,23 @@ function nsVsUpdModes(){var f=document.getElementById('nsVsFaderWrap');if(f)f.cl
 // Manual fader is log-scaled A→B; midpoint (f=0.5) is the geometric median √(A·B) — no hardcoded pin.
 function nsVsFaderToPeriod(f){var A=nsVsA,B=nsVsB;return A>0?A*Math.pow(B/Math.max(A,1e-9),f):A+(B-A)*f;}
 function nsVsRefreshFader(){var r=document.getElementById('nsVsFaderR');if(r)updateSliderVal('nsVsFaderVal',r,Math.round(nsVsFaderToPeriod(nsVsFader)*1000));}
+// Pulse-LFO steering loop — runs whenever the pulse is on and the noise module is playing, independent of the
+// roll transition (nTransActive). Reads fader/AUTO live each frame, so both control paths stay responsive.
+function nsVsStart(){if(nsVsActive||!nsVsOn||!nOn)return;nsVsLastFrame=performance.now();nsVsActive=true;nsVsRAF=requestAnimationFrame(nsVsTick);}
+function nsVsStop(){if(nsVsRAF)cancelAnimationFrame(nsVsRAF);nsVsActive=false;nsVsRAF=null;}
+function nsVsTick(){
+  if(!nsVsOn||!nOn){nsVsActive=false;nsVsRAF=null;return;}
+  var now=performance.now();
+  var P=nsVsAuto?sweepPeriod(nsVsType,rsPhase(nsVsAutoStart,nsVsDur,nsVsDir,now),nsVsA,nsVsB):nsVsFaderToPeriod(nsVsFader);
+  if(nsTremOsc&&AC)nsTremOsc.frequency.setTargetAtTime(periodToFreq(P),AC.currentTime,.02);
+  nsVsRAF=requestAnimationFrame(nsVsTick);
+}
 var NS_DIR_ORDER=['fwd','rev','pp'];
 function nsVsDirIcon(d){var a='width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"';var m={fwd:'<line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/>',rev:'<line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/>',pp:'<polyline points="17 2 21 6 17 10"/><line x1="3" y1="6" x2="21" y2="6"/><polyline points="7 14 3 18 7 22"/><line x1="21" y1="18" x2="3" y2="18"/>'};return'<svg '+a+'>'+(m[d]||'')+'</svg>';}
 function nsVsRenderDir(){var b=document.getElementById('nsVsDirCycle');if(b)b.innerHTML=nsVsDirIcon(nsVsDir);}
 function nsVsCycleDir(){var i=NS_DIR_ORDER.indexOf(nsVsDir);nsVsDir=NS_DIR_ORDER[(i+1)%NS_DIR_ORDER.length];nsVsRenderDir();}
 /* ═══════ MULTI ═══════ */
-let multiMGain=null,multiMVol=100,multiWv=3;
+let multiMGain=null,multiMVol=100,multiWv=0; // default waveform: sine
 let multiAutoGn=null,multiAutoOn=true;
 let multiFilter=null,multiFilterFreq=90,multiFilterType='lowpass';
 let mathsSettingsOn=false;
@@ -2383,10 +2392,10 @@ function restoreState(o){
   rsFreq=o.rsf!=null?+o.rsf:440;rsFqB=o.rfb!=null?+o.rfb:8000;
   rsSweepOn=!!o.rpon;rsPitchDur=o.rpd!=null?+o.rpd:4;rsPitchType=TYPE_DEC[o.rpt]||'linear';rsPitchDir=o.rpr||'fwd';
   rsVolSweepOn=!!o.rvon;rsVolDur=o.rvd!=null?+o.rvd:4;rsVolType=TYPE_DEC[o.rvt]||'linear';rsVolDir=o.rvr||'fwd';
-  swpWv=o.sw;swpMVol=o.sm;swpFqMin=o.si;swpFqMax=o.sx;swpFqDur=(o.sd!=null&&isFinite(+o.sd))?+o.sd:5;swpFqType=TYPE_DEC[o.st]||'linear';swpFqDir=DIR_DEC[o.sr]||'r';
+  swpMVol=o.sm;swpFqMin=o.si;swpFqMax=o.sx;swpFqDur=(o.sd!=null&&isFinite(+o.sd))?+o.sd:5;swpFqType=TYPE_DEC[o.st]||'linear';swpFqDir=DIR_DEC[o.sr]||'r';
   nSl=o.ns.slice();nVol=o.nv;nAPre=o.np||null;
   nsVsOn=!!o.nse;nsVsAuto=!!o.nsau;nsVsA=o.nspa!=null?+o.nspa:0.001;nsVsB=o.nspb!=null?+o.nspb:10;nsVsFader=o.nsf!=null?+o.nsf:0;nsVsDur=o.nsvd!=null?+o.nsvd:10;nsVsDir=DIR_DEC[o.nsvr]||'fwd';nsVsType=TYPE_DEC[o.nsvt]||'linear';
-  nTransActive=false;if(nTransRAF){cancelAnimationFrame(nTransRAF);nTransRAF=null;}
+  nTransActive=false;if(nTransRAF){cancelAnimationFrame(nTransRAF);nTransRAF=null;}nsVsStop();
   multiMVol=o.mv!=null?o.mv:80;multiFilterFreq=o.mff!=null?o.mff:63;multiFilterType=o.mft||'lowpass';bbFqRatio=o.bfr!=null?o.bfr:1;
   multiWv=o.mw||0;multiDur=o.md||1.5;
   multiVolMin=o.mvm!=null?o.mvm:65;multiVolMax=o.mvx!=null?o.mvx:100;
@@ -2412,7 +2421,6 @@ function restoreState(o){
 }
 
 function syncSweepUI(){
-  document.querySelectorAll('#swpWaves .wbtn').forEach((x,j)=>x.classList.toggle('on',j===swpWv));
   document.getElementById('swpFqMinV').textContent=swpFqMin.toFixed(2);
   document.getElementById('swpFqMaxV').textContent=swpFqMax.toFixed(2);
   document.getElementById('swpFqDurV').textContent=swpFqDur.toFixed(2);
@@ -2431,6 +2439,7 @@ function syncNoiseUI(){
   var vsEn=document.getElementById('nsVsEnableBtn');if(vsEn)vsEn.classList.toggle('on',nsVsOn);
   var vsAu=document.getElementById('nsVsAutoBtn');if(vsAu)vsAu.classList.toggle('on',nsVsAuto);
   if(nsTremGain&&AC)tremEngage(nsTremGain,nsTremDepth,nsVsOn);
+  if(nsVsOn&&nOn)nsVsStart();else if(!nsVsOn)nsVsStop();
   nsVsSyncDim();
   var vsAV=document.getElementById('nsVsAV');if(vsAV)vsAV.textContent=Math.round(nsVsA*1000);
   var vsBV=document.getElementById('nsVsBV');if(vsBV)vsBV.textContent=Math.round(nsVsB*1000);
@@ -2679,7 +2688,6 @@ function randomizeBirdbox(){
   swpFqMax=bbRand(bbFreqPool);
   swpFqDur=bbRand(bbDurHarmonic?bbDurPool:bbDurPoolPool);
   swpFqType=bbRand(STYPES);
-  swpWv=Math.floor(Math.random()*WF.length);
   swpFqDir=bbRand(BB_DIRS).k;
   syncSweepUI();
   if(swpPlaying) setPB('swp',true);
@@ -2690,7 +2698,6 @@ function randomizeBirdbox(){
     swpFqStart=performance.now();
     swpPausing=false;
     if(swpSigGn&&AC)swpSigGn.gain.setTargetAtTime(1,AC.currentTime,.01);
-    if(swpOsc)swpOsc.type=WF[swpWv];
   }
   updateBBBackground();updateBBBird();
 }
@@ -3357,7 +3364,7 @@ function vtUnmount(){if(!vtInitialized||!vtMounted)return;vtMounted=false;VT.unm
 function vtToggleAlwaysVoice(){var on=!VT.getAlwaysVoice();VT.setAlwaysVoice(on);document.getElementById('vtAlwaysVoiceBtn').classList.toggle('on',on);}
 function vtToggleAutoWobble(){var on=!VT.getAutoWobble();VT.setAutoWobble(on);document.getElementById('vtAutoWobbleBtn').classList.toggle('on',on);}
 /* ═══════ INIT ═══════ */
-syncRsW();initSwpW();
+syncRsW();
 initSwpTypeSel('rsPitchTypeSel','linear',function(t){rsPitchType=t;});
 initSwpTypeSel('rsVolTypeSel','linear',function(t){rsVolType=t;});
 initSwpTypeSel('nsVsTypeSel','linear',function(t){nsVsType=t;});
@@ -3391,7 +3398,8 @@ document.addEventListener('visibilitychange',function(){
   if(AC&&AC.state==='suspended')AC.resume();
   if(swpPlaying){swpFqStart+=gone;if(swpRAF)cancelAnimationFrame(swpRAF);swpRAF=swpTickFn?requestAnimationFrame(swpTickFn):null;}
   if(rsPlaying){rsPitchStart+=gone;rsVolStart+=gone;if(rsRAF)cancelAnimationFrame(rsRAF);rsRAF=requestAnimationFrame(rsTick);}
-  if(nTransActive){nsLastFrame=performance.now();if(nsVsOn&&nsVsAuto)nsVsAutoStart+=gone;if(nTransRAF)cancelAnimationFrame(nTransRAF);nTransRAF=requestAnimationFrame(nsTransTick);}
+  if(nTransActive){nsLastFrame=performance.now();if(nTransRAF)cancelAnimationFrame(nTransRAF);nTransRAF=requestAnimationFrame(nsTransTick);}
+  if(nsVsActive){if(nsVsAuto)nsVsAutoStart+=gone;if(nsVsRAF)cancelAnimationFrame(nsVsRAF);nsVsRAF=requestAnimationFrame(nsVsTick);}
   if(multiSweepActive){multiSweepLastFrame=performance.now();if(multiSweepRAF)cancelAnimationFrame(multiSweepRAF);multiSweepRAF=requestAnimationFrame(multiSweepTick);}
   if(multiLfoActive){multiLfoLastFrame=performance.now();if(multiLfoRAF)cancelAnimationFrame(multiLfoRAF);multiLfoRAF=requestAnimationFrame(multiLfoTick);}
   if(vtMounted&&vtRAF){cancelAnimationFrame(vtRAF);vtRAF=requestAnimationFrame(vtRedraw);}
