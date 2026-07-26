@@ -1120,18 +1120,19 @@ function initScoreTab(){
    Bump SCORE_SEED_V when the text changes: devices seeded with an older version get the
    record refreshed in place (font size kept); same-version deletions stay deleted. ── */
 var SCORE_SEED_ID=1783900800000; /* 2026-07-12 */
-var SCORE_SEED_V=3;
-var SCORE_SEED_TEXT='PESARO - 12 JULY\n\n*In each section, play ONLY what is written.\n\n*Go to the next section ONLY when the whistle blows.\n\n1   PLAY BIRDBOX\n1s  -silence-\n2   PLAY MATHS\n3   PLAY MATHS & BIRDBOX\n3s  -silence-\n4   PLAY NOISE\n5   PLAY NOISE & MATHS\n5s  -silence-\n6   ENTER GROUP CALL\n\n**Let new people in by QR code.\n\n///\n\n- In BirdBox, swipe up to change the bird type.\n\n- In Maths, press Roll to change the set.\n\n- Press [+] for the menu including Group Call.';
+var SCORE_SEED_V=4;
+var SCORE_SEED_NAME="26 TEMMUZ - İstiklal";
+var SCORE_SEED_TEXT="26 TEMMUZ - İstiklal\n---\nTünel > Gezi Parkı\n\n* BIRDBOX'I ÇALARAK, GRUPLA BERABER TÜNEL'DEN TAKSİM'E YÜRÜ\n\n- BIRDBOX'ı ortadaki kuşa basarak aç.\n\n- Yukarı kaydırarak kuşları değiştir.\n\n- Aşağıdaki çark ile kuşların hızını belirle. (1-100)\n\n* YÜRÜYÜŞ ESNASINDA:\n\n- Sokağa dağıl, performansı belli etme, anonim olmaya çalış.\n\n- Kulaklıklarını \"telefona bağlamadan\" tak.\n\n- En yakınındaki grup üyesiyle en az 3 metre mesafe koru.";
 function seedDefaultScore(){
   var ui=scoreGetUI();
   if(ui.seeded>=SCORE_SEED_V)return;
   var prev=scoreRec(SCORE_SEED_ID);
   if(prev){
-    prev._n='PESARO - 12 JULY';prev.text=SCORE_SEED_TEXT;scoreWrite(prev);
+    prev._n=SCORE_SEED_NAME;prev.text=SCORE_SEED_TEXT;scoreWrite(prev);
   }else{
-    var dup=getAllScores().some(function(o){return (o._n||scoreName(o.text))==='PESARO - 12 JULY';});
+    var dup=getAllScores().some(function(o){return (o._n||scoreName(o.text))===SCORE_SEED_NAME;});
     if(!dup){
-      scoreWrite({_t:SCORE_SEED_ID,_n:'PESARO - 12 JULY',size:16,text:SCORE_SEED_TEXT});
+      scoreWrite({_t:SCORE_SEED_ID,_n:SCORE_SEED_NAME,size:16,text:SCORE_SEED_TEXT});
       if(ui.activeId==null||!scoreRec(ui.activeId))ui.activeId=SCORE_SEED_ID;
       if(ui.tabOn===undefined&&ui.overlayOn===undefined)ui.tabOn=true;
     }
