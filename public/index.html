@@ -258,6 +258,21 @@ input[type=range]::-moz-range-thumb{width:20px;height:20px;border-radius:50%;bac
 #bbTempoTicks{position:absolute;inset:0;background:repeating-linear-gradient(90deg,rgba(255,255,255,.5) 0 1px,transparent 1px 11px);-webkit-mask-image:linear-gradient(90deg,transparent,#000 22%,#000 78%,transparent);mask-image:linear-gradient(90deg,transparent,#000 22%,#000 78%,transparent)}
 #bbTempoWheel::after{content:"";position:absolute;inset:0;pointer-events:none;background:linear-gradient(rgba(0,0,0,.28),transparent 42%,transparent 58%,rgba(0,0,0,.28))}
 #bbTempoVal{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);z-index:1;font:600 10px/1 'DM Mono',monospace;letter-spacing:1px;color:rgba(255,255,255,.92);text-shadow:0 1px 2px rgba(0,0,0,.45);pointer-events:none}
+/* BIRDBOX list-range: vertical dual-thumb window into the active MATHS list.
+   Console-fader skin lifted from the MIXER (.mix-track/.mix-thumb) — 1 at the bottom, 32 at the top. */
+/* --bbr-a/--bbr-b = hi/lo thumb centres as % from the track top; the groove is masked away
+   between them so the selected window reads as a cut-out onto the live #bbBg gradient. */
+#bbRange{position:absolute;left:7px;top:0;bottom:0;width:34px;z-index:6;touch-action:none;--bbr-a:0%;--bbr-b:100%}
+#bbRangeTrack{position:absolute;left:0;right:0;top:15%;bottom:15%}
+#bbRangeTrack::before{content:'';position:absolute;left:50%;top:0;bottom:0;width:10px;background:linear-gradient(90deg,#cbc4b0,#ece6d5);box-shadow:inset 1px 0 3px rgba(0,0,0,.4);border-radius:2px;transform:translateX(-50%);-webkit-mask-image:linear-gradient(#000 0 calc(var(--bbr-a) - 8px),transparent calc(var(--bbr-a) - 8px) calc(var(--bbr-b) + 8px),#000 calc(var(--bbr-b) + 8px) 100%);mask-image:linear-gradient(#000 0 calc(var(--bbr-a) - 8px),transparent calc(var(--bbr-a) - 8px) calc(var(--bbr-b) + 8px),#000 calc(var(--bbr-b) + 8px) 100%)}
+/* thumb = the light strip only; the dark cap blocks are transparent so the gradient reads through.
+   drop-shadow follows the alpha channel, so it shadows the strip and not an invisible box. */
+.bbr-thumb{position:absolute;left:50%;width:26px;height:16px;background:linear-gradient(180deg,transparent 41%,#d8d0ba 41%,#d8d0ba 59%,transparent 59%);border:none;transform:translate(-50%,-50%);cursor:pointer;touch-action:none;filter:drop-shadow(0 1px 1.5px rgba(0,0,0,.55))}
+.bbr-thumb::before{content:'';position:absolute;left:-9px;right:-9px;top:-10px;bottom:-10px}
+#bbRangeHiT{z-index:2}
+#bbRangeLoT{z-index:3}
+.bbr-num{position:absolute;left:38px;font:600 10px/1 'DM Mono',monospace;letter-spacing:1px;color:rgba(255,255,255,.92);text-shadow:0 1px 2px rgba(0,0,0,.45);transform:translateY(-50%);pointer-events:none;opacity:0;transition:opacity .18s}
+#bbRange.dragging .bbr-num{opacity:1}
 /* ═══ AUDIO FUNCTION (riser) ═══ */
 #modRiser.active{gap:15px;padding:20px 14px var(--mod-pad-bot)}
 .af-title{font-size:11px;letter-spacing:3px;color:#a0ad95;font-weight:500;margin-bottom:2px}
@@ -414,7 +429,8 @@ input[type=range]::-moz-range-thumb{width:20px;height:20px;border-radius:50%;bac
 #modVoice{font-family:Arial,sans-serif}
 #modVoice .bsm{background:#FFEEF5;border:none;color:#fff;font-family:Arial,sans-serif;font-size:16px;font-weight:400;height:auto;border-radius:3px}
 #vtAlwaysVoiceBtn{padding:9px 38px}
-#modVoice #vtAutoWobbleBtn{padding:4px 20px;margin-top:-10px;text-align:center;font-size:14px}
+#vtBtnRow{display:flex;justify-content:center;align-items:center;gap:8px;flex-wrap:wrap;margin-top:-10px}
+#modVoice #vtBtnRow .bsm{padding:4px 18px;text-align:center;font-size:14px}
 #modVoice .bsm:active{background:#f5d5ef}
 #modVoice .bsm.on{background:#FFEEF5;color:#d9a0d5}
 #modVoice input[type=range]{background:#f5d5ef}
@@ -441,7 +457,7 @@ input[type=range]::-moz-range-thumb{width:20px;height:20px;border-radius:50%;bac
 /* ═══ SCORES ═══ */
 /* ghost tab — the collapsed handle, docked to an edge of the app column */
 #scoreTab{
-  position:absolute;left:0;top:50%;width:24px;height:60px;z-index:140;
+  position:absolute;left:auto;right:0;top:50%;width:24px;height:60px;z-index:140;
   display:none;align-items:center;justify-content:center;
   background:rgba(248,244,235,.35);
   border:1px solid #c2ccb6;border-left:none;border-radius:0 3px 3px 0;
@@ -529,7 +545,7 @@ input[type=range]::-moz-range-thumb{width:20px;height:20px;border-radius:50%;bac
       PUT ON MAX VOLUME
     </div>
     <div id="lpQR"></div>
-    <div class="lp-instr">READ THE SCORE (hanging on the left)</div>
+    <div class="lp-instr">READ THE SCORE (hanging on the right)</div>
     <button class="lp-enter" onclick="dismissLanding()">ENTER</button>
   </div>
 </div>
@@ -621,6 +637,7 @@ input[type=range]::-moz-range-thumb{width:20px;height:20px;border-radius:50%;bac
   <img id="bbBird" src="henningchristiansen-bird-nobackground.svg" alt="">
   <div id="bbPlayBtn" onclick="toggleSweep()"></div>
   <div id="bbTempoWheel"><div id="bbTempoTicks"></div><div id="bbTempoVal">93</div></div>
+  <div id="bbRange"><div id="bbRangeTrack"><div class="bbr-thumb" id="bbRangeHiT"></div><div class="bbr-thumb" id="bbRangeLoT"></div><span class="bbr-num" id="bbRangeLoV">1</span><span class="bbr-num" id="bbRangeHiV">32</span></div></div>
   <div id="bbControls">
     <div style="display:flex;flex-direction:column;align-items:center;gap:4px">
       <button class="pbtn" id="swpPB" onclick="toggleSweep()"><svg id="swpPI" width="20" height="20" viewBox="0 0 24 24"><polygon points="6,3 20,12 6,21" fill="#2d6a4e"/></svg><svg id="swpSI" width="18" height="18" viewBox="0 0 24 24" style="display:none"><rect x="4" y="4" width="16" height="16" rx="2" fill="#ede7d4"/></svg></button>
@@ -860,7 +877,11 @@ input[type=range]::-moz-range-thumb{width:20px;height:20px;border-radius:50%;bac
     <canvas id="vtBackCanvas" width="600" height="730"></canvas>
     <canvas id="vtTractCanvas" width="600" height="730"></canvas>
   </div>
-  <button class="bsm" id="vtAutoWobbleBtn" onclick="vtToggleAutoWobble()">pitch wobble</button>
+  <div id="vtBtnRow">
+    <button class="bsm" id="vtOtotuneBtn" onclick="vtToggleOtotune()">ototune</button>
+    <button class="bsm" id="vtFreeBtn" onclick="vtToggleFree()">free</button>
+    <button class="bsm" id="vtAutoWobbleBtn" onclick="vtToggleAutoWobble()">wobble</button>
+  </div>
   <button class="bsm" id="vtAlwaysVoiceBtn" onclick="vtToggleAlwaysVoice()">always voice</button>
   <div class="rr">
     <div class="lbl" style="text-align:center;font-family:Arial,sans-serif;font-size:11px;margin-bottom:3px">volume</div>
@@ -1052,7 +1073,7 @@ function scoreDelete(){
 /* ── ghost tab: geometry, drag, open/close ── */
 /* SC_TAB_W/H must match #scoreTab in the stylesheet */
 var SC_TAB_W=24,SC_TAB_H=60,SC_TAB_EDGE=8;
-var scoreTabOn=false,scTabSide='l',scTabYFrac=0.5,scTabDrag=null;
+var scoreTabOn=false,scTabSide='r',scTabYFrac=0.5,scTabDrag=null;
 function scoreTabMetrics(){
   var r=document.getElementById('app').getBoundingClientRect();
   var tb=document.querySelector('.tabs');
@@ -1148,7 +1169,7 @@ function renderScores(){
   scoreActiveId=id;scoreApplyEditor(id!=null?scoreRec(id):null);
   renderScoreList();scoreRefreshOverlay();
   scoreTabOn=!!ui.tabOn;
-  scTabSide=ui.side==='r'?'r':'l';
+  scTabSide=ui.side==='l'?'l':'r';
   scTabYFrac=typeof ui.tabY==='number'?Math.max(0,Math.min(1,ui.tabY)):0.5;
   document.getElementById('app').classList.remove('score-open');
   scoreTabSync();
@@ -1334,6 +1355,13 @@ let bbDurPool=BB_DURS.slice();
 let bbDurHarmonic=true;
 let bbTempo=8,bbTempoPos=4515;
 let bbDurPoolPool=BB_DURS.slice();
+let bbRangeLo=1,bbRangeHi=32;   // 1-based inclusive window into the active MATHS list
+function bbRangeSlice(arr){
+  var n=arr.length;if(!n)return arr;
+  var lo=Math.max(1,Math.min(n,bbRangeLo)),hi=Math.max(lo,Math.min(n,bbRangeHi));
+  var s=arr.slice(lo-1,hi);
+  return s.length?s:arr.slice();
+}
 let rsFreqPoolA=RS_FREQS_A.slice();
 let rsFreqPoolB=RS_FREQS_B.slice();
 // Direction types: {k=key, base=right|left|bloop, sm=sweep reps, pm=pause reps}
@@ -2258,15 +2286,16 @@ function foldIntoRange(f,lo,hi){
 }
 function recomputeHarmonicPools(fundOverride){
   if(multiHarmonicIdx<0){
-    bbFreqPool=BB_FREQS.slice();bbDurPool=BB_DURS.slice();rsFreqPoolA=RS_FREQS_A.slice();rsFreqPoolB=RS_FREQS_B.slice();return;
+    bbFreqPool=BB_FREQS.slice();bbDurPool=BB_DURS.slice();rsFreqPoolA=RS_FREQS_A.slice();rsFreqPoolB=RS_FREQS_B.slice();vtOtoBuild(fundOverride);return;
   }
   var ratios=HARMONIC_LISTS[multiHarmonicIdx].ratios;
   var fund=fundOverride!=null?fundOverride:multiFundamental;
   // BIRDBOX: pure raw fundamental×ratio — all 32, no fold, no dedupe (same clamp MATHS uses)
   var bbArr=[];
   for(var i=0;i<ratios.length;i++)bbArr.push(Math.max(0.01,Math.min(1e8,r2(fund*ratios[i]*bbFqRatio))));
-  bbArr.sort(function(a,b){return a-b;});
-  bbFreqPool=bbArr.length>=4?bbArr:BB_FREQS.slice();
+  // window first (source-ratio order, so "the 8th number" means the 8th list entry), sort after
+  if(bbArr.length>=4){bbFreqPool=bbRangeSlice(bbArr).slice().sort(function(a,b){return a-b;});}
+  else bbFreqPool=BB_FREQS.slice();
   // BIRDBOX durations: inverse harmonic — 100 ÷ ratio (no fundamental), capped 300s (also tames ratio 0 → ∞), all 32
   bbDurPool=ratios.map(function(r){return r2(Math.min(300,bbTempo/r));});
   // RISER/VISTA: unchanged — octave-fold into low/high bands
@@ -2281,6 +2310,7 @@ function recomputeHarmonicPools(fundOverride){
   var rsBArr=Object.keys(rsBSet).map(Number).sort(function(a,b){return a-b;});
   rsFreqPoolA=rsAArr.length>=4?rsAArr:RS_FREQS_A.slice();
   rsFreqPoolB=rsBArr.length>=4?rsBArr:RS_FREQS_B.slice();
+  vtOtoBuild(fundOverride);
 }
 
 /* ═══════ CALL ═══════ */
@@ -2376,6 +2406,7 @@ function captureState(){
     mv:multiMVol,mw:multiWv,md:multiDur,mvm:multiVolMin,mvx:multiVolMax,mld:multiLfoDur,mlo:multiLfoOn?1:0,
     mvse:muVsOn?1:0,mvsau:muVsAuto?1:0,mvsa:muVsA,mvsb:muVsB,mvsf:muVsFader,mvsd:muVsDur,mvsr:DIR_ENC[muVsDir]||'fwd',mvst:TYPE_ENC[muVsType]||'l',mvsp:muVsPerOsc?1:0,
     mhi:multiHarmonicIdx,mfu:multiFundamental,mor:multiOscRatios.slice(),mff:multiFilterFreq,mft:multiFilterType,bfr:bbFqRatio,
+    brl:bbRangeLo,brh:bbRangeHi,
     mr:multiOscs.map(function(o){return{f:o.freq,v:o.vol,m:o.muted?1:0};}),
     xm:appMasterVol,
     ma:multiAutoOn?1:0,xa:appAutoOn?1:0,lm:appLimOn?1:0
@@ -2417,7 +2448,10 @@ function restoreState(o){
   if(appMaster&&AC)appMaster.gain.setTargetAtTime(v2g(appMasterVol),AC.currentTime,.02);
   multiAutoOn=!!o.ma;appAutoOn=!!o.xa;appLimOn=!!o.lm;
   multiAutoRecalc();appAutoRecalc();appLimRecalc();
+  bbRangeLo=o.brl!=null?Math.max(1,Math.min(32,o.brl)):1;
+  bbRangeHi=o.brh!=null?Math.max(bbRangeLo,Math.min(32,o.brh)):32;
   recomputeHarmonicPools();
+  bbSyncRange();bbRangeSave();
   syncRiserUI();syncSweepUI();syncNoiseUI();syncMultiUI();syncMixerUI();
 }
 
@@ -2626,6 +2660,7 @@ function bbMapL(v,inMin,inMax,lMin,lMax){var t=Math.max(0,Math.min(1,(v-inMin)/(
 function updateBBBackground(){
   var fA=swpFqMin,fB=swpFqMax;
   var pMn=bbFreqPool[0]||1000,pMx=bbFreqPool[bbFreqPool.length-1]||16000;
+  if(!(pMx>pMn))pMx=pMn+1;   // 1-wide window / duplicate ratios would divide by zero -> NaN gradient
   var L1=bbMapL(fA,pMn,pMx,20,75);
   var L2=bbMapL(fB,pMn,pMx,20,75);
   var L3=bbMapL(fA+fB,pMn*2,pMx*2,20,75);
@@ -2682,6 +2717,64 @@ function initBBTempoWheel(){
   w.addEventListener('touchend',function(){drag=false;},{passive:true});
   w.addEventListener('click',function(e){e.stopPropagation();});
   bbSetTempo(bbTempoPos);
+}
+/* ═══════ BIRDBOX LIST-RANGE (vertical dual-thumb window into the active MATHS list) ═══════ */
+function bbRangeY(i){return (1-(i-1)/31)*100;}          // index -> % from track top (1 bottom, 32 top)
+function bbRangeIdxFromY(y){
+  var t=document.getElementById('bbRangeTrack');if(!t)return bbRangeLo;
+  var r=t.getBoundingClientRect();if(!r.height)return bbRangeLo;
+  var f=Math.max(0,Math.min(1,(y-r.top)/r.height));
+  return Math.round((1-f)*31)+1;                        // 1..32
+}
+function bbSyncRange(){
+  var lo=document.getElementById('bbRangeLoT');if(!lo)return;
+  var hi=document.getElementById('bbRangeHiT'),host=document.getElementById('bbRange');
+  var yl=bbRangeY(bbRangeLo),yh=bbRangeY(bbRangeHi);
+  lo.style.top=yl+'%';hi.style.top=yh+'%';
+  // stacked thumbs: keep whichever one still has room on top, else the pair locks up at 1-1
+  var pinned=(bbRangeLo===bbRangeHi&&bbRangeLo<=1);
+  lo.style.zIndex=pinned?2:3;hi.style.zIndex=pinned?3:2;
+  // cut the groove between the thumbs so the window shows the gradient instead of a fill
+  if(host){host.style.setProperty('--bbr-a',yh+'%');host.style.setProperty('--bbr-b',yl+'%');}
+  var vl=document.getElementById('bbRangeLoV'),vh=document.getElementById('bbRangeHiV');
+  if(vl){vl.textContent=bbRangeLo;vl.style.top=yl+'%';}
+  if(vh){vh.textContent=bbRangeHi;vh.style.top=yh+'%';}
+}
+function bbRangeSave(){try{localStorage.setItem('pbb_ui',JSON.stringify({rlo:bbRangeLo,rhi:bbRangeHi}));}catch(e){}}
+function bbRangeLoad(){try{
+  var o=JSON.parse(localStorage.getItem('pbb_ui'))||{},lo=+o.rlo,hi=+o.rhi;
+  if(isFinite(lo)&&isFinite(hi)){
+    bbRangeLo=Math.max(1,Math.min(32,Math.round(lo)));
+    bbRangeHi=Math.max(bbRangeLo,Math.min(32,Math.round(hi)));
+  }
+}catch(e){}}
+function initBBRange(){
+  var host=document.getElementById('bbRange');if(!host)return;
+  var drag=null;
+  ['lo','hi'].forEach(function(which){
+    var el=document.getElementById(which==='lo'?'bbRangeLoT':'bbRangeHiT');if(!el)return;
+    el.addEventListener('pointerdown',function(e){
+      e.preventDefault();e.stopPropagation();
+      drag=which;host.classList.add('dragging');
+      try{el.setPointerCapture(e.pointerId);}catch(_){}
+    });
+    el.addEventListener('pointermove',function(e){
+      if(drag!==which)return;e.preventDefault();
+      var i=bbRangeIdxFromY(e.clientY);
+      if(which==='lo')bbRangeLo=Math.min(i,bbRangeHi);else bbRangeHi=Math.max(i,bbRangeLo);
+      bbSyncRange();recomputeHarmonicPools();updateBBBackground();
+    });
+    function end(e){
+      if(drag!==which)return;
+      drag=null;host.classList.remove('dragging');
+      try{el.releasePointerCapture(e.pointerId);}catch(_){}
+      bbRangeSave();
+    }
+    el.addEventListener('pointerup',end);
+    el.addEventListener('pointercancel',end);
+  });
+  host.addEventListener('click',function(e){e.stopPropagation();});
+  bbSyncRange();
 }
 function bbRand(arr){return arr[Math.floor(Math.random()*arr.length)];}
 function randomizeBirdbox(){
@@ -2790,7 +2883,7 @@ function toggleRiser(){
 (function(){
   let sy=0,sx=0,live=false;
   document.addEventListener('touchstart',function(e){
-    if(e.target.closest('.tabs,.plus-menu'))return;
+    if(e.target.closest('.tabs,.plus-menu,#bbRange'))return;
     sy=e.touches[0].clientY;sx=e.touches[0].clientX;live=true;
   },{passive:true});
   document.addEventListener('touchend',function(e){
@@ -2808,6 +2901,7 @@ function toggleRiser(){
     if(window.matchMedia('(hover:none) and (pointer:coarse)').matches)return;
     if(e.target.closest('#bbPlayBtn'))return;
     if(e.target.closest('#bbTempoWheel'))return;
+    if(e.target.closest('#bbRange'))return;
     randomizeBirdbox();
   });
 })();
@@ -2824,10 +2918,54 @@ function toggleRiser(){
 /* ═══════ VOICE (Pink Trombone) ═══════ */
 var vtInitialized=false,vtMounted=false,vtRAF=null,vtMGn=null,vtSigGn=null,vtVol=100;
 var vtRedraw=null;
+/* OTOTUNE — pitch set derived from the MATHS list, octave-folded into a human vocal range.
+   VT_OTO_OCT is the single knob: 2 => F2..F4, 3 => F2..F5. */
+const VT_OTO_LO=87.3071,VT_OTO_OCT=2;
+const VT_OTO_HI=VT_OTO_LO*Math.pow(2,VT_OTO_OCT),VT_OTO_SEMIS=VT_OTO_OCT*12;
+const VT_OTO_DEDUPE_CENTS=5;
+/* mini-wobble (the always-on simplex drift) while OTOTUNE is on, in cents peak deviation.
+   Unscaled, the pair 0.02*simplex1+0.04*simplex1 peaks at |vib|=0.06 (~101 cents) — so the
+   multiplier below converts a cents target into that pair's depth. Edit the cents, not the ratio. */
+const VT_OTO_WOBBLE_CENTS=9;
+const VT_OTO_WOBBLE=(Math.pow(2,VT_OTO_WOBBLE_CENTS/1200)-1)/0.06;
+var vtOtoSet=[],vtOtoRoot=VT_OTO_LO;
+function vtOtoCents(a,b){return 1200*Math.log(a/b)/Math.LN2;}
+function vtOtoBuild(fundOverride){
+  var out=[],i,k,ded=[];
+  var fund=fundOverride!=null?fundOverride:multiFundamental;
+  var root=multiHarmonicIdx>=0?foldIntoRange(fund,VT_OTO_LO,VT_OTO_HI):null;
+  if(root){
+    var ratios=HARMONIC_LISTS[multiHarmonicIdx].ratios,pcs=[];
+    for(i=0;i<ratios.length;i++){
+      var r=Math.abs(ratios[i]),g=0;
+      if(!(r>0)||!isFinite(r))continue;
+      while(r>=2&&g<200){r/=2;g++;}
+      while(r<1&&g<200){r*=2;g++;}
+      pcs.push(r);
+    }
+    for(i=0;i<pcs.length;i++)for(k=-3;k<=3;k++){
+      var f=root*pcs[i]*Math.pow(2,k);
+      if(f>=VT_OTO_LO&&f<=VT_OTO_HI)out.push(f);
+    }
+  }
+  out.sort(function(a,b){return a-b;});
+  for(i=0;i<out.length;i++)if(!ded.length||vtOtoCents(out[i],ded[ded.length-1])>VT_OTO_DEDUPE_CENTS)ded.push(out[i]);
+  if(ded.length<2){ded=[];for(i=0;i<=VT_OTO_SEMIS;i++)ded.push(VT_OTO_LO*Math.pow(2,i/12));root=VT_OTO_LO;}
+  vtOtoSet=ded;vtOtoRoot=root;
+  if(VT&&VT.redrawBack)VT.redrawBack();
+}
+function vtOtoSnap(f){
+  var s=vtOtoSet,n=s.length,lo=0,hi,m;
+  if(!n||!(f>0))return f;
+  if(f<=s[0])return s[0];
+  hi=n-1;if(f>=s[hi])return s[hi];
+  while(hi-lo>1){m=(lo+hi)>>1;if(s[m]<=f)lo=m;else hi=m;}
+  return f*f<=s[lo]*s[hi]?s[lo]:s[hi];
+}
 var VT=(function(){
 var backCanvas,backCtx,tractCanvas,tractCtx;
 var sampleRate,time=0,temp={a:0,b:0};
-var alwaysVoice=false,autoWobble=false;
+var alwaysVoice=false,autoWobble=false,ototune=false,free=false;
 var palePink='#FFEEF5';
 var _gainNode=null;
 
@@ -2933,7 +3071,7 @@ var AudioSystem={
 };
 
 var Glottis={
-  timeInWaveform:0,oldFrequency:140,newFrequency:140,UIFrequency:140,smoothFrequency:140,
+  timeInWaveform:0,oldFrequency:140,newFrequency:140,UIFrequency:140,smoothFrequency:140,rawFrequency:140,
   oldTenseness:0.6,newTenseness:0.6,UITenseness:0.6,totalTime:0,
   vibratoAmount:0.005,vibratoFrequency:6,intensity:0,loudness:1,isTouched:false,
   touch:0,x:240,y:623,
@@ -2945,9 +3083,19 @@ var Glottis={
     backCtx.globalAlpha=1.0;backCtx.lineCap='round';backCtx.lineJoin='round';
     this.drawBar(0.0,0.4,8);backCtx.globalAlpha=0.7;this.drawBar(0.52,0.72,8);
     backCtx.strokeStyle='orchid';backCtx.fillStyle='orchid';
-    for(var i=0;i<this.semitones;i++){
-      var kw=this.keyboardWidth/this.semitones,x=this.keyboardLeft+(i+0.5)*kw,y=this.keyboardTop;
-      if(this.marks[(i+3)%12]==1){backCtx.lineWidth=4;backCtx.globalAlpha=0.4;}
+    var lines=[],y=this.keyboardTop,i,x;
+    if(ototune){
+      for(i=0;i<vtOtoSet.length;i++){
+        var cc=Math.abs(vtOtoCents(vtOtoSet[i],vtOtoRoot))%1200;
+        lines.push({x:this.freqToX(vtOtoSet[i]),e:cc<5||cc>1195});
+      }
+    }else{
+      var kw=this.keyboardWidth/this.semitones;
+      for(i=0;i<this.semitones;i++)lines.push({x:this.keyboardLeft+(i+0.5)*kw,e:this.marks[(i+3)%12]==1});
+    }
+    for(i=0;i<lines.length;i++){
+      x=lines[i].x;
+      if(lines[i].e){backCtx.lineWidth=4;backCtx.globalAlpha=0.4;}
       else{backCtx.lineWidth=3;backCtx.globalAlpha=0.2;}
       backCtx.beginPath();backCtx.moveTo(x,y+9);backCtx.lineTo(x,y+this.keyboardHeight*0.4-9);backCtx.stroke();
       backCtx.lineWidth=3;backCtx.globalAlpha=0.15;
@@ -2973,6 +3121,10 @@ var Glottis={
     backCtx.lineTo(0,-ahw);backCtx.lineTo(ahl,0);backCtx.lineTo(0,ahw);backCtx.lineTo(0,0);
     backCtx.closePath();backCtx.stroke();backCtx.fill();
   },
+  freqToX:function(f){
+    var s=12*Math.log(f/this.baseNote)/Math.LN2;
+    return clamp(this.keyboardLeft+s*this.keyboardWidth/VT_OTO_SEMIS,this.keyboardLeft,this.keyboardLeft+this.keyboardWidth);
+  },
   handleTouches:function(){
     if(this.touch!=0&&!this.touch.alive)this.touch=0;
     if(this.touch==0){for(var j=0;j<UI.touchesWithMouse.length;j++){
@@ -2980,13 +3132,14 @@ var Glottis={
     if(this.touch!=0){
       var ly=this.touch.y-this.keyboardTop-10,lx=this.touch.x-this.keyboardLeft;
       ly=clamp(ly,0,this.keyboardHeight-26);
-      var semi=this.semitones*lx/this.keyboardWidth+0.5;
-      Glottis.UIFrequency=this.baseNote*Math.pow(2,semi/12);
+      var semi=ototune?VT_OTO_SEMIS*lx/this.keyboardWidth:this.semitones*lx/this.keyboardWidth+0.5;
+      Glottis.rawFrequency=this.baseNote*Math.pow(2,semi/12);
+      Glottis.UIFrequency=ototune&&!free?vtOtoSnap(Glottis.rawFrequency):Glottis.rawFrequency;
       if(Glottis.intensity==0)Glottis.smoothFrequency=Glottis.UIFrequency;
       var t=clamp(1-ly/(this.keyboardHeight-28),0,1);
       Glottis.UITenseness=1-Math.cos(t*Math.PI*0.5);
       Glottis.loudness=Math.pow(Glottis.UITenseness,0.25);
-      this.x=this.touch.x;this.y=ly+this.keyboardTop+10;
+      this.x=ototune&&!free?this.freqToX(Glottis.UIFrequency):this.touch.x;this.y=ly+this.keyboardTop+10;
     }
     Glottis.isTouched=(this.touch!=0);
   },
@@ -3002,8 +3155,10 @@ var Glottis={
     return this.UITenseness*this.intensity*voiced+(1-this.UITenseness*this.intensity)*0.3;
   },
   finishBlock:function(){
+    if(ototune)this.UIFrequency=free?this.rawFrequency:vtOtoSnap(this.rawFrequency);
     var vib=0;vib+=this.vibratoAmount*Math.sin(2*Math.PI*this.totalTime*this.vibratoFrequency);
-    vib+=0.02*noise.simplex1(this.totalTime*4.07);vib+=0.04*noise.simplex1(this.totalTime*2.15);
+    if(ototune)vib+=VT_OTO_WOBBLE*(0.02*noise.simplex1(this.totalTime*4.07)+0.04*noise.simplex1(this.totalTime*2.15));
+    else{vib+=0.02*noise.simplex1(this.totalTime*4.07);vib+=0.04*noise.simplex1(this.totalTime*2.15);}
     if(autoWobble){vib+=0.2*noise.simplex1(this.totalTime*0.98);vib+=0.4*noise.simplex1(this.totalTime*0.5);}
     if(this.UIFrequency>this.smoothFrequency)this.smoothFrequency=Math.min(this.smoothFrequency*1.1,this.UIFrequency);
     if(this.UIFrequency<this.smoothFrequency)this.smoothFrequency=Math.max(this.smoothFrequency/1.1,this.UIFrequency);
@@ -3337,6 +3492,12 @@ var UI={
       else touch.fricative_intensity=clamp(1-(time-touch.endTime)/fat,0,1);}}
 };
 
+function vtRedrawBack(){
+  if(!backCtx)return;
+  backCtx.clearRect(0,0,backCanvas.width,backCanvas.height);
+  Glottis.drawKeyboard();TractUI.drawBackground();
+}
+
 return{
   init:function(container,ac,gainNode){
     backCanvas=container.querySelector('#vtBackCanvas');backCtx=backCanvas.getContext('2d');
@@ -3351,7 +3512,12 @@ return{
   },
   unmount:function(){if(vtRAF){cancelAnimationFrame(vtRAF);vtRAF=null;}},
   setAlwaysVoice:function(v){alwaysVoice=v;},setAutoWobble:function(v){autoWobble=v;},
-  getAlwaysVoice:function(){return alwaysVoice;},getAutoWobble:function(){return autoWobble;}
+  setOtotune:function(v){ototune=v;if(!vtOtoSet.length)vtOtoBuild();Glottis.handleTouches();vtRedrawBack();},
+  setFree:function(v){free=v;Glottis.handleTouches();},
+  redrawBack:function(){vtRedrawBack();},
+  getAlwaysVoice:function(){return alwaysVoice;},getAutoWobble:function(){return autoWobble;},
+  getOtotune:function(){return ototune;},
+  getFree:function(){return free;}
 };
 })();
 
@@ -3364,6 +3530,8 @@ function vtMount(){if(!vtInitialized)return;vtMounted=true;VT.mount();appAutoRec
 function vtUnmount(){if(!vtInitialized||!vtMounted)return;vtMounted=false;VT.unmount();appAutoRecalc();}
 function vtToggleAlwaysVoice(){var on=!VT.getAlwaysVoice();VT.setAlwaysVoice(on);document.getElementById('vtAlwaysVoiceBtn').classList.toggle('on',on);}
 function vtToggleAutoWobble(){var on=!VT.getAutoWobble();VT.setAutoWobble(on);document.getElementById('vtAutoWobbleBtn').classList.toggle('on',on);}
+function vtToggleOtotune(){var on=!VT.getOtotune();VT.setOtotune(on);document.getElementById('vtOtotuneBtn').classList.toggle('on',on);}
+function vtToggleFree(){var on=!VT.getFree();VT.setFree(on);document.getElementById('vtFreeBtn').classList.toggle('on',on);}
 /* ═══════ INIT ═══════ */
 syncRsW();
 initSwpTypeSel('rsPitchTypeSel','linear',function(t){rsPitchType=t;});
@@ -3376,7 +3544,7 @@ nsVsRenderDir();
 mkDirBtns('swpFqDirBtns','r',function(d){swpFqDir=d;swpBloopReturn=false;swpRepCount=0;if(swpPausing){swpPausing=false;swpFqFwd=parsDir(d).base!=='left';swpFqStart=performance.now();if(swpSigGn&&AC)swpSigGn.gain.setTargetAtTime(1,AC.currentTime,.01);}},BB_DIRS.map(function(d){return d.k;}));
 initSwpTypeSel('muVsTypeSel','linear',function(t){muVsType=t;muVsRewave();});
 muVsRefreshFader();muVsUpdModes();muVsRenderDir();
-initEQ();initNP();multiInit();initMselWave();initMselFilter();initMultiHarmonics();recomputeHarmonicPools();initMultiDualRange();syncMultiUI();renderArchive();initMixer();initBBTempoWheel();seedDefaultScore();renderScores();initScoreTab();
+initEQ();initNP();multiInit();initMselWave();initMselFilter();initMultiHarmonics();bbRangeLoad();recomputeHarmonicPools();initMultiDualRange();syncMultiUI();renderArchive();initMixer();initBBTempoWheel();initBBRange();seedDefaultScore();renderScores();initScoreTab();
 document.addEventListener('click',function(e){
   if(!e.target.closest('.msel'))document.querySelectorAll('.msel.open').forEach(function(s){s.classList.remove('open');});
   if(!e.target.closest('.mc-rclick')&&!e.target.closest('#mathsMenuLayer'))closeRatioMenu();
