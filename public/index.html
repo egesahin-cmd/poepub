@@ -151,12 +151,17 @@ input[type=range]::-moz-range-thumb{width:20px;height:20px;border-radius:50%;bac
 .ms-toggle{width:34px;height:18px;padding:0;font-size:8px;font-weight:600;letter-spacing:1px;border-radius:1px;cursor:pointer;background:#f8f4eb;color:#000;border:1px solid #000;font-family:inherit;line-height:16px;text-align:center;flex-shrink:0}
 .ms-toggle.on{background:#000;color:#fff}
 #msMasterWrap .ms-label{display:inline}
-#mathsFilterSel{display:inline-block;vertical-align:baseline;position:relative;color:#222;margin-left:5px}
-#mathsFilterSel .msel-head{padding:1px 6px;border:none;border-radius:4px;background:rgba(0,0,0,.05);font-size:8.4px;letter-spacing:1px;color:#222;gap:0}
-#mathsFilterSel .msel-arrow{display:none}
-#mathsFilterSel .msel-opts{top:auto;bottom:100%;margin-top:0;margin-bottom:4px;border-radius:6px}
-#mathsFilterSel .msel-opt{font-size:8.4px;letter-spacing:1px;color:#999;padding:5px 9px;border-radius:4px}
-#mathsFilterSel .msel-opt.active{color:#555}
+/* label was inline (baseline-aligned) and the unit floated (line-box-top aligned), which left
+   the unit ~9px high; one flex row centres them against each other regardless of font metrics */
+#msMasterWrap .ms-hdr{display:flex;align-items:center;justify-content:space-between}
+#msMasterWrap .ms-unit{float:none}
+/* label carries margin-bottom:-1px from the coarse-pointer rule and the unit +1px; with
+   align-items centring the MARGIN box that offsets them by 1px. Two ids to outrank it. */
+#modMulti #msMasterWrap .ms-hdr .ms-label,#modMulti #msMasterWrap .ms-hdr .ms-unit{margin-bottom:0}
+/* the old single-fader look, kept verbatim — flat #aaa 20px cap, no ring, and no fill bar;
+   .dual-track already matches its 3px #ccc groove. Only difference now is the second thumb. */
+#multiFiltRange .dual-thumb{background:#aaa;border:none}
+#multiFiltRange .dual-fill{display:none}
 .maths-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:6px;width:100%;max-width:360px}
 .maths-cell{position:relative;aspect-ratio:var(--mu-cell-ar);background:#f8f4eb;border:1px solid #ccc;border-radius:1px;cursor:pointer;display:flex;flex-direction:column;justify-content:flex-end;padding:5px 6px;transition:opacity .15s;min-width:0;overflow:hidden}
 .maths-cell.muted{opacity:.25}
@@ -207,8 +212,6 @@ input[type=range]::-moz-range-thumb{width:20px;height:20px;border-radius:50%;bac
 #appLimBtn{background:#ede7d4}
 #appLimBtn.on{background:#000}
 #msVolWrap{padding-bottom:5px}
-#msMasterWrap input[type=range]::-webkit-slider-thumb{background:#aaa;width:20px;height:20px}
-#msMasterWrap input[type=range]::-moz-range-thumb{background:#aaa;width:20px;height:20px}
 .dual-track{position:absolute;top:50%;left:0;right:0;height:3px;background:#ccc;border-radius:2px;transform:translateY(-50%)}
 .dual-fill{position:absolute;top:50%;height:3px;background:#333;border-radius:2px;transform:translateY(-50%);pointer-events:none}
 .dual-thumb{position:absolute;top:50%;width:20px;height:20px;border-radius:50%;background:#333;border:2px solid #ede7d4;transform:translate(-50%,-50%);cursor:pointer;touch-action:none;z-index:2}
@@ -254,25 +257,64 @@ input[type=range]::-moz-range-thumb{width:20px;height:20px;border-radius:50%;bac
 #bbControls{display:none;}
 #bbHidden{display:none;}
 #bbPlayBtn{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:25%;aspect-ratio:1;border-radius:50%;z-index:4;cursor:pointer;}
-#bbTempoWheel{position:absolute;bottom:20px;left:50%;transform:translateX(-50%);width:70%;height:30px;z-index:5;cursor:ew-resize;touch-action:none;border-radius:2px;overflow:hidden;background:rgba(0,0,0,.18)}
-#bbTempoTicks{position:absolute;inset:0;background:repeating-linear-gradient(90deg,rgba(255,255,255,.5) 0 1px,transparent 1px 11px);-webkit-mask-image:linear-gradient(90deg,transparent,#000 22%,#000 78%,transparent);mask-image:linear-gradient(90deg,transparent,#000 22%,#000 78%,transparent)}
-#bbTempoWheel::after{content:"";position:absolute;inset:0;pointer-events:none;background:linear-gradient(rgba(0,0,0,.28),transparent 42%,transparent 58%,rgba(0,0,0,.28))}
-#bbTempoVal{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);z-index:1;font:600 10px/1 'DM Mono',monospace;letter-spacing:1px;color:rgba(255,255,255,.92);text-shadow:0 1px 2px rgba(0,0,0,.45);pointer-events:none}
+/* SPEED: mirrors the list-range fader on the opposite edge — same groove, same cap,
+   single thumb. --bbs-p = thumb centre as % from the track top; the groove is cut for the
+   cap's full height (16px) so its transparent bands read onto the gradient. 1 bottom, 100 top. */
+/* The four strips frame one 9:16 box, centred on the module (so centred on the bird).
+   Width = SPEED-to-RANGE centre distance = the old square side + 10px; aspect-ratio derives the
+   FILTER-to-VOLUME distance from it, so the 9:16 holds by construction at any viewport.
+   max-height is an overflow guard for unusually short windows (#modBirdbox clips): if it bites,
+   the box goes slightly wider than 9:16 rather than losing the strips off-screen.
+   pointer-events:none keeps the empty middle tappable for rolls — each strip re-enables its own. */
+#bbFrame{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:calc(85% - 30.8px);aspect-ratio:9/16;max-height:calc(100% - 56px);z-index:6;pointer-events:none}
+#bbSpeed{position:absolute;left:-17px;top:0;bottom:0;width:34px;touch-action:none;pointer-events:auto;--bbs-p:50%}
+#bbSpeedTrack{position:absolute;left:0;right:0;top:22px;bottom:22px;cursor:pointer;touch-action:none}
+#bbSpeedTrack::before{content:'';position:absolute;left:50%;top:0;bottom:0;width:10px;background:linear-gradient(90deg,#cbc4b0,#ece6d5);box-shadow:inset 1px 0 3px rgba(0,0,0,.4);border-radius:2px;transform:translateX(-50%);-webkit-mask-image:linear-gradient(#000 0 calc(var(--bbs-p) - 8px),transparent calc(var(--bbs-p) - 8px) calc(var(--bbs-p) + 8px),#000 calc(var(--bbs-p) + 8px) 100%);mask-image:linear-gradient(#000 0 calc(var(--bbs-p) - 8px),transparent calc(var(--bbs-p) - 8px) calc(var(--bbs-p) + 8px),#000 calc(var(--bbs-p) + 8px) 100%)}
+#bbTempoVal{left:38px;right:auto}   /* readout sits inboard of the strip, not off the screen edge */
+/* VOLUME: closes the bracket under the two vertical faders — 21px below where their tracks
+   end (85%), spanning exactly between their centre lines (24px in from each edge), so the
+   thumb sits under #bbSpeed at 0 and under #bbRange at 100. --bbv-f = the level 0..1; everything
+   LEFT of the thumb is cut away, so the filled part is the gradient showing through. */
+/* FILTER: closes the top of the frame, mirroring #bbVol across the module — same 22px offset
+   from where the vertical tracks begin (15%), same 19px/5px horizontal alignment. Dual thumb:
+   left = low-cut, right = high-cut, and the PASSBAND between them is cut out of the groove, so
+   the open band reads as gradient exactly like the selected window on the list-range slider. */
+#bbFilt{position:absolute;left:-5px;right:-5px;top:-11px;height:22px;touch-action:none;pointer-events:none;--bbf-a:0;--bbf-b:1}
+#bbFiltTrack{position:absolute;left:0;right:0;top:0;bottom:0;pointer-events:none}
+#bbFiltTrack::before{content:'';position:absolute;top:50%;left:0;right:0;height:10px;background:linear-gradient(180deg,#cbc4b0,#ece6d5);box-shadow:inset 0 1px 3px rgba(0,0,0,.4);border-radius:2px;transform:translateY(-50%);-webkit-mask-image:linear-gradient(90deg,#000 0 calc(-3px + (100% - 10px) * var(--bbf-a)),transparent calc(-3px + (100% - 10px) * var(--bbf-a)) calc(13px + (100% - 10px) * var(--bbf-b)),#000 calc(13px + (100% - 10px) * var(--bbf-b)) 100%);mask-image:linear-gradient(90deg,#000 0 calc(-3px + (100% - 10px) * var(--bbf-a)),transparent calc(-3px + (100% - 10px) * var(--bbf-a)) calc(13px + (100% - 10px) * var(--bbf-b)),#000 calc(13px + (100% - 10px) * var(--bbf-b)) 100%)}
+/* dual thumb, so these ARE grabbable (unlike the single-thumb press-to-jump sliders) */
+#bbFiltLoT,#bbFiltHiT{top:50%;width:16px;height:26px;background:linear-gradient(90deg,transparent 41%,#d8d0ba 41%,#d8d0ba 59%,transparent 59%);pointer-events:auto}
+#bbFiltLoT{left:calc(5px + (100% - 10px) * var(--bbf-a))}
+#bbFiltHiT{left:calc(5px + (100% - 10px) * var(--bbf-b))}
+#bbFiltLoV,#bbFiltHiV{top:auto;bottom:calc(50% + 18px);transform:translateX(-50%)}
+#bbFiltLoV{left:calc(5px + (100% - 10px) * var(--bbf-a))}
+#bbFiltHiV{left:calc(5px + (100% - 10px) * var(--bbf-b))}
+#bbVol{position:absolute;left:-5px;right:-5px;top:calc(100% - 11px);height:22px;touch-action:none;pointer-events:none;--bbv-f:1}
+/* host is inert; only the 22px track takes presses, so it steals as little as possible from the
+   vertical thumbs' hit padding, which reaches 10px past the 85% line into this gap.
+   Track spans the vertical grooves' OUTER edges (19px in) so the horizontal line reaches as far
+   as they do; the cap's travel is inset 5px from each end to land on their CENTRE lines. */
+#bbVolTrack{position:absolute;left:0;right:0;top:0;bottom:0;pointer-events:auto;cursor:pointer;touch-action:none}
+#bbVolTrack::before{content:'';position:absolute;top:50%;left:0;right:0;height:10px;background:linear-gradient(180deg,#cbc4b0,#ece6d5);box-shadow:inset 0 1px 3px rgba(0,0,0,.4);border-radius:2px;transform:translateY(-50%);-webkit-mask-image:linear-gradient(90deg,transparent 0 calc(13px + (100% - 10px) * var(--bbv-f)),#000 calc(13px + (100% - 10px) * var(--bbv-f)) 100%);mask-image:linear-gradient(90deg,transparent 0 calc(13px + (100% - 10px) * var(--bbv-f)),#000 calc(13px + (100% - 10px) * var(--bbv-f)) 100%)}
+/* press-to-jump means the thumb never has to be grabbed, so it stays out of hit-testing entirely */
+#bbVolT{left:calc(5px + (100% - 10px) * var(--bbv-f));top:50%;width:16px;height:26px;background:linear-gradient(90deg,transparent 41%,#d8d0ba 41%,#d8d0ba 59%,transparent 59%);pointer-events:none}
+#bbVolV{left:calc(5px + (100% - 10px) * var(--bbv-f));top:calc(50% + 18px);bottom:auto;transform:translateX(-50%)}
 /* BIRDBOX list-range: vertical dual-thumb window into the active MATHS list.
    Console-fader skin lifted from the MIXER (.mix-track/.mix-thumb) — 1 at the bottom, 32 at the top. */
-/* --bbr-a/--bbr-b = hi/lo thumb centres as % from the track top; the groove is masked away
+/* --bbr-a/--bbr-b = upper/lower thumb centres as % from the track top; the groove is masked away
    between them so the selected window reads as a cut-out onto the live #bbBg gradient. */
-#bbRange{position:absolute;left:7px;top:0;bottom:0;width:34px;z-index:6;touch-action:none;--bbr-a:0%;--bbr-b:100%}
-#bbRangeTrack{position:absolute;left:0;right:0;top:15%;bottom:15%}
+#bbRange{position:absolute;right:-17px;top:0;bottom:0;width:34px;touch-action:none;pointer-events:auto;--bbr-a:0%;--bbr-b:100%}
+#bbRangeTrack{position:absolute;left:0;right:0;top:22px;bottom:22px}
 #bbRangeTrack::before{content:'';position:absolute;left:50%;top:0;bottom:0;width:10px;background:linear-gradient(90deg,#cbc4b0,#ece6d5);box-shadow:inset 1px 0 3px rgba(0,0,0,.4);border-radius:2px;transform:translateX(-50%);-webkit-mask-image:linear-gradient(#000 0 calc(var(--bbr-a) - 8px),transparent calc(var(--bbr-a) - 8px) calc(var(--bbr-b) + 8px),#000 calc(var(--bbr-b) + 8px) 100%);mask-image:linear-gradient(#000 0 calc(var(--bbr-a) - 8px),transparent calc(var(--bbr-a) - 8px) calc(var(--bbr-b) + 8px),#000 calc(var(--bbr-b) + 8px) 100%)}
 /* thumb = the light strip only; the dark cap blocks are transparent so the gradient reads through.
    drop-shadow follows the alpha channel, so it shadows the strip and not an invisible box. */
 .bbr-thumb{position:absolute;left:50%;width:26px;height:16px;background:linear-gradient(180deg,transparent 41%,#d8d0ba 41%,#d8d0ba 59%,transparent 59%);border:none;transform:translate(-50%,-50%);cursor:pointer;touch-action:none;filter:drop-shadow(0 1px 1.5px rgba(0,0,0,.55))}
 .bbr-thumb::before{content:'';position:absolute;left:-9px;right:-9px;top:-10px;bottom:-10px}
+#bbRangeLoV,#bbRangeHiV{left:auto;right:38px}   /* strip is now on the right edge, so read inboard */
 #bbRangeHiT{z-index:2}
 #bbRangeLoT{z-index:3}
 .bbr-num{position:absolute;left:38px;font:600 10px/1 'DM Mono',monospace;letter-spacing:1px;color:rgba(255,255,255,.92);text-shadow:0 1px 2px rgba(0,0,0,.45);transform:translateY(-50%);pointer-events:none;opacity:0;transition:opacity .18s}
-#bbRange.dragging .bbr-num{opacity:1}
+#bbRange.dragging .bbr-num,#bbSpeed.dragging .bbr-num,#bbVol.dragging .bbr-num,#bbFilt.dragging .bbr-num{opacity:1}
 /* ═══ AUDIO FUNCTION (riser) ═══ */
 #modRiser.active{gap:15px;padding:20px 14px var(--mod-pad-bot)}
 .af-title{font-size:11px;letter-spacing:3px;color:#a0ad95;font-weight:500;margin-bottom:2px}
@@ -386,7 +428,7 @@ input[type=range]::-moz-range-thumb{width:20px;height:20px;border-radius:50%;bac
    --muvs-lift is clamped by muVsMeasure() so the image stays whole and above the frame. */
 #modMulti.vs-open #muStage{padding-bottom:var(--muvs-lift,var(--muvs-h));min-height:calc(var(--muvs-h) + 40px)}
 #muVsStrip{display:flex;flex-direction:column;align-items:center;gap:var(--mu-strip-gap);width:calc(100% - 35px);max-width:360px;margin:0 auto}
-#muVsPanel:not(.vs-open) #muVsTypeSel,#muVsPanel:not(.vs-open) #muVsPerOscRow{display:none}
+#muVsPanel:not(.vs-open) #muVsPerOscRow{display:none}
 #muVsStripTop{display:flex;align-items:center;gap:6px;width:100%}
 #muVsPerOscRow{display:flex;align-items:center;gap:6px}
 #modMulti #muVsFaderWrap{width:100%;max-width:none;padding-bottom:var(--mu-fader-pad)}
@@ -397,11 +439,17 @@ input[type=range]::-moz-range-thumb{width:20px;height:20px;border-radius:50%;bac
 #muVsFaderNum .mvfn-v{font-size:12px;font-weight:600;color:#111;letter-spacing:0;line-height:1}
 #muVsFaderNum .mvfn-u{font-size:8px;color:#8a8478;letter-spacing:.5px;margin-left:1px;line-height:1}
 #muVsABrow.ns-dim{pointer-events:none}
-/* pulse label: bold; beige overlay + thin border when closed, dark when open */
+/* pulse label: bold; beige overlay + thin border when off, dark when the pulse module is ON */
 #muVsLabelBtn{display:inline-flex;align-items:center;height:20px;margin-left:-7px;padding:0 6px;font-family:inherit;font-size:8.4px;font-weight:700;letter-spacing:1px;color:#222;background:#ede7d4;border:1px solid rgba(0,0,0,.14);border-radius:2px;cursor:pointer;line-height:1;white-space:nowrap}
-#muVsLabelBtn.open{background:#222;color:#f8f4eb;border-color:#222}
-#muVsStripTop #muVsTypeSel{margin-left:2px}
-#muVsStripTop #muVsTypeSel .msel-head{height:20px;box-sizing:border-box}
+#muVsLabelBtn.on{background:#222;color:#ede7d4;border-color:#222}
+/* panel caret: points UP while the panel is closed (it opens upward), flips DOWN once open */
+/* pulse-panel grip: borderless drawer handle (same idiom as #scoreTab .st-g). Bars darken and
+   tighten when the panel is open — the box is gone, so the hit area is wider than the mark. */
+#muVsPanelBtn{width:28px;height:20px;padding:0;border:none;background:none;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;box-sizing:border-box;font-family:inherit;margin-left:0}
+#muVsPanelBtn .mvs-grip{display:flex;flex-direction:column;align-items:center;gap:3px;transition:gap .2s}
+#muVsPanelBtn .mvs-grip i{display:block;width:14px;height:2px;border-radius:1px;background:#f3eee1;box-shadow:0 1px 1.5px rgba(0,0,0,.28);transition:background .15s}
+#muVsPanelBtn.open .mvs-grip{gap:2px}
+#muVsPanelBtn.open .mvs-grip i{background:#222}
 #muVsFaderR{height:10px;border-radius:2px;background:linear-gradient(#cbc4b0,#ece6d5);box-shadow:inset 0 1px 3px rgba(0,0,0,.4)}
 #muVsFaderR::-webkit-slider-thumb{-webkit-appearance:none;width:18px;height:28px;border-radius:3px;background:linear-gradient(90deg,#222 41%,#d8d0ba 41%,#d8d0ba 59%,#222 59%);border:1px solid #000;box-shadow:0 2px 4px rgba(0,0,0,.45)}
 #muVsFaderR::-moz-range-thumb{width:18px;height:28px;border-radius:3px;background:linear-gradient(90deg,#222 41%,#d8d0ba 41%,#d8d0ba 59%,#222 59%);border:1px solid #000}
@@ -409,11 +457,13 @@ input[type=range]::-moz-range-thumb{width:20px;height:20px;border-radius:50%;bac
 #muVsCenter{flex:1;display:grid;grid-template-columns:repeat(3,1fr);gap:5px;align-items:center}
 #muVsCenter .ns-cell{height:var(--mu-cell-h)}
 #muVsAutoBtn.on{background:#000;color:#fff;border-color:#000}
-#muVsTypeSel .msel-head{padding:1px 6px;border:none;border-radius:4px;background:rgba(0,0,0,.05);font-size:8.4px;letter-spacing:1px;color:#222;gap:0}
-#muVsTypeSel .msel-arrow{display:none}
-#muVsTypeSel .msel-opts{top:auto;bottom:100%;margin-top:0;margin-bottom:4px;border-radius:6px;right:0;left:auto}
-#muVsTypeSel .msel-opt{font-size:8.4px;letter-spacing:1px;color:#999;padding:5px 9px;border-radius:4px}
-#muVsTypeSel .msel-opt.active{color:#555}
+/* PULSE envelope: two-thumb A/D slider revealed by ENV, first row of the open PULSE body.
+   Left thumb travels the left half (attack), right thumb the right half (decay, mapped inversely). */
+#modMulti #muVsEnvRow{padding-bottom:15px}
+#muVsEnvBar{position:relative;height:28px;margin:0 11px;touch-action:none}   /* margin = thumb radius, so 1s at either edge stays inside */
+#muVsEnvBar .ms-val{bottom:-13px}
+/* A and D ride inside their own thumbs, in the pulse panel's background white */
+#muVsEnvBar .dual-thumb{display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:700;color:#f8f4eb;line-height:1;-webkit-user-select:none;user-select:none}
 #muVsPanel .vnum{font-size:14px!important;color:#111!important;letter-spacing:0}
 #muVsPanel .vunit{color:#777}
 #muVsPanel #muVsAV,#muVsPanel #muVsBV{font-size:17px!important}
@@ -636,8 +686,12 @@ input[type=range]::-moz-range-thumb{width:20px;height:20px;border-radius:50%;bac
 
   <img id="bbBird" src="henningchristiansen-bird-nobackground.svg" alt="">
   <div id="bbPlayBtn" onclick="toggleSweep()"></div>
-  <div id="bbTempoWheel"><div id="bbTempoTicks"></div><div id="bbTempoVal">93</div></div>
-  <div id="bbRange"><div id="bbRangeTrack"><div class="bbr-thumb" id="bbRangeHiT"></div><div class="bbr-thumb" id="bbRangeLoT"></div><span class="bbr-num" id="bbRangeLoV">1</span><span class="bbr-num" id="bbRangeHiV">32</span></div></div>
+  <div id="bbFrame">
+    <div id="bbSpeed"><div id="bbSpeedTrack"><div class="bbr-thumb" id="bbSpeedT"></div><span class="bbr-num" id="bbTempoVal">55</span></div></div>
+    <div id="bbRange"><div id="bbRangeTrack"><div class="bbr-thumb" id="bbRangeHiT"></div><div class="bbr-thumb" id="bbRangeLoT"></div><span class="bbr-num" id="bbRangeLoV">1</span><span class="bbr-num" id="bbRangeHiV">32</span></div></div>
+    <div id="bbFilt"><div id="bbFiltTrack"><div class="bbr-thumb" id="bbFiltHiT"></div><div class="bbr-thumb" id="bbFiltLoT"></div><span class="bbr-num" id="bbFiltLoV">20</span><span class="bbr-num" id="bbFiltHiV">20.0k</span></div></div>
+    <div id="bbVol"><div id="bbVolTrack"><div class="bbr-thumb" id="bbVolT"></div><span class="bbr-num" id="bbVolV">100</span></div></div>
+  </div>
   <div id="bbControls">
     <div style="display:flex;flex-direction:column;align-items:center;gap:4px">
       <button class="pbtn" id="swpPB" onclick="toggleSweep()"><svg id="swpPI" width="20" height="20" viewBox="0 0 24 24"><polygon points="6,3 20,12 6,21" fill="#2d6a4e"/></svg><svg id="swpSI" width="18" height="18" viewBox="0 0 24 24" style="display:none"><rect x="4" y="4" width="16" height="16" rx="2" fill="#ede7d4"/></svg></button>
@@ -737,6 +791,10 @@ input[type=range]::-moz-range-thumb{width:20px;height:20px;border-radius:50%;bac
   <div class="maths-sliders">
     <div id="muVsPanel">
       <div id="muVsBody">
+        <div class="maths-slider-wrap" id="muVsEnvRow">
+          <span class="ms-unit">ms</span><span class="ms-label">pulse envelope</span>
+          <div id="muVsEnvBar"><span class="ms-val" id="muVsAtkV">2</span><span class="ms-val" id="muVsDecV">150</span></div>
+        </div>
         <div id="muVsABrow" class="ns-dim">
           <div style="text-align:left"><span class="vnum" id="muVsAV" style="font-size:18px" onclick="tapNum('muVsAV',1,100000,function(v){muVsA=v/1000;muVsRefreshFader();},true)">1</span><span class="vunit">ms</span></div>
           <div id="muVsCenter">
@@ -749,9 +807,8 @@ input[type=range]::-moz-range-thumb{width:20px;height:20px;border-radius:50%;bac
       </div>
       <div id="muVsStrip">
         <div id="muVsStripTop">
-          <button id="muVsLabelBtn" onclick="muVsTogglePanel()" aria-expanded="false" aria-label="PULSE settings">pulse</button>
-          <button class="ms-toggle" id="muVsEnableBtn" onclick="muVsToggle()">OFF</button>
-          <div class="msel" id="muVsTypeSel" onclick="this.classList.toggle('open')"><div class="msel-head"><span id="muVsTypeText">LINEAR</span><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" class="msel-arrow"><path d="M233.4 406.6c12.5 12.5 32.8 12.5 45.3 0l192-192c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0L256 338.7 86.6 169.4c-12.5-12.5-32.8-12.5-45.3 0s-12.5 32.8 0 45.3l192 192z"/></svg></div><div class="msel-opts" id="muVsTypeOpts"></div></div>
+          <button id="muVsLabelBtn" onclick="muVsToggle()" role="switch" aria-checked="false" aria-label="pulse on/off">pulse</button>
+          <button id="muVsPanelBtn" onclick="muVsTogglePanel()" aria-expanded="false" aria-label="pulse settings"><span class="mvs-grip"><i></i><i></i></span></button>
           <div id="muVsRight">
             <div id="muVsPerOscRow"><span class="ms-tlabel">Per Osc Ratio</span><button class="ms-toggle on" id="muVsPerOscBtn" onclick="muVsTogglePerOsc()">ON</button></div>
             <span id="muVsFaderNum"><span class="mvfn-v" id="muVsFaderNumV">10</span><span class="mvfn-u" id="muVsFaderNumU">s</span></span>
@@ -768,13 +825,10 @@ input[type=range]::-moz-range-thumb{width:20px;height:20px;border-radius:50%;bac
       <span class="ms-val" id="msVolumeVal">100</span>
     </div>
     <div class="maths-slider-wrap" id="msMasterWrap">
-      <span class="ms-label">filter</span>
-      <div class="msel" id="mathsFilterSel" onclick="this.classList.toggle('open')">
-        <div class="msel-head"><span id="mselFiltText">LOWPASS</span><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" class="msel-arrow"><path d="M233.4 406.6c12.5 12.5 32.8 12.5 45.3 0l192-192c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0L256 338.7 86.6 169.4c-12.5-12.5-32.8-12.5-45.3 0s-12.5 32.8 0 45.3l192 192z"/></svg></div>
-        <div class="msel-opts" id="mselFiltOpts"></div>
-      </div>
-      <input type="range" id="mMVolR" min="0" max="100" value="90" oninput="multiFilterFreq=+this.value;updateSliderVal('msMasterVal',this,fmtFilterHz(multiFilterFreq));if(multiFilter&&AC)multiFilter.frequency.setTargetAtTime(filterV2F(multiFilterFreq),AC.currentTime,.02)">
-      <span class="ms-val" id="msMasterVal">10.0k</span>
+      <div class="ms-hdr"><span class="ms-label">filter</span><span class="ms-unit">Hz</span></div>
+      <div id="multiFiltRange" style="position:relative;height:36px;width:100%;touch-action:none"></div>
+      <span class="ms-val" id="msFiltLoVal">20</span>
+      <span class="ms-val" id="msFiltHiVal">20.0k</span>
     </div>
   </div>
   </div>
@@ -909,22 +963,43 @@ const FA=-6.398,FB=16.301;
 function s2f(v){const x=v/10000;return Math.max(1,Math.min(1e8,Math.exp(FA*x*x+FB*x)));}
 function f2s(f){const l=Math.log(Math.max(1,Math.min(1e8,f)));const d=FB*FB+4*FA*l;if(d<0)return 5000;return Math.round(Math.max(0,Math.min(10000,(FB-Math.sqrt(Math.max(0,d)))/(2*(-FA))*10000)));}
 function v2g(v){const n=v/100;return n*n*n;}
-// audio-rate tremolo helpers: period(sec)→LFO freq (0.5ms floor / 2000Hz cap), and click-free engage/disengage of a DC-offset gain-pair
+// audio-rate tremolo helpers: period(sec)→LFO freq (0.5ms floor / 2000Hz cap), and click-free engage/disengage of a
+// gain-pair. uni=true drives a UNIPOLAR 0..1 modulator (base 0 / depth 1) instead of the DC-offset bipolar pair.
 function periodToFreq(P){return Math.min(2000,1/Math.max(P||1e9,0.0005));}
-function tremEngage(g,d,on){if(!g||!d||!AC)return;var t=AC.currentTime;g.gain.setTargetAtTime(on?0.5:1,t,.02);d.gain.setTargetAtTime(on?0.5:0,t,.02);}
+function tremEngage(g,d,on,uni){if(!g||!d||!AC)return;var t=AC.currentTime;g.gain.setTargetAtTime(on?(uni?0:0.5):1,t,.02);d.gain.setTargetAtTime(on?(uni?1:0.5):0,t,.02);}
 // PULSE auto sweep is geometric (STYPE shape applied in log-period space), matching the manual fader —
 // avoids linear-period's flaw where ~95% of the sweep collapses into a slow near-silent swell ("mid cut").
 function sweepPeriod(type,t,A,B){return (A>0&&B>0)?Math.exp(sweepVal(type,t,Math.log(A),Math.log(B))):sweepVal(type,t,A,B);}
-// PULSE "fire & decay" LFO wave: one cycle = snap to full, then decay to 0 shaped by TYPE. Bipolar (w=2*env-1);
-// muTremGain.gain = 0.5 + 0.5*w = env. Cached per type; ~2ms attack taper softens the loop-point "fire" click.
-var muVsWaveCache={};
-function muVsWaveBuf(type){
-  if(muVsWaveCache[type])return muVsWaveCache[type];
-  var sr=AC.sampleRate,buf=AC.createBuffer(1,sr,sr),d=buf.getChannelData(0);
-  for(var k=0;k<sr;k++)d[k]=1-2*sweepVal(type,k/sr,0,1);
-  var atk=Math.max(1,Math.round(sr*0.002));
-  for(var j=0;j<atk;j++)d[j]=-1+(d[j]+1)*(j/atk);
-  muVsWaveCache[type]=buf;return buf;
+// PULSE envelope: ATTACK and DECAY are ABSOLUTE times, so the buffer holds them in real seconds followed by a
+// silent tail, and the PERIOD is set by loopEnd (muVsLoop) rather than by playbackRate. That is what keeps a 2ms
+// attack 2ms at every pulse rate — the old normalized-cycle buffer scaled its taper with the rate, so the onset
+// collapsed to a step (2ms x period) and snapped. Unipolar: holds env directly in 0..1, so a fresh zero-filled
+// buffer IS the silent tail and a rebuild only writes the head. Cached on the live A|D pair.
+var MUVS_BUF=12;                  // seconds of buffer = longest period reproduced with an exact absolute envelope
+var muVsEnvCache={};
+function muVsEnvBuf(){
+  var key=muVsAtk+'|'+muVsDec;
+  if(muVsEnvCache[key])return muVsEnvCache[key];
+  var sr=AC.sampleRate,buf=AC.createBuffer(1,Math.round(MUVS_BUF*sr),sr),d=buf.getChannelData(0);
+  var na=Math.max(1,Math.round(muVsAtk*sr)),nd=Math.max(1,Math.min(Math.round(muVsDec*sr),d.length-na));
+  for(var i=0;i<na;i++)d[i]=(i+1)/na;                            // attack: linear 0 -> 1
+  for(var j=0;j<nd;j++)d[na+j]=1-sweepVal('cascade',j/nd,0,1);   // decay: normalized exponential 1 -> 0
+  muVsEnvCache={};muVsEnvCache[key]=buf;return buf;              // one shape live at a time — a 12s buffer is 2MB
+}
+// loopEnd sets the cycle IN BUFFER SECONDS; rate stays 1 across the musical range and only compresses (cycle
+// shorter than the envelope) or stretches (cycle longer than the buffer). Real cycle = loopEnd/rate = P, and the
+// wrap lands inside the silent tail, so there is no discontinuity to click on.
+function muVsLoop(src,P){
+  if(!src||!AC)return;
+  var span=Math.max(0.0005,muVsAtk+muVsDec);
+  var cb=Math.min(MUVS_BUF,Math.max(span,P));
+  src.loopEnd=cb;
+  src.playbackRate.setTargetAtTime(cb/Math.max(P,0.0005),AC.currentTime,.02);
+  // Track how far through the cycle we are, so an A/D rebuild can RESUME instead of re-firing the attack.
+  // Integrated on the audio clock, so the deltas telescope to exact elapsed time whenever P is static.
+  var t=AC.currentTime,d=(src._t===undefined)?0:Math.min(0.25,t-src._t);   // clamp: a backgrounded tab
+  src._ph=((src._ph||0)+d/Math.max(P,0.0005))%1;
+  src._t=t;src._P=P;
 }
 function mkNB(ctx){const s=ctx.sampleRate*4,b=ctx.createBuffer(1,s,ctx.sampleRate),d=b.getChannelData(0);for(let i=0;i<s;i++)d[i]=Math.random()*2-1;return b;}
 function spdS2V(v){return Math.round(Math.exp(v/10000*Math.log(3300))*100)/100;}
@@ -1142,6 +1217,8 @@ function initScoreTab(){
    record refreshed in place (font size kept); same-version deletions stay deleted. ── */
 var SCORE_SEED_ID=1783900800000; /* 2026-07-12 */
 var SCORE_SEED_V=4;
+/* Bump SCORE_TABDEF_V to re-apply the "score tab starts hidden" default to every device once. */
+var SCORE_TABDEF_V=1;
 var SCORE_SEED_NAME="26 TEMMUZ - İstiklal";
 var SCORE_SEED_TEXT="26 TEMMUZ - İstiklal\n---\nTünel > Gezi Parkı\n\n* BIRDBOX'I ÇALARAK, GRUPLA BERABER TÜNEL'DEN TAKSİM'E YÜRÜ\n\n- BIRDBOX'ı ortadaki kuşa basarak aç.\n\n- Yukarı kaydırarak kuşları değiştir.\n\n- Aşağıdaki çark ile kuşların hızını belirle. (1-100)\n\n* YÜRÜYÜŞ ESNASINDA:\n\n- Sokağa dağıl, performansı belli etme, anonim olmaya çalış.\n\n- Kulaklıklarını \"telefona bağlamadan\" tak.\n\n- En yakınındaki grup üyesiyle en az 3 metre mesafe koru.";
 function seedDefaultScore(){
@@ -1155,7 +1232,7 @@ function seedDefaultScore(){
     if(!dup){
       scoreWrite({_t:SCORE_SEED_ID,_n:SCORE_SEED_NAME,size:16,text:SCORE_SEED_TEXT});
       if(ui.activeId==null||!scoreRec(ui.activeId))ui.activeId=SCORE_SEED_ID;
-      if(ui.tabOn===undefined&&ui.overlayOn===undefined)ui.tabOn=true;
+      if(ui.tabOn===undefined&&ui.overlayOn===undefined)ui.tabOn=false;
     }
   }
   ui.seeded=SCORE_SEED_V;scoreSetUI(ui);
@@ -1163,6 +1240,7 @@ function seedDefaultScore(){
 function renderScores(){
   var ui=scoreGetUI();
   if(ui.tabOn===undefined&&ui.overlayOn!==undefined){ui.tabOn=!!ui.overlayOn;delete ui.overlayOn;scoreSetUI(ui);}
+  if(ui.tabDef!==SCORE_TABDEF_V){ui.tabOn=false;ui.tabDef=SCORE_TABDEF_V;scoreSetUI(ui);}
   var all=getAllScores();
   var id=ui.activeId;
   if(id==null||!scoreRec(id))id=all.length?all[0]._t:null;
@@ -1280,8 +1358,8 @@ function initMixer(){
 }
 function mixY(tk,y){var r=tk.getBoundingClientRect();return Math.round((1-Math.max(0,Math.min(1,(y-r.top)/r.height)))*100);}
 function setMixV(i,v){v=Math.round(v);document.getElementById('mxT'+i).style.top=(100-v)+'%';}
-function updMix(i,v){v=Math.round(v);MIX_CH[i].set(v);setMixV(i,v);}
-function syncMixerUI(){MIX_CH.forEach(function(ch,i){setMixV(i,ch.get());});var ab=document.getElementById('appAutoBtn');if(ab)ab.classList.toggle('on',appAutoOn);var lb=document.getElementById('appLimBtn');if(lb)lb.classList.toggle('on',appLimOn);}
+function updMix(i,v){v=Math.round(v);MIX_CH[i].set(v);setMixV(i,v);if(i===BB_VOL_CH)bbVolSync();}
+function syncMixerUI(){MIX_CH.forEach(function(ch,i){setMixV(i,ch.get());});bbVolSync();var ab=document.getElementById('appAutoBtn');if(ab)ab.classList.toggle('on',appAutoOn);var lb=document.getElementById('appLimBtn');if(lb)lb.classList.toggle('on',appLimOn);}
 
 /* ═══════ SHARED WAVEFORMS ═══════ */
 const WF=['sine','sawtooth','square','triangle'],WI=['∿','⩘','⊓','△'],WN=['SINE','SAW','SQR','TRI'];
@@ -1411,11 +1489,18 @@ function swpReroll(){
 }
 function toggleSweep(){
   const c=getAC();
-  if(swpPlaying){if(swpOsc){swpOsc.stop();swpOsc=null;}if(swpRAF)cancelAnimationFrame(swpRAF);swpPlaying=false;setPB('swp',false);updateBBBird();appAutoRecalc();return;}
+  if(swpPlaying){
+    // fade the gate before killing the oscillator: a bare stop() cuts the sine mid-cycle and clicks.
+    // 3ms tau over 30ms is ~-87dB, and onended retires the chain instead of orphaning it on swpMGn.
+    if(swpOsc){var _o=swpOsc,_g=swpSigGn,_t=c.currentTime;swpOsc=null;
+      if(_g){_g.gain.cancelScheduledValues(_t);_g.gain.setTargetAtTime(0,_t,.003);}
+      _o.onended=function(){try{_o.disconnect();}catch(e){}try{if(_g)_g.disconnect();}catch(e){}if(swpSigGn===_g)swpSigGn=null;};
+      try{_o.stop(_t+0.03);}catch(e){}}
+    if(swpRAF)cancelAnimationFrame(swpRAF);swpPlaying=false;setPB('swp',false);updateBBBird();appAutoRecalc();return;}
   if(!swpMGn){swpMGn=c.createGain();swpMGn.connect(appMaster);}
   swpMGn.gain.setTargetAtTime(v2g(swpMVol),c.currentTime,.02);
   swpSigGn=c.createGain();swpSigGn.gain.value=1;
-  swpSigGn.connect(swpMGn);
+  swpSigGn.connect(bbFiltIn(c));
   swpOsc=c.createOscillator();swpOsc.type=WF[swpWv];
   const startF=swpFqMin;
   swpOsc.frequency.setValueAtTime(startF,c.currentTime);
@@ -1665,7 +1750,8 @@ function nsVsCycleDir(){var i=NS_DIR_ORDER.indexOf(nsVsDir);nsVsDir=NS_DIR_ORDER
 /* ═══════ MULTI ═══════ */
 let multiMGain=null,multiMVol=100,multiWv=0; // default waveform: sine
 let multiAutoGn=null,multiAutoOn=true;
-let multiFilter=null,multiFilterFreq=90,multiFilterType='lowpass';
+/* low-cut + high-cut, 12 dB/oct each, on the shared filterV2F scale (0..100 -> 20 Hz..20 kHz) */
+let multiHP=null,multiLP=null,multiFiltLo=0,multiFiltHi=100;
 let mathsSettingsOn=false;
 function filterV2F(v){return 20*Math.pow(1000,v/100);}
 function fmtFilterHz(v){var f=filterV2F(v);return f>=1000?(f/1000).toFixed(1)+'k':Math.round(f);}
@@ -1681,9 +1767,10 @@ let multiLfoActive=false,multiLfoRAF=null,multiLfoLastFrame=0,multiLfoPhase=[];
 // MATHS volume-sweep LFO (muVs) — tremolo on multiMGain whose PERIOD is the swept quantity
 let muVsOn=false,muVsAuto=false,muVsA=0.001,muVsB=10,muVsFader=0.5;
 let muTremGain=null,muTremSrc=null,muTremDepth=null;
-let muVsDur=10,muVsDir='fwd',muVsType='linear',muVsAutoStart=0,muVsPhase=0;
-let muVsPerOsc=true,muVsOscPhase=[];   // per-osc mode: period(ms) = x/ratio
-let muVsActive=false,muVsRAF=null,muVsLastFrame=0;
+let muVsDur=10,muVsDir='fwd',muVsAutoStart=0;
+let muVsAtk=0.002,muVsDec=0.15;   // envelope attack/decay in SECONDS (1ms..1s each)
+let muVsPerOsc=true;                   // per-osc mode: period(ms) = x/ratio
+let muVsActive=false,muVsRAF=null;
 let multiHarmonicIdx=1;
 let multiFundamental=49.00,multiFundFrom=49.00,multiFundTo=49.00;
 let multiHarmonicSweep=false;
@@ -1712,9 +1799,10 @@ function multiToggle(){
     muVsStop(false);
     multiPlaying=false;var _img=document.getElementById('mathsImg');if(_img){_img.style.transition='none';_img.style.filter='none';}renderMulti();multiAutoRecalc();appAutoRecalc();return;
   }
-  if(!multiMGain){multiMGain=c.createGain();multiAutoGn=c.createGain();multiAutoGn.gain.value=1.0;multiFilter=c.createBiquadFilter();multiFilter.type=multiFilterType;multiFilter.frequency.value=filterV2F(multiFilterFreq);multiFilter.Q.value=0.707;
-    muTremGain=c.createGain();muTremGain.gain.value=1;muTremDepth=c.createGain();muTremDepth.gain.value=0;muTremSrc=c.createBufferSource();muTremSrc.buffer=muVsWaveBuf(muVsType);muTremSrc.loop=true;muTremSrc.connect(muTremDepth);muTremDepth.connect(muTremGain.gain);muTremSrc.start();
-    multiMGain.connect(muTremGain);muTremGain.connect(multiAutoGn);multiAutoGn.connect(multiFilter);multiFilter.connect(appMaster);}
+  if(!multiMGain){multiMGain=c.createGain();multiAutoGn=c.createGain();multiAutoGn.gain.value=1.0;multiHP=c.createBiquadFilter();multiHP.type='highpass';multiHP.Q.value=0.707;multiHP.frequency.value=filterV2F(multiFiltLo);
+    multiLP=c.createBiquadFilter();multiLP.type='lowpass';multiLP.Q.value=0.707;multiLP.frequency.value=filterV2F(multiFiltHi);
+    muTremGain=c.createGain();muTremGain.gain.value=1;muTremDepth=c.createGain();muTremDepth.gain.value=0;muTremSrc=c.createBufferSource();muTremSrc.buffer=muVsEnvBuf();muTremSrc.loop=true;muTremSrc.loopStart=0;muVsLoop(muTremSrc,1);muTremSrc.connect(muTremDepth);muTremDepth.connect(muTremGain.gain);muTremSrc.start();
+    multiMGain.connect(muTremGain);muTremGain.connect(multiAutoGn);multiAutoGn.connect(multiHP);multiHP.connect(multiLP);multiLP.connect(appMaster);}
   multiMGain.gain.setTargetAtTime(v2g(multiMVol),c.currentTime,.02);
   multiOscs.forEach(function(o,idx){
     if(multiHarmonicIdx>=0&&multiOscRatios.length===8){
@@ -1722,7 +1810,7 @@ function multiToggle(){
     }
     if(!o.gain){o.gain=c.createGain();}
     if(!o.lfoGain){o.lfoGain=c.createGain();o.lfoGain.gain.value=1;o.gain.connect(o.lfoGain);o.lfoGain.connect(multiMGain);
-      o.lfoDepth=c.createGain();o.lfoDepth.gain.value=0;o.lfoSrc=c.createBufferSource();o.lfoSrc.buffer=muVsWaveBuf(muVsType);o.lfoSrc.loop=true;o.lfoSrc.connect(o.lfoDepth);o.lfoDepth.connect(o.lfoGain.gain);o.lfoSrc.start();}
+      o.lfoDepth=c.createGain();o.lfoDepth.gain.value=0;o.lfoSrc=c.createBufferSource();o.lfoSrc.buffer=muVsEnvBuf();o.lfoSrc.loop=true;o.lfoSrc.loopStart=0;muVsLoop(o.lfoSrc,1);o.lfoSrc.connect(o.lfoDepth);o.lfoDepth.connect(o.lfoGain.gain);o.lfoSrc.start();}
     o.gain.gain.setTargetAtTime(o.muted?0:v2g(o.vol),c.currentTime,.02);
     o.osc=c.createOscillator();o.osc.type=WF[multiWv];
     o.osc.frequency.setValueAtTime(o.freq,c.currentTime);
@@ -1761,30 +1849,45 @@ function toggleMathsSettings(){
   }
   var b=document.getElementById('mathsSettingsBtn');if(b)b.classList.toggle('on',mathsSettingsOn);
 }
-var MFILT=[{name:'LOWPASS',type:'lowpass'},{name:'HIGHPASS',type:'highpass'},{name:'BANDPASS',type:'bandpass'}];
-function multiFilterIdx(){for(var i=0;i<MFILT.length;i++)if(MFILT[i].type===multiFilterType)return i;return 0;}
-function multiApplyFilterType(){
-  if(!multiFilter||!AC)return;
-  multiFilter.type=multiFilterType;
+/* Filter band: dual thumb on the shared .dual-* component, same as the vol-chance range.
+   The fill between the caps IS the passband; outside it is cut at 12 dB/oct. */
+function multiFiltApply(){
+  if(!multiHP||!AC)return;
+  multiHP.frequency.setTargetAtTime(filterV2F(multiFiltLo),AC.currentTime,.02);
+  multiLP.frequency.setTargetAtTime(filterV2F(multiFiltHi),AC.currentTime,.02);
 }
-function initMselFilter(){
-  var c=document.getElementById('mselFiltOpts');if(!c)return;
-  var cur=multiFilterIdx();
-  MFILT.forEach(function(f,i){
-    var d=document.createElement('div');d.className='msel-opt'+(i===cur?' active':'');
-    d.textContent=f.name;d.dataset.val=i;
-    d.onclick=function(e){e.stopPropagation();multiSetFilterType(i);document.getElementById('mathsFilterSel').classList.remove('open');};
-    c.appendChild(d);
-  });
-  var t=document.getElementById('mselFiltText');if(t)t.textContent=MFILT[cur].name;
+function syncFiltRange(){
+  var tL=document.getElementById('mfrL'),tR=document.getElementById('mfrR'),fill=document.getElementById('mfrFill');
+  if(!tL)return;
+  tL.style.left=multiFiltLo+'%';tR.style.left=multiFiltHi+'%';
+  fill.style.left=multiFiltLo+'%';fill.style.width=(multiFiltHi-multiFiltLo)+'%';
+  var vL=document.getElementById('msFiltLoVal');if(vL){vL.textContent=fmtFilterHz(multiFiltLo);var adjL=(50-multiFiltLo)*0.15;vL.style.left=(multiFiltLo+adjL)+'%';}
+  var vR=document.getElementById('msFiltHiVal');if(vR){vR.textContent=fmtFilterHz(multiFiltHi);var adjR=(50-multiFiltHi)*0.15;vR.style.left=(multiFiltHi+adjR)+'%';}
 }
-function multiSetFilterType(idx){
-  idx=((idx%MFILT.length)+MFILT.length)%MFILT.length;
-  multiFilterType=MFILT[idx].type;
-  var t=document.getElementById('mselFiltText');if(t)t.textContent=MFILT[idx].name;
-  var opts=document.querySelectorAll('#mselFiltOpts .msel-opt');
-  opts.forEach(function(o){o.classList.toggle('active',+o.dataset.val===idx);});
-  multiApplyFilterType();
+function initMultiFiltRange(){
+  var wrap=document.getElementById('multiFiltRange');if(!wrap)return;
+  var track=document.createElement('div');track.className='dual-track';
+  var fill=document.createElement('div');fill.className='dual-fill';fill.id='mfrFill';
+  var tL=document.createElement('div');tL.className='dual-thumb';tL.id='mfrL';
+  var tR=document.createElement('div');tR.className='dual-thumb';tR.id='mfrR';
+  wrap.appendChild(track);wrap.appendChild(fill);wrap.appendChild(tL);wrap.appendChild(tR);
+  syncFiltRange();
+  var dragging=null;
+  function posFromX(cx){var r=wrap.getBoundingClientRect();return Math.max(0,Math.min(100,(cx-r.left)/r.width*100));}
+  function update(pos){
+    if(dragging==='L')multiFiltLo=Math.round(Math.min(pos,multiFiltHi));
+    else if(dragging==='R')multiFiltHi=Math.round(Math.max(pos,multiFiltLo));
+    else return;
+    syncFiltRange();multiFiltApply();
+  }
+  tL.addEventListener('mousedown',function(e){e.preventDefault();dragging='L';});
+  tR.addEventListener('mousedown',function(e){e.preventDefault();dragging='R';});
+  document.addEventListener('mousemove',function(e){if(dragging)update(posFromX(e.clientX));});
+  document.addEventListener('mouseup',function(){dragging=null;});
+  tL.addEventListener('touchstart',function(e){e.preventDefault();dragging='L';},{passive:false});
+  tR.addEventListener('touchstart',function(e){e.preventDefault();dragging='R';},{passive:false});
+  wrap.addEventListener('touchmove',function(e){if(!dragging)return;e.preventDefault();update(posFromX(e.touches[0].clientX));},{passive:false});
+  wrap.addEventListener('touchend',function(){dragging=null;},{passive:true});
 }
 function multiRoll(){
   var targets;
@@ -1890,21 +1993,21 @@ function muVsTogglePanel(){
   var open=p.classList.toggle('vs-open');
   var m=document.getElementById('modMulti');if(m)m.classList.toggle('vs-open',open);
   if(open)muVsMeasure();
-  var b=document.getElementById('muVsLabelBtn');if(b){b.classList.toggle('open',open);b.setAttribute('aria-expanded',open?'true':'false');}
+  var b=document.getElementById('muVsPanelBtn');if(b){b.classList.toggle('open',open);b.setAttribute('aria-expanded',open?'true':'false');}
 }
 function muVsToggle(){
   muVsOn=!muVsOn;
-  var b=document.getElementById('muVsEnableBtn');if(b){b.classList.toggle('on',muVsOn);b.textContent=muVsOn?'ON':'OFF';}
+  var b=document.getElementById('muVsLabelBtn');if(b){b.classList.toggle('on',muVsOn);b.setAttribute('aria-checked',muVsOn?'true':'false');}
   var body=document.getElementById('muVsBody');if(body)body.classList.toggle('ns-dim',!muVsOn);
-  var mty=document.getElementById('muVsTypeSel');if(mty)mty.classList.toggle('ns-dim',!muVsOn);
+  var mrw=document.getElementById('muVsEnvRow');if(mrw)mrw.classList.toggle('ns-dim',!muVsOn);
   muVsPerOscUpd();
   if(muVsOn){muVsAutoStart=performance.now();muVsApplyTrem();muVsStart();}
   else muVsStop(true);
 }
 // engage the tremolo node-set matching the current mode (global muTremGain vs per-osc o.lfoGain); disengage the other
 function muVsApplyTrem(){
-  if(muVsPerOsc){tremEngage(muTremGain,muTremDepth,false);multiOscs.forEach(function(o){tremEngage(o.lfoGain,o.lfoDepth,muVsOn);});}
-  else{tremEngage(muTremGain,muTremDepth,muVsOn);multiOscs.forEach(function(o){tremEngage(o.lfoGain,o.lfoDepth,false);});}
+  if(muVsPerOsc){tremEngage(muTremGain,muTremDepth,false,true);multiOscs.forEach(function(o){tremEngage(o.lfoGain,o.lfoDepth,muVsOn,true);});}
+  else{tremEngage(muTremGain,muTremDepth,muVsOn,true);multiOscs.forEach(function(o){tremEngage(o.lfoGain,o.lfoDepth,false,true);});}
 }
 function muVsToggleAuto(){
   if(muVsPerOsc)return;  // AUTO is N/A while per-osc ratio is on
@@ -1918,9 +2021,60 @@ function muVsFaderToPeriod(f){var A=muVsA,B=muVsB;return A>0?A*Math.pow(B/Math.m
 function muVsBase(){return 0.1*Math.pow(10000,muVsFader);} // per-osc x: 0.1..1000 s (log)
 function muVsRefreshFader(){var vs=document.getElementById('muVsFaderNumV'),us=document.getElementById('muVsFaderNumU');if(!vs)return;if(muVsPerOsc){var b=muVsBase();vs.textContent=(b<100?+b.toFixed(1):Math.round(b));us.textContent='s';}else{vs.textContent=Math.round(muVsFaderToPeriod(muVsFader)*1000);us.textContent='ms';}}
 function muVsRenderDir(){var b=document.getElementById('muVsDirCycle');if(b)b.innerHTML=nsVsDirIcon(muVsDir);}
+// ── PULSE envelope A/D slider ──────────────────────────────────────────────────────────────────────
+// One track, two thumbs, both shortest at the CENTRE: the left one travels the LEFT half (centre 1ms -> far left
+// 1s attack), the right one the RIGHT half, mirrored (centre 1ms -> far right 1s decay). Log, via shared expS/expSI.
+function muVsEnvEdgeToMs(e){return expS(Math.max(0,Math.min(1,e))*10000,1,1000);}
+function muVsEnvMsToEdge(ms){return expSI(ms,1,1000)/10000;}
+function muVsEnvLbl(ms){return ms<10?ms.toFixed(1):Math.round(ms);}
+// A rebuild allocates a fresh 12s buffer AND re-seats the sources, so: never rebuild when the value did not
+// actually change (a held thumb still fires touchmove/mousemove), and throttle while one is moving.
+var muVsEnvLastBuild=0,muVsEnvLastKey='';
+function muVsEnvApply(live){
+  var k=muVsAtk+'|'+muVsDec;
+  if(k===muVsEnvLastKey)return;                                     // thumb held still — nothing to rebuild
+  if(live&&performance.now()-muVsEnvLastBuild<120)return;           // throttled; the release pass will apply it
+  muVsEnvLastKey=k;muVsEnvLastBuild=performance.now();
+  muVsRewave();
+}
+function syncMuVsEnv(){
+  var tL=document.getElementById('muVsEnvL'),tR=document.getElementById('muVsEnvR'),fill=document.getElementById('muVsEnvFill');
+  if(!tL)return;
+  var pL=(1-muVsEnvMsToEdge(muVsAtk*1000))*50,pR=50+muVsEnvMsToEdge(muVsDec*1000)*50;
+  tL.style.left=pL+'%';tR.style.left=pR+'%';
+  fill.style.left=pL+'%';fill.style.width=(pR-pL)+'%';
+  var a=document.getElementById('muVsAtkV');if(a){a.textContent=muVsEnvLbl(muVsAtk*1000);a.style.left=(pL+(50-pL)*0.15)+'%';}
+  var d=document.getElementById('muVsDecV');if(d){d.textContent=muVsEnvLbl(muVsDec*1000);d.style.left=(pR+(50-pR)*0.15)+'%';}
+}
+function initMuVsEnvRange(){
+  var wrap=document.getElementById('muVsEnvBar');if(!wrap)return;
+  var track=document.createElement('div');track.className='dual-track';
+  var fill=document.createElement('div');fill.className='dual-fill';fill.id='muVsEnvFill';
+  var tL=document.createElement('div');tL.className='dual-thumb';tL.id='muVsEnvL';tL.textContent='A';
+  var tR=document.createElement('div');tR.className='dual-thumb';tR.id='muVsEnvR';tR.textContent='D';
+  wrap.appendChild(track);wrap.appendChild(fill);wrap.appendChild(tL);wrap.appendChild(tR);
+  syncMuVsEnv();
+  var dragging=null;
+  function posFromX(cx){var r=wrap.getBoundingClientRect();return Math.max(0,Math.min(100,(cx-r.left)/r.width*100));}
+  function update(pos){
+    if(dragging==='L')muVsAtk=muVsEnvEdgeToMs(1-Math.min(50,pos)/50)/1000;
+    else if(dragging==='R')muVsDec=muVsEnvEdgeToMs((Math.max(50,pos)-50)/50)/1000;
+    else return;
+    syncMuVsEnv();muVsEnvApply(true);
+  }
+  function release(){if(!dragging)return;dragging=null;muVsEnvApply(false);}
+  tL.addEventListener('mousedown',function(e){e.preventDefault();dragging='L';});
+  tR.addEventListener('mousedown',function(e){e.preventDefault();dragging='R';});
+  document.addEventListener('mousemove',function(e){if(dragging)update(posFromX(e.clientX));});
+  document.addEventListener('mouseup',release);
+  tL.addEventListener('touchstart',function(e){e.preventDefault();dragging='L';},{passive:false});
+  tR.addEventListener('touchstart',function(e){e.preventDefault();dragging='R';},{passive:false});
+  wrap.addEventListener('touchmove',function(e){if(!dragging)return;e.preventDefault();update(posFromX(e.touches[0].clientX));},{passive:false});
+  wrap.addEventListener('touchend',release,{passive:true});
+}
 function muVsCycleDir(){var i=NS_DIR_ORDER.indexOf(muVsDir);muVsDir=NS_DIR_ORDER[(i+1)%NS_DIR_ORDER.length];muVsRenderDir();}
-function muVsStart(){if(muVsActive||!muVsOn||!multiPlaying)return;muVsLastFrame=performance.now();muVsActive=true;muVsRAF=requestAnimationFrame(muVsTick);}
-function muVsStop(restore){if(muVsRAF)cancelAnimationFrame(muVsRAF);muVsActive=false;muVsRAF=null;if(restore&&AC){tremEngage(muTremGain,muTremDepth,false);multiOscs.forEach(function(o){tremEngage(o.lfoGain,o.lfoDepth,false);});}}
+function muVsStart(){if(muVsActive||!muVsOn||!multiPlaying)return;muVsActive=true;muVsRAF=requestAnimationFrame(muVsTick);}
+function muVsStop(restore){if(muVsRAF)cancelAnimationFrame(muVsRAF);muVsActive=false;muVsRAF=null;if(restore&&AC){tremEngage(muTremGain,muTremDepth,false,true);multiOscs.forEach(function(o){tremEngage(o.lfoGain,o.lfoDepth,false,true);});}}
 function muVsTick(){
   if(!muVsOn||!multiPlaying){muVsActive=false;muVsRAF=null;return;}
   var now=performance.now();
@@ -1930,20 +2084,33 @@ function muVsTick(){
     for(var i=0;i<8;i++){var o=multiOscs[i];if(!o||!o.lfoSrc)continue;
       var rr=multiOscRatios[i]||0;
       var per=Math.min(1000,Math.max(0.0005,x/(rr>1e-6?rr:1e-6)));  // x is seconds now
-      if(AC)o.lfoSrc.playbackRate.setTargetAtTime(periodToFreq(per),AC.currentTime,.02);
+      muVsLoop(o.lfoSrc,per);
     }
   }else{
-    var P=muVsAuto?sweepPeriod(muVsType,rsPhase(muVsAutoStart,muVsDur,muVsDir,now),muVsA,muVsB):muVsFaderToPeriod(muVsFader);
-    if(muTremSrc&&AC)muTremSrc.playbackRate.setTargetAtTime(periodToFreq(P),AC.currentTime,.02);
+    var P=muVsAuto?sweepPeriod('linear',rsPhase(muVsAutoStart,muVsDur,muVsDir,now),muVsA,muVsB):muVsFaderToPeriod(muVsFader);
+    muVsLoop(muTremSrc,P);
   }
   muVsRAF=requestAnimationFrame(muVsTick);
 }
-// TYPE change: a buffer source's buffer is set-once, so recreate the modulation sources with the new shape.
+// A/D change: a buffer source's buffer is set-once, so the sources have to be recreated with the new shape.
+// start(t, offset) picks the new one up at the SAME point in the cycle the old one had reached — otherwise every
+// rebuild restarts at buffer 0 (the attack) and force-fires the envelope, which during a drag reads as a second
+// pulse rate riding over the real one. Loop params come from the retired node so the new one is right at once.
+function muVsReplace(old,depth,buf){
+  var ph=old?(old._ph||0):0,P=old?(old._P||1):1,t=AC.currentTime;
+  if(old){try{old.stop();}catch(e){}try{old.disconnect();}catch(e){}}
+  var s=AC.createBufferSource();s.buffer=buf;s.loop=true;s.loopStart=0;
+  s.loopEnd=Math.min(MUVS_BUF,Math.max(Math.max(0.0005,muVsAtk+muVsDec),P));
+  s.playbackRate.value=s.loopEnd/Math.max(P,0.0005);
+  s._ph=ph;s._P=P;s._t=t;
+  s.connect(depth);s.start(t,ph*s.loopEnd);
+  return s;
+}
 function muVsRewave(){
   if(!AC||!multiPlaying)return;
-  if(muTremSrc){try{muTremSrc.stop();}catch(e){}try{muTremSrc.disconnect();}catch(e){}}
-  if(muTremDepth){muTremSrc=AC.createBufferSource();muTremSrc.buffer=muVsWaveBuf(muVsType);muTremSrc.loop=true;muTremSrc.connect(muTremDepth);muTremSrc.start();}
-  multiOscs.forEach(function(o){if(!o.lfoDepth)return;if(o.lfoSrc){try{o.lfoSrc.stop();}catch(e){}try{o.lfoSrc.disconnect();}catch(e){}}o.lfoSrc=AC.createBufferSource();o.lfoSrc.buffer=muVsWaveBuf(muVsType);o.lfoSrc.loop=true;o.lfoSrc.connect(o.lfoDepth);o.lfoSrc.start();});
+  var buf=muVsEnvBuf();
+  if(muTremDepth)muTremSrc=muVsReplace(muTremSrc,muTremDepth,buf);
+  multiOscs.forEach(function(o){if(o.lfoDepth)o.lfoSrc=muVsReplace(o.lfoSrc,o.lfoDepth,buf);});
 }
 function muVsTogglePerOsc(){
   muVsPerOsc=!muVsPerOsc;
@@ -2404,9 +2571,9 @@ function captureState(){
     sw:swpWv,sm:swpMVol,si:swpFqMin,sx:swpFqMax,sd:swpFqDur,st:TYPE_ENC[swpFqType]||'l',sr:DIR_ENC[swpFqDir]||'f',
     ns:nSl.slice(),nv:nVol,np:nAPre,nse:nsVsOn?1:0,nsau:nsVsAuto?1:0,nspa:nsVsA,nspb:nsVsB,nsf:nsVsFader,nsvd:nsVsDur,nsvr:DIR_ENC[nsVsDir]||'fwd',nsvt:TYPE_ENC[nsVsType]||'l',
     mv:multiMVol,mw:multiWv,md:multiDur,mvm:multiVolMin,mvx:multiVolMax,mld:multiLfoDur,mlo:multiLfoOn?1:0,
-    mvse:muVsOn?1:0,mvsau:muVsAuto?1:0,mvsa:muVsA,mvsb:muVsB,mvsf:muVsFader,mvsd:muVsDur,mvsr:DIR_ENC[muVsDir]||'fwd',mvst:TYPE_ENC[muVsType]||'l',mvsp:muVsPerOsc?1:0,
-    mhi:multiHarmonicIdx,mfu:multiFundamental,mor:multiOscRatios.slice(),mff:multiFilterFreq,mft:multiFilterType,bfr:bbFqRatio,
-    brl:bbRangeLo,brh:bbRangeHi,
+    mvse:muVsOn?1:0,mvsau:muVsAuto?1:0,mvsa:muVsA,mvsb:muVsB,mvsf:muVsFader,mvsd:muVsDur,mvsr:DIR_ENC[muVsDir]||'fwd',mvsatk:muVsAtk,mvsdec:muVsDec,mvsp:muVsPerOsc?1:0,
+    mhi:multiHarmonicIdx,mfu:multiFundamental,mor:multiOscRatios.slice(),mfl:multiFiltLo,mfh:multiFiltHi,bfr:bbFqRatio,
+    brl:bbRangeLo,brh:bbRangeHi,bfl:bbFiltLo,bfh:bbFiltHi,
     mr:multiOscs.map(function(o){return{f:o.freq,v:o.vol,m:o.muted?1:0};}),
     xm:appMasterVol,
     ma:multiAutoOn?1:0,xa:appAutoOn?1:0,lm:appLimOn?1:0
@@ -2428,11 +2595,12 @@ function restoreState(o){
   nSl=o.ns.slice();nVol=o.nv;nAPre=o.np||null;
   nsVsOn=!!o.nse;nsVsAuto=!!o.nsau;nsVsA=o.nspa!=null?+o.nspa:0.001;nsVsB=o.nspb!=null?+o.nspb:10;nsVsFader=o.nsf!=null?+o.nsf:0;nsVsDur=o.nsvd!=null?+o.nsvd:10;nsVsDir=DIR_DEC[o.nsvr]||'fwd';nsVsType=TYPE_DEC[o.nsvt]||'linear';
   nTransActive=false;if(nTransRAF){cancelAnimationFrame(nTransRAF);nTransRAF=null;}nsVsStop();
-  multiMVol=o.mv!=null?o.mv:80;multiFilterFreq=o.mff!=null?o.mff:63;multiFilterType=o.mft||'lowpass';bbFqRatio=o.bfr!=null?o.bfr:1;
+  multiMVol=o.mv!=null?o.mv:80;multiFiltLo=o.mfl!=null?Math.max(0,Math.min(100,o.mfl)):0;multiFiltHi=o.mfh!=null?Math.max(multiFiltLo,Math.min(100,o.mfh)):100;bbFqRatio=o.bfr!=null?o.bfr:1;
   multiWv=o.mw||0;multiDur=o.md||1.5;
   multiVolMin=o.mvm!=null?o.mvm:65;multiVolMax=o.mvx!=null?o.mvx:100;
   multiLfoDur=o.mld||3;multiLfoOn=true;
-  muVsOn=!!o.mvse;muVsAuto=!!o.mvsau;muVsA=o.mvsa!=null?+o.mvsa:0.001;muVsB=o.mvsb!=null?+o.mvsb:10;muVsFader=o.mvsf!=null?+o.mvsf:0;muVsDur=o.mvsd!=null?+o.mvsd:10;muVsDir=DIR_DEC[o.mvsr]||'fwd';muVsType=TYPE_DEC[o.mvst]||'linear';muVsPerOsc=!!o.mvsp;
+  muVsOn=!!o.mvse;muVsAuto=!!o.mvsau;muVsA=o.mvsa!=null?+o.mvsa:0.001;muVsB=o.mvsb!=null?+o.mvsb:10;muVsFader=o.mvsf!=null?+o.mvsf:0;muVsDur=o.mvsd!=null?+o.mvsd:10;muVsDir=DIR_DEC[o.mvsr]||'fwd';muVsPerOsc=!!o.mvsp;
+  muVsAtk=o.mvsatk!=null?+o.mvsatk:0.002;muVsDec=o.mvsdec!=null?+o.mvsdec:0.15;   // pre-A/D archives fall back
   multiHarmonicIdx=o.mhi!=null?o.mhi:0;
   multiFundamental=o.mfu!=null?o.mfu:25;multiFundFrom=multiFundamental;multiFundTo=multiFundamental;
   multiOscRatios=o.mor&&o.mor.length===8?o.mor.slice():[];
@@ -2450,8 +2618,10 @@ function restoreState(o){
   multiAutoRecalc();appAutoRecalc();appLimRecalc();
   bbRangeLo=o.brl!=null?Math.max(1,Math.min(32,o.brl)):1;
   bbRangeHi=o.brh!=null?Math.max(bbRangeLo,Math.min(32,o.brh)):32;
+  bbFiltLo=o.bfl!=null?Math.max(0,Math.min(100,o.bfl)):0;
+  bbFiltHi=o.bfh!=null?Math.max(bbFiltLo,Math.min(100,o.bfh)):100;
   recomputeHarmonicPools();
-  bbSyncRange();bbRangeSave();
+  bbSyncRange();bbFiltSync();bbFiltApply();bbUiSave();
   syncRiserUI();syncSweepUI();syncNoiseUI();syncMultiUI();syncMixerUI();
 }
 
@@ -2498,18 +2668,13 @@ function syncMultiUI(){
   var hopts=document.querySelectorAll('#mselHarmOpts .msel-opt');
   hopts.forEach(function(o){o.classList.toggle('active',+o.dataset.val===multiHarmonicIdx);});
   document.getElementById('multiFundV').textContent=multiFundamental.toFixed(2);
-  var mvR=document.getElementById('mMVolR');mvR.value=multiFilterFreq;
-  updateSliderVal('msMasterVal',mvR,fmtFilterHz(multiFilterFreq));
-  if(multiFilter&&AC)multiFilter.frequency.setTargetAtTime(filterV2F(multiFilterFreq),AC.currentTime,.02);
+  syncFiltRange();multiFiltApply();
   var volR=document.getElementById('multiMVolR');if(volR){volR.value=multiMVol;updateSliderVal('msVolumeVal',volR,multiMVol);}
   if(multiMGain&&AC)multiMGain.gain.setTargetAtTime(v2g(multiMVol),AC.currentTime,.02);
-  var fidx=multiFilterIdx(),ft=document.getElementById('mselFiltText');if(ft)ft.textContent=MFILT[fidx].name;
-  document.querySelectorAll('#mselFiltOpts .msel-opt').forEach(function(o){o.classList.toggle('active',+o.dataset.val===fidx);});
-  multiApplyFilterType();
   var mab=document.getElementById('mAutoBtn');if(mab){mab.classList.toggle('on',multiAutoOn);mab.textContent=multiAutoOn?'ON':'OFF';}
   var rrb=document.getElementById('mathsRatioBtn');if(rrb){rrb.classList.toggle('on',bbDurHarmonic);rrb.textContent=bbDurHarmonic?'ON':'OFF';}
   var fqr=document.getElementById('bbFqRatioV');if(fqr)fqr.textContent=bbFqRatio.toFixed(2);
-  var mvEn=document.getElementById('muVsEnableBtn');if(mvEn){mvEn.classList.toggle('on',muVsOn);mvEn.textContent=muVsOn?'ON':'OFF';}
+  var mvEn=document.getElementById('muVsLabelBtn');if(mvEn){mvEn.classList.toggle('on',muVsOn);mvEn.setAttribute('aria-checked',muVsOn?'true':'false');}
   var mvBody=document.getElementById('muVsBody');if(mvBody)mvBody.classList.toggle('ns-dim',!muVsOn);
   var mvAu=document.getElementById('muVsAutoBtn');if(mvAu)mvAu.classList.toggle('on',muVsAuto);
   var mvAV=document.getElementById('muVsAV');if(mvAV)mvAV.textContent=Math.round(muVsA*1000);
@@ -2517,8 +2682,8 @@ function syncMultiUI(){
   var mvDV=document.getElementById('muVsDurV');if(mvDV)mvDV.textContent=muVsDur.toFixed(2);
   var mvFd=document.getElementById('muVsFaderR');if(mvFd)mvFd.value=Math.round(muVsFader*1000);
   var mvPo=document.getElementById('muVsPerOscBtn');if(mvPo){mvPo.classList.toggle('on',muVsPerOsc);mvPo.textContent=muVsPerOsc?'ON':'OFF';}
-  var mvTy=document.getElementById('muVsTypeSel');if(mvTy)mvTy.classList.toggle('ns-dim',!muVsOn);
-  muVsPerOscUpd();muVsRefreshFader();muVsRenderDir();setSwpTypeSel('muVsTypeSel',muVsType);
+  var mvRw=document.getElementById('muVsEnvRow');if(mvRw)mvRw.classList.toggle('ns-dim',!muVsOn);
+  muVsPerOscUpd();muVsRefreshFader();muVsRenderDir();syncMuVsEnv();
   muVsApplyTrem();
   if(muVsOn&&multiPlaying)muVsStart();else if(!muVsOn)muVsStop(false);
   renderMulti();
@@ -2700,22 +2865,60 @@ function bbSetTempo(pos){
   bbTempo=Math.max(1,Math.min(100,Math.round(expS(bbTempoPos,1,100))));
   bbDurPoolPool=BB_DURS.map(function(d){return r2(Math.min(300,d*bbTempo/100));});
   recomputeHarmonicPools();
-  var v=document.getElementById('bbTempoVal');if(v)v.textContent=101-bbTempo; // display mirrored: value 1 reads 100, value 2 reads 99 ... value 100 reads 1
-  var t=document.getElementById('bbTempoTicks');if(t)t.style.backgroundPositionX=((bbTempoPos-5000)/10000*300)+'px';
+  var pct=bbTempoPos/100;                                    // % from the track TOP: reads 100 at the top, 1 at the bottom
+  var th=document.getElementById('bbSpeedT');if(th)th.style.top=pct+'%';
+  var sh=document.getElementById('bbSpeed');if(sh)sh.style.setProperty('--bbs-p',pct+'%');
+  var v=document.getElementById('bbTempoVal');if(v){v.textContent=Math.round(1+99*(100-pct)/100);v.style.top=pct+'%';} // 1..100 linear down the track; bbTempo itself stays log-spaced
   updateBBBird();
 }
-function initBBTempoWheel(){
-  var w=document.getElementById('bbTempoWheel');if(!w)return;
-  var drag=false,sx=0,sp=0;
-  function down(x){drag=true;sx=x;sp=bbTempoPos;}
-  function move(x){if(!drag)return;var rect=w.getBoundingClientRect();bbSetTempo(sp+(x-sx)/rect.width*10000*0.8);}
-  w.addEventListener('mousedown',function(e){e.preventDefault();e.stopPropagation();down(e.clientX);});
-  document.addEventListener('mousemove',function(e){move(e.clientX);});
-  document.addEventListener('mouseup',function(){drag=false;});
-  w.addEventListener('touchstart',function(e){e.stopPropagation();down(e.touches[0].clientX);},{passive:true});
-  w.addEventListener('touchmove',function(e){e.preventDefault();move(e.touches[0].clientX);},{passive:false});
-  w.addEventListener('touchend',function(){drag=false;},{passive:true});
-  w.addEventListener('click',function(e){e.stopPropagation();});
+function bbSpeedPosFromY(y){
+  var t=document.getElementById('bbSpeedTrack');if(!t)return bbTempoPos;
+  var r=t.getBoundingClientRect();if(!r.height)return bbTempoPos;
+  return Math.max(0,Math.min(1,(y-r.top)/r.height))*10000;      // top = pos 0 = reads 100 (fastest)
+}
+/* A long duration can leave the module apparently dead for a minute after speeding it up,
+   because the running sweep still has to finish. Stepping the speed therefore triggers the
+   same reroll the tick loop does at a phase boundary, and restarts the phase so the new
+   duration takes effect at once. Type and direction are left alone - this is not a full roll. */
+function bbSpeedRoll(){
+  swpReroll();
+  if(!swpPlaying)return;
+  var pd=parsDir(swpFqDir);
+  swpPausing=false;swpRepCount=0;swpBloopReturn=false;
+  swpFqFwd=pd.base!=='left';
+  swpFqStart=performance.now();
+  if(swpSigGn&&AC)swpSigGn.gain.setTargetAtTime(1,AC.currentTime,.01);
+}
+function initBBSpeed(){
+  var host=document.getElementById('bbSpeed');if(!host)return;
+  var tk=document.getElementById('bbSpeedTrack');if(!tk)return;
+  var drag=false;
+  /* Bound to the TRACK, not the thumb, so a press anywhere jumps the value and starts a drag
+     - the same press-to-jump the MIXER and EQ faders use. The thumb is a child, so grabbing it
+     bubbles here too. (The range slider stays thumb-only: a jump there is ambiguous with two thumbs.) */
+  function apply(y){
+    var before=bbTempo;
+    bbSetTempo(bbSpeedPosFromY(y));
+    if(bbTempo!==before)bbSpeedRoll();
+  }
+  tk.addEventListener('pointerdown',function(e){
+    e.preventDefault();e.stopPropagation();
+    drag=true;host.classList.add('dragging');
+    try{tk.setPointerCapture(e.pointerId);}catch(_){}
+    apply(e.clientY);
+  });
+  tk.addEventListener('pointermove',function(e){
+    if(!drag)return;e.preventDefault();
+    apply(e.clientY);
+  });
+  function end(e){
+    if(!drag)return;
+    drag=false;host.classList.remove('dragging');
+    try{tk.releasePointerCapture(e.pointerId);}catch(_){}
+  }
+  tk.addEventListener('pointerup',end);
+  tk.addEventListener('pointercancel',end);
+  host.addEventListener('click',function(e){e.stopPropagation();});
   bbSetTempo(bbTempoPos);
 }
 /* ═══════ BIRDBOX LIST-RANGE (vertical dual-thumb window into the active MATHS list) ═══════ */
@@ -2724,7 +2927,7 @@ function bbRangeIdxFromY(y){
   var t=document.getElementById('bbRangeTrack');if(!t)return bbRangeLo;
   var r=t.getBoundingClientRect();if(!r.height)return bbRangeLo;
   var f=Math.max(0,Math.min(1,(y-r.top)/r.height));
-  return Math.round((1-f)*31)+1;                        // 1..32
+  return Math.round((1-f)*31)+1;                        // 1..32, counting upward
 }
 function bbSyncRange(){
   var lo=document.getElementById('bbRangeLoT');if(!lo)return;
@@ -2735,17 +2938,22 @@ function bbSyncRange(){
   var pinned=(bbRangeLo===bbRangeHi&&bbRangeLo<=1);
   lo.style.zIndex=pinned?2:3;hi.style.zIndex=pinned?3:2;
   // cut the groove between the thumbs so the window shows the gradient instead of a fill
-  if(host){host.style.setProperty('--bbr-a',yh+'%');host.style.setProperty('--bbr-b',yl+'%');}
+  if(host){host.style.setProperty('--bbr-a',Math.min(yl,yh)+'%');host.style.setProperty('--bbr-b',Math.max(yl,yh)+'%');}
   var vl=document.getElementById('bbRangeLoV'),vh=document.getElementById('bbRangeHiV');
   if(vl){vl.textContent=bbRangeLo;vl.style.top=yl+'%';}
   if(vh){vh.textContent=bbRangeHi;vh.style.top=yh+'%';}
 }
-function bbRangeSave(){try{localStorage.setItem('pbb_ui',JSON.stringify({rlo:bbRangeLo,rhi:bbRangeHi}));}catch(e){}}
-function bbRangeLoad(){try{
-  var o=JSON.parse(localStorage.getItem('pbb_ui'))||{},lo=+o.rlo,hi=+o.rhi;
+/* pbb_ui carries the birdbox strips: r* = list range (1..32), f* = filter cuts (0..100) */
+function bbUiSave(){try{localStorage.setItem('pbb_ui',JSON.stringify({rlo:bbRangeLo,rhi:bbRangeHi,flo:bbFiltLo,fhi:bbFiltHi}));}catch(e){}}
+function bbUiLoad(){try{
+  var o=JSON.parse(localStorage.getItem('pbb_ui'))||{},lo=+o.rlo,hi=+o.rhi,fl=+o.flo,fh=+o.fhi;
   if(isFinite(lo)&&isFinite(hi)){
     bbRangeLo=Math.max(1,Math.min(32,Math.round(lo)));
     bbRangeHi=Math.max(bbRangeLo,Math.min(32,Math.round(hi)));
+  }
+  if(isFinite(fl)&&isFinite(fh)){
+    bbFiltLo=Math.max(0,Math.min(100,Math.round(fl)));
+    bbFiltHi=Math.max(bbFiltLo,Math.min(100,Math.round(fh)));
   }
 }catch(e){}}
 function initBBRange(){
@@ -2768,13 +2976,117 @@ function initBBRange(){
       if(drag!==which)return;
       drag=null;host.classList.remove('dragging');
       try{el.releasePointerCapture(e.pointerId);}catch(_){}
-      bbRangeSave();
+      bbUiSave();
     }
     el.addEventListener('pointerup',end);
     el.addEventListener('pointercancel',end);
   });
   host.addEventListener('click',function(e){e.stopPropagation();});
   bbSyncRange();
+}
+/* ═══════ BIRDBOX FILTER (low-cut + high-cut, 12 dB/oct each) ═══════ */
+/* Positions ride the shared filterV2F scale: 0..100 -> 20 Hz..20 kHz, the same curve and
+   readout formatting the MATHS filter uses. 0/100 park both cuts outside the audible band. */
+let bbFiltLo=0,bbFiltHi=100;
+let bbHP=null,bbLP=null;
+function bbFiltIn(c){
+  if(!bbHP){
+    bbHP=c.createBiquadFilter();bbHP.type='highpass';bbHP.Q.value=0.707;   // Butterworth = 12 dB/oct
+    bbLP=c.createBiquadFilter();bbLP.type='lowpass'; bbLP.Q.value=0.707;
+    bbHP.connect(bbLP);
+  }
+  try{bbLP.disconnect();}catch(e){}      // re-running toggleSweep must not stack connections
+  if(swpMGn)bbLP.connect(swpMGn);
+  bbFiltApply();
+  return bbHP;
+}
+function bbFiltApply(){
+  if(!bbHP||!AC)return;
+  bbHP.frequency.setTargetAtTime(filterV2F(bbFiltLo),AC.currentTime,.02);
+  bbLP.frequency.setTargetAtTime(filterV2F(bbFiltHi),AC.currentTime,.02);
+}
+function bbFiltSync(){
+  var h=document.getElementById('bbFilt');if(!h)return;
+  h.style.setProperty('--bbf-a',bbFiltLo/100);
+  h.style.setProperty('--bbf-b',bbFiltHi/100);
+  var a=document.getElementById('bbFiltLoV'),b=document.getElementById('bbFiltHiV');
+  if(a)a.textContent=fmtFilterHz(bbFiltLo);
+  if(b)b.textContent=fmtFilterHz(bbFiltHi);
+  // stacked caps: keep whichever still has room on top, else the pair locks up at 0
+  var lo=document.getElementById('bbFiltLoT'),hi=document.getElementById('bbFiltHiT');
+  if(lo&&hi){var pinned=(bbFiltLo===bbFiltHi&&bbFiltLo<=0);
+    lo.style.zIndex=pinned?2:3;hi.style.zIndex=pinned?3:2;}
+}
+function bbFiltFromX(x){
+  var t=document.getElementById('bbFiltTrack');if(!t)return null;
+  var r=t.getBoundingClientRect(),w=r.width-10;if(w<=0)return null;
+  return Math.round(Math.max(0,Math.min(1,(x-r.left-5)/w))*100);
+}
+function initBBFilt(){
+  var host=document.getElementById('bbFilt');if(!host)return;
+  var drag=null;
+  ['lo','hi'].forEach(function(which){
+    var el=document.getElementById(which==='lo'?'bbFiltLoT':'bbFiltHiT');if(!el)return;
+    el.addEventListener('pointerdown',function(e){
+      e.preventDefault();e.stopPropagation();
+      drag=which;host.classList.add('dragging');
+      try{el.setPointerCapture(e.pointerId);}catch(_){}
+    });
+    el.addEventListener('pointermove',function(e){
+      if(drag!==which)return;e.preventDefault();
+      var v=bbFiltFromX(e.clientX);if(v===null)return;
+      if(which==='lo')bbFiltLo=Math.min(v,bbFiltHi);else bbFiltHi=Math.max(v,bbFiltLo);
+      bbFiltSync();bbFiltApply();
+    });
+    function end(e){
+      if(drag!==which)return;
+      drag=null;host.classList.remove('dragging');
+      try{el.releasePointerCapture(e.pointerId);}catch(_){}
+      bbUiSave();
+    }
+    el.addEventListener('pointerup',end);
+    el.addEventListener('pointercancel',end);
+  });
+  bbFiltSync();
+}
+/* ═══════ BIRDBOX VOLUME (mirrors a mixer channel; 4 = MASTER) ═══════ */
+var BB_VOL_CH=4;
+function bbVolGet(){var c=MIX_CH[BB_VOL_CH];return c?Math.max(0,Math.min(100,Math.round(c.get()))):100;}
+function bbVolSync(){
+  var h=document.getElementById('bbVol');if(!h)return;
+  var v=bbVolGet();
+  h.style.setProperty('--bbv-f',v/100);
+  var n=document.getElementById('bbVolV');if(n)n.textContent=v;
+}
+function bbVolFromX(x){
+  var t=document.getElementById('bbVolTrack');if(!t)return bbVolGet();
+  var r=t.getBoundingClientRect(),w=r.width-10;if(w<=0)return bbVolGet();
+  return Math.round(Math.max(0,Math.min(1,(x-r.left-5)/w))*100);
+}
+function initBBVol(){
+  var host=document.getElementById('bbVol');if(!host)return;
+  var tk=document.getElementById('bbVolTrack');if(!tk)return;
+  var drag=false;
+  function apply(x){updMix(BB_VOL_CH,bbVolFromX(x));}   // updMix drives the mixer fader AND calls bbVolSync
+  tk.addEventListener('pointerdown',function(e){
+    e.preventDefault();e.stopPropagation();
+    drag=true;host.classList.add('dragging');
+    try{tk.setPointerCapture(e.pointerId);}catch(_){}
+    apply(e.clientX);
+  });
+  tk.addEventListener('pointermove',function(e){
+    if(!drag)return;e.preventDefault();
+    apply(e.clientX);
+  });
+  function end(e){
+    if(!drag)return;
+    drag=false;host.classList.remove('dragging');
+    try{tk.releasePointerCapture(e.pointerId);}catch(_){}
+  }
+  tk.addEventListener('pointerup',end);
+  tk.addEventListener('pointercancel',end);
+  host.addEventListener('click',function(e){e.stopPropagation();});
+  bbVolSync();
 }
 function bbRand(arr){return arr[Math.floor(Math.random()*arr.length)];}
 function randomizeBirdbox(){
@@ -2883,7 +3195,7 @@ function toggleRiser(){
 (function(){
   let sy=0,sx=0,live=false;
   document.addEventListener('touchstart',function(e){
-    if(e.target.closest('.tabs,.plus-menu,#bbRange'))return;
+    if(e.target.closest('.tabs,.plus-menu,#bbRange,#bbSpeed,#bbFilt'))return;
     sy=e.touches[0].clientY;sx=e.touches[0].clientX;live=true;
   },{passive:true});
   document.addEventListener('touchend',function(e){
@@ -2900,7 +3212,8 @@ function toggleRiser(){
   mod.addEventListener('click',function(e){
     if(window.matchMedia('(hover:none) and (pointer:coarse)').matches)return;
     if(e.target.closest('#bbPlayBtn'))return;
-    if(e.target.closest('#bbTempoWheel'))return;
+    if(e.target.closest('#bbSpeed'))return;
+    if(e.target.closest('#bbFilt'))return;
     if(e.target.closest('#bbRange'))return;
     randomizeBirdbox();
   });
@@ -3492,10 +3805,21 @@ var UI={
       else touch.fricative_intensity=clamp(1-(time-touch.endTime)/fat,0,1);}}
 };
 
+var vtBackPending=false;
 function vtRedrawBack(){
   if(!backCtx)return;
   backCtx.clearRect(0,0,backCanvas.width,backCanvas.height);
   Glottis.drawKeyboard();TractUI.drawBackground();
+}
+/* vtOtoBuild runs from recomputeHarmonicPools, which fires on EVERY pointermove of the
+   BIRDBOX range slider. Redrawing the whole tract diagram at pointer rate starves the
+   ScriptProcessor audio callback on the main thread, so: skip entirely when the scale
+   cannot be on screen (OTOTUNE off, or VOICE not the visible tab) and coalesce the rest
+   to one redraw per frame. setOtotune/mount still call vtRedrawBack directly. */
+function vtScheduleBack(){
+  if(!backCtx||!ototune||!vtMounted||vtBackPending)return;
+  vtBackPending=true;
+  requestAnimationFrame(function(){vtBackPending=false;vtRedrawBack();});
 }
 
 return{
@@ -3507,6 +3831,7 @@ return{
     AudioSystem.started=true;AudioSystem.startSound(gainNode);
   },
   mount:function(){
+    vtRedrawBack();
     function redraw(){TractUI.draw();UI.draw();time=Date.now()/1000;UI.updateTouches();vtRAF=requestAnimationFrame(redraw);}
     vtRedraw=redraw;vtRAF=requestAnimationFrame(redraw);
   },
@@ -3514,7 +3839,7 @@ return{
   setAlwaysVoice:function(v){alwaysVoice=v;},setAutoWobble:function(v){autoWobble=v;},
   setOtotune:function(v){ototune=v;if(!vtOtoSet.length)vtOtoBuild();Glottis.handleTouches();vtRedrawBack();},
   setFree:function(v){free=v;Glottis.handleTouches();},
-  redrawBack:function(){vtRedrawBack();},
+  redrawBack:function(){vtScheduleBack();},
   getAlwaysVoice:function(){return alwaysVoice;},getAutoWobble:function(){return autoWobble;},
   getOtotune:function(){return ototune;},
   getFree:function(){return free;}
@@ -3542,9 +3867,8 @@ initSwpTypes('swpFqTypes','linear',t=>{swpFqType=t;});
 rsVolRenderDir();rsPitchRenderDir();
 nsVsRenderDir();
 mkDirBtns('swpFqDirBtns','r',function(d){swpFqDir=d;swpBloopReturn=false;swpRepCount=0;if(swpPausing){swpPausing=false;swpFqFwd=parsDir(d).base!=='left';swpFqStart=performance.now();if(swpSigGn&&AC)swpSigGn.gain.setTargetAtTime(1,AC.currentTime,.01);}},BB_DIRS.map(function(d){return d.k;}));
-initSwpTypeSel('muVsTypeSel','linear',function(t){muVsType=t;muVsRewave();});
 muVsRefreshFader();muVsUpdModes();muVsRenderDir();
-initEQ();initNP();multiInit();initMselWave();initMselFilter();initMultiHarmonics();bbRangeLoad();recomputeHarmonicPools();initMultiDualRange();syncMultiUI();renderArchive();initMixer();initBBTempoWheel();initBBRange();seedDefaultScore();renderScores();initScoreTab();
+initEQ();initNP();multiInit();initMselWave();initMultiFiltRange();initMultiHarmonics();bbUiLoad();recomputeHarmonicPools();initMultiDualRange();initMuVsEnvRange();syncMultiUI();renderArchive();initMixer();initBBSpeed();initBBRange();initBBVol();initBBFilt();seedDefaultScore();renderScores();initScoreTab();
 document.addEventListener('click',function(e){
   if(!e.target.closest('.msel'))document.querySelectorAll('.msel.open').forEach(function(s){s.classList.remove('open');});
   if(!e.target.closest('.mc-rclick')&&!e.target.closest('#mathsMenuLayer'))closeRatioMenu();
