@@ -162,6 +162,12 @@ input[type=range]::-moz-range-thumb{width:20px;height:20px;border-radius:50%;bac
    .dual-track already matches its 3px #ccc groove. Only difference now is the second thumb. */
 #multiFiltRange .dual-thumb{background:#aaa;border:none}
 #multiFiltRange .dual-fill{display:none}
+/* .ms-val sits at bottom:0 of the wrap, so the thumb->readout gap is whatever the block above
+   leaves below its thumb. The 36px range box leaves 8px under its 20px cap, while the volume
+   slider's inline <input> instead sits 3.5px ABOVE its own thumb bottom (5px descender line-box
+   slack minus 8.5px of cap overhang) -- so the filter numbers hang 11.5px lower. Pull that back
+   with a negative margin: it is a constant, so the gaps stay matched at every --mu-wrap-pad. */
+#multiFiltRange{margin-bottom:-11.5px}
 .maths-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:6px;width:100%;max-width:360px}
 .maths-cell{position:relative;aspect-ratio:var(--mu-cell-ar);background:#f8f4eb;border:1px solid #ccc;border-radius:1px;cursor:pointer;display:flex;flex-direction:column;justify-content:flex-end;padding:5px 6px;transition:opacity .15s;min-width:0;overflow:hidden}
 .maths-cell.muted{opacity:.25}
@@ -264,9 +270,11 @@ input[type=range]::-moz-range-thumb{width:20px;height:20px;border-radius:50%;bac
    Width = SPEED-to-RANGE centre distance = the old square side + 10px; aspect-ratio derives the
    FILTER-to-VOLUME distance from it, so the 9:16 holds by construction at any viewport.
    max-height is an overflow guard for unusually short windows (#modBirdbox clips): if it bites,
-   the box goes slightly wider than 9:16 rather than losing the strips off-screen.
+   the box goes slightly wider than 9:16 rather than losing the strips off-screen. The frame is
+   centred, so the deepest overhang sets it: PAUSE sits on the bottom edge (+11px) and VOLUME hangs
+   30px below that (+41px), hence 2*(41+17px slack) = 116px.
    pointer-events:none keeps the empty middle tappable for rolls — each strip re-enables its own. */
-#bbFrame{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:calc(85% - 30.8px);aspect-ratio:9/16;max-height:calc(100% - 56px);z-index:6;pointer-events:none}
+#bbFrame{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:calc(85% - 30.8px);aspect-ratio:9/16;max-height:calc(100% - 116px);z-index:6;pointer-events:none}
 #bbSpeed{position:absolute;left:-17px;top:0;bottom:0;width:34px;touch-action:none;pointer-events:auto;--bbs-p:50%}
 #bbSpeedTrack{position:absolute;left:0;right:0;top:22px;bottom:22px;cursor:pointer;touch-action:none}
 #bbSpeedTrack::before{content:'';position:absolute;left:50%;top:0;bottom:0;width:10px;background:linear-gradient(90deg,#cbc4b0,#ece6d5);box-shadow:inset 1px 0 3px rgba(0,0,0,.4);border-radius:2px;transform:translateX(-50%);-webkit-mask-image:linear-gradient(#000 0 calc(var(--bbs-p) - 8px),transparent calc(var(--bbs-p) - 8px) calc(var(--bbs-p) + 8px),#000 calc(var(--bbs-p) + 8px) 100%);mask-image:linear-gradient(#000 0 calc(var(--bbs-p) - 8px),transparent calc(var(--bbs-p) - 8px) calc(var(--bbs-p) + 8px),#000 calc(var(--bbs-p) + 8px) 100%)}
@@ -275,11 +283,11 @@ input[type=range]::-moz-range-thumb{width:20px;height:20px;border-radius:50%;bac
    end (85%), spanning exactly between their centre lines (24px in from each edge), so the
    thumb sits under #bbSpeed at 0 and under #bbRange at 100. --bbv-f = the level 0..1; everything
    LEFT of the thumb is cut away, so the filled part is the gradient showing through. */
-/* FILTER: closes the top of the frame, mirroring #bbVol across the module — same 22px offset
-   from where the vertical tracks begin (15%), same 19px/5px horizontal alignment. Dual thumb:
-   left = low-cut, right = high-cut, and the PASSBAND between them is cut out of the groove, so
-   the open band reads as gradient exactly like the selected window on the list-range slider. */
-#bbFilt{position:absolute;left:-5px;right:-5px;top:-11px;height:22px;touch-action:none;pointer-events:none;--bbf-a:0;--bbf-b:1}
+/* FILTER: sits on the frame's BOTTOM edge with VOLUME 30px under it — same 19px/5px horizontal
+   alignment as the other horizontal strips. Dual thumb: left = low-cut, right = high-cut, and the
+   PASSBAND between them is cut out of the groove, so the open band reads as gradient exactly like
+   the selected window on the list-range slider. */
+#bbFilt{position:absolute;left:-5px;right:-5px;top:calc(100% - 11px);height:22px;touch-action:none;pointer-events:none;--bbf-a:0;--bbf-b:1}
 #bbFiltTrack{position:absolute;left:0;right:0;top:0;bottom:0;pointer-events:none}
 #bbFiltTrack::before{content:'';position:absolute;top:50%;left:0;right:0;height:10px;background:linear-gradient(180deg,#cbc4b0,#ece6d5);box-shadow:inset 0 1px 3px rgba(0,0,0,.4);border-radius:2px;transform:translateY(-50%);-webkit-mask-image:linear-gradient(90deg,#000 0 calc(-3px + (100% - 10px) * var(--bbf-a)),transparent calc(-3px + (100% - 10px) * var(--bbf-a)) calc(13px + (100% - 10px) * var(--bbf-b)),#000 calc(13px + (100% - 10px) * var(--bbf-b)) 100%);mask-image:linear-gradient(90deg,#000 0 calc(-3px + (100% - 10px) * var(--bbf-a)),transparent calc(-3px + (100% - 10px) * var(--bbf-a)) calc(13px + (100% - 10px) * var(--bbf-b)),#000 calc(13px + (100% - 10px) * var(--bbf-b)) 100%)}
 /* dual thumb, so these ARE grabbable (unlike the single-thumb press-to-jump sliders) */
@@ -289,7 +297,22 @@ input[type=range]::-moz-range-thumb{width:20px;height:20px;border-radius:50%;bac
 #bbFiltLoV,#bbFiltHiV{top:auto;bottom:calc(50% + 18px);transform:translateX(-50%)}
 #bbFiltLoV{left:calc(5px + (100% - 10px) * var(--bbf-a))}
 #bbFiltHiV{left:calc(5px + (100% - 10px) * var(--bbf-b))}
-#bbVol{position:absolute;left:-5px;right:-5px;top:calc(100% - 11px);height:22px;touch-action:none;pointer-events:none;--bbv-f:1}
+/* PAUSE DURATION: brackets the seconds window every pause draws its length from. Horizontal
+   dual-thumb skin lifted from #bbFilt, log-scaled the same way; the window BETWEEN the thumbs is
+   cut out of the groove, so a selected range reads the same here as it does on FILTER and on RANGE.
+   Closes the TOP of the frame — it and FILTER swapped edges, so the stack reads
+   PAUSE / frame / FILTER / VOLUME from top to bottom. */
+#bbPause{position:absolute;left:-5px;right:-5px;top:-11px;height:22px;touch-action:none;pointer-events:none;--bbp-a:0;--bbp-b:1}
+#bbPauseTrack{position:absolute;left:0;right:0;top:0;bottom:0;pointer-events:none}
+#bbPauseTrack::before{content:'';position:absolute;top:50%;left:0;right:0;height:10px;background:linear-gradient(180deg,#cbc4b0,#ece6d5);box-shadow:inset 0 1px 3px rgba(0,0,0,.4);border-radius:2px;transform:translateY(-50%);-webkit-mask-image:linear-gradient(90deg,#000 0 calc(-3px + (100% - 10px) * var(--bbp-a)),transparent calc(-3px + (100% - 10px) * var(--bbp-a)) calc(13px + (100% - 10px) * var(--bbp-b)),#000 calc(13px + (100% - 10px) * var(--bbp-b)) 100%);mask-image:linear-gradient(90deg,#000 0 calc(-3px + (100% - 10px) * var(--bbp-a)),transparent calc(-3px + (100% - 10px) * var(--bbp-a)) calc(13px + (100% - 10px) * var(--bbp-b)),#000 calc(13px + (100% - 10px) * var(--bbp-b)) 100%)}
+#bbPauseLoT,#bbPauseHiT{top:50%;width:16px;height:26px;background:linear-gradient(90deg,transparent 41%,#d8d0ba 41%,#d8d0ba 59%,transparent 59%);pointer-events:auto}
+#bbPauseLoT{left:calc(5px + (100% - 10px) * var(--bbp-a))}
+#bbPauseHiT{left:calc(5px + (100% - 10px) * var(--bbp-b))}
+/* readouts sit ABOVE the track (as FILTER's do) so they clear the volume strip 30px below */
+#bbPauseLoV,#bbPauseHiV{top:auto;bottom:calc(50% + 18px);transform:translateX(-50%)}
+#bbPauseLoV{left:calc(5px + (100% - 10px) * var(--bbp-a))}
+#bbPauseHiV{left:calc(5px + (100% - 10px) * var(--bbp-b))}
+#bbVol{position:absolute;left:-5px;right:-5px;top:calc(100% + 19px);height:22px;touch-action:none;pointer-events:none;--bbv-f:1}
 /* host is inert; only the 22px track takes presses, so it steals as little as possible from the
    vertical thumbs' hit padding, which reaches 10px past the 85% line into this gap.
    Track spans the vertical grooves' OUTER edges (19px in) so the horizontal line reaches as far
@@ -314,7 +337,7 @@ input[type=range]::-moz-range-thumb{width:20px;height:20px;border-radius:50%;bac
 #bbRangeHiT{z-index:2}
 #bbRangeLoT{z-index:3}
 .bbr-num{position:absolute;left:38px;font:600 10px/1 'DM Mono',monospace;letter-spacing:1px;color:rgba(255,255,255,.92);text-shadow:0 1px 2px rgba(0,0,0,.45);transform:translateY(-50%);pointer-events:none;opacity:0;transition:opacity .18s}
-#bbRange.dragging .bbr-num,#bbSpeed.dragging .bbr-num,#bbVol.dragging .bbr-num,#bbFilt.dragging .bbr-num{opacity:1}
+#bbRange.dragging .bbr-num,#bbSpeed.dragging .bbr-num,#bbVol.dragging .bbr-num,#bbFilt.dragging .bbr-num,#bbPause.dragging .bbr-num{opacity:1}
 /* ═══ AUDIO FUNCTION (riser) ═══ */
 #modRiser.active{gap:15px;padding:20px 14px var(--mod-pad-bot)}
 .af-title{font-size:11px;letter-spacing:3px;color:#a0ad95;font-weight:500;margin-bottom:2px}
@@ -432,7 +455,9 @@ input[type=range]::-moz-range-thumb{width:20px;height:20px;border-radius:50%;bac
 #muVsStripTop{display:flex;align-items:center;gap:6px;width:100%}
 #muVsPerOscRow{display:flex;align-items:center;gap:6px}
 #modMulti #muVsFaderWrap{width:100%;max-width:none;padding-bottom:var(--mu-fader-pad)}
-#msVolumeWrap{margin-top:var(--mu-vol-gap)}
+/* extra breathing room under the pulse strip; rides on whichever slider comes first (FILTER).
+   -2px lifts the filter row; the matching +2px below keeps VOLUME at its old y. */
+#msMasterWrap{margin-top:calc(var(--mu-vol-gap) - 2px);margin-bottom:2px}
 /* fader value readout box (replaces the moving thumb bubble): shows Xs in per-osc, Xms otherwise */
 #muVsRight{display:flex;align-items:center;gap:6px;margin-left:auto}
 #muVsFaderNum{display:inline-flex;align-items:center;gap:1px;height:20px;padding:0 7px;border:1px solid rgba(0,0,0,.15);border-radius:2px;background:#efe9da;box-sizing:border-box;white-space:nowrap;flex:0 0 auto}
@@ -687,9 +712,10 @@ input[type=range]::-moz-range-thumb{width:20px;height:20px;border-radius:50%;bac
   <img id="bbBird" src="henningchristiansen-bird-nobackground.svg" alt="">
   <div id="bbPlayBtn" onclick="toggleSweep()"></div>
   <div id="bbFrame">
-    <div id="bbSpeed"><div id="bbSpeedTrack"><div class="bbr-thumb" id="bbSpeedT"></div><span class="bbr-num" id="bbTempoVal">55</span></div></div>
+    <div id="bbSpeed"><div id="bbSpeedTrack"><div class="bbr-thumb" id="bbSpeedT"></div><span class="bbr-num" id="bbTempoVal">93</span></div></div>
     <div id="bbRange"><div id="bbRangeTrack"><div class="bbr-thumb" id="bbRangeHiT"></div><div class="bbr-thumb" id="bbRangeLoT"></div><span class="bbr-num" id="bbRangeLoV">1</span><span class="bbr-num" id="bbRangeHiV">32</span></div></div>
     <div id="bbFilt"><div id="bbFiltTrack"><div class="bbr-thumb" id="bbFiltHiT"></div><div class="bbr-thumb" id="bbFiltLoT"></div><span class="bbr-num" id="bbFiltLoV">20</span><span class="bbr-num" id="bbFiltHiV">20.0k</span></div></div>
+    <div id="bbPause"><div id="bbPauseTrack"><div class="bbr-thumb" id="bbPauseHiT"></div><div class="bbr-thumb" id="bbPauseLoT"></div><span class="bbr-num" id="bbPauseLoV">0</span><span class="bbr-num" id="bbPauseHiV">4</span></div></div>
     <div id="bbVol"><div id="bbVolTrack"><div class="bbr-thumb" id="bbVolT"></div><span class="bbr-num" id="bbVolV">100</span></div></div>
   </div>
   <div id="bbControls">
@@ -819,16 +845,16 @@ input[type=range]::-moz-range-thumb{width:20px;height:20px;border-radius:50%;bac
         </div>
       </div>
     </div>
-    <div class="maths-slider-wrap" id="msVolumeWrap">
-      <span class="ms-unit">%</span><span class="ms-label">volume</span>
-      <input type="range" id="multiMVolR" min="0" max="100" value="100" oninput="multiSetMasterVol(+this.value)">
-      <span class="ms-val" id="msVolumeVal">100</span>
-    </div>
     <div class="maths-slider-wrap" id="msMasterWrap">
       <div class="ms-hdr"><span class="ms-label">filter</span><span class="ms-unit">Hz</span></div>
       <div id="multiFiltRange" style="position:relative;height:36px;width:100%;touch-action:none"></div>
       <span class="ms-val" id="msFiltLoVal">20</span>
       <span class="ms-val" id="msFiltHiVal">20.0k</span>
+    </div>
+    <div class="maths-slider-wrap" id="msVolumeWrap">
+      <span class="ms-unit">%</span><span class="ms-label">volume</span>
+      <input type="range" id="multiMVolR" min="0" max="100" value="100" oninput="multiSetMasterVol(+this.value)">
+      <span class="ms-val" id="msVolumeVal">100</span>
     </div>
   </div>
   </div>
@@ -1431,7 +1457,12 @@ let bbFreqPool=BB_FREQS.slice();
 let bbFqRatio=2;
 let bbDurPool=BB_DURS.slice();
 let bbDurHarmonic=true;
-let bbTempo=8,bbTempoPos=4515;
+/* Speed-slider curve. BB_TEMPO_CURVE is the scaling degree by itself: 100 reproduces the old
+   pure-exponential map, 1 is dead linear, anything lower than 100 is flatter. The endpoints are
+   pinned to 1 and 100 either way, so every speed stays reachable and the audible range never moves. */
+const BB_TEMPO_CURVE=10;
+function bbTempoAt(pos){var t=pos/10000,R=BB_TEMPO_CURVE;return 1+99*(R===1?t:(Math.pow(R,t)-1)/(R-1));}
+let bbTempoPos=2140,bbTempo=bbTempoAt(bbTempoPos);  // seed re-solved so the default still lands on bbTempo 8 — same speed on load as before the curve changed
 let bbDurPoolPool=BB_DURS.slice();
 let bbRangeLo=1,bbRangeHi=32;   // 1-based inclusive window into the active MATHS list
 function bbRangeSlice(arr){
@@ -1454,6 +1485,10 @@ const BB_DIRS=(function(){
   return d;
 })();
 function parsDir(k){var d=BB_DIRS.find(function(x){return x.k===k;});return d||{base:'right',sm:1,pm:0};}
+/* Pause-duration window, as slider positions 0..100 mapped through pauseV2S to seconds. Every pause
+   draws from it, so pause length is independent of SPEED, of the MATHS ratio list and of the
+   HARMONIC toggle — none of which it used to be. 0..100 (the default) is the full span. */
+let bbPauseLo=0,bbPauseHi=100;
 const VSTYPES=['linear','log','meandering'];
 function initVsTypes(containerId,active,cb){const c=document.getElementById(containerId);VSTYPES.forEach(t=>{const b=document.createElement('button');b.className='preset'+(t===active?' on':'');b.textContent=t.toUpperCase();b.onclick=()=>{cb(t);c.querySelectorAll('.preset').forEach(x=>x.classList.toggle('on',x.textContent===t.toUpperCase()));};c.appendChild(b);});}
 const swpWv=0; // BIRDBOX is sine-only
@@ -1461,6 +1496,10 @@ let swpMVol=100;
 // Freq sweep params
 let swpFqMin=20,swpFqMax=2000,swpFqDur=5,swpFqType='linear',swpFqDir='r';
 let swpPausing=false,swpBloopReturn=false,swpRepCount=0;
+/* Pause length lives here rather than borrowing swpFqDur, which the pause used to overwrite: that
+   fed updateBBBird() a value outside the duration pool it maps brightness against, and flickered
+   the DURATION readout. The sweep's own duration now survives the silence untouched. */
+let swpPauseDur=1;
 // Vol sweep params
 let swpPlaying=false,swpOsc=null,swpSigGn=null,swpMGn=null,swpRAF=null,swpStart=0;
 var swpTickFn=null;
@@ -1514,9 +1553,9 @@ function toggleSweep(){
     const now2=performance.now();
     if(swpOsc){
       const pd=parsDir(swpFqDir);
-      let phaseDur=swpPausing?swpFqDur*pd.pm:swpFqDur;
+      let phaseDur=swpPausing?swpPauseDur:swpFqDur;   // pm is only a yes/no gate now, not a length
       if(!isFinite(phaseDur))phaseDur=0.5;                // NaN/Infinity (bad import, etc.) -> recover in 0.5s, never freeze
-      phaseDur=Math.min(120,Math.max(0.05,phaseDur));     // 0/tiny -> 0.05s (kills 60fps spin); >120s -> 120s watchdog
+      phaseDur=Math.min(120,Math.max(0.02,phaseDur));     // 0/tiny -> 20ms (~1.2 frames @60Hz, 4x the 5ms pitch ramp - below this the sweep smears and frames get skipped); >120s -> 120s watchdog
       let t=(now2-swpFqStart)/1000/phaseDur;
       if(t>=1){
         swpFqStart=now2;t=0;
@@ -1530,7 +1569,7 @@ function toggleSweep(){
           if(swpRepCount<pd.sm){swpFqFwd=true;swpReroll();}
           else{
             swpRepCount=0;swpFqFwd=true;
-            if(pd.pm>0){swpPausing=true;swpFqDur=bbRand(bbDurHarmonic?bbDurPool:bbDurPoolPool);if(swpSigGn&&AC)swpSigGn.gain.setTargetAtTime(0,AC.currentTime,.01);}
+            if(pd.pm>0){swpPausing=true;swpPauseDur=bbPausePick();if(swpSigGn&&AC)swpSigGn.gain.setTargetAtTime(0,AC.currentTime,.01);}
             else{swpReroll();}
           }
         }else{
@@ -1540,7 +1579,7 @@ function toggleSweep(){
             swpRepCount++;
             if(swpRepCount>=pd.sm){
               swpRepCount=0;
-              if(pd.pm>0){swpPausing=true;swpFqDur=bbRand(bbDurHarmonic?bbDurPool:bbDurPoolPool);if(swpSigGn&&AC)swpSigGn.gain.setTargetAtTime(0,AC.currentTime,.01);}
+              if(pd.pm>0){swpPausing=true;swpPauseDur=bbPausePick();if(swpSigGn&&AC)swpSigGn.gain.setTargetAtTime(0,AC.currentTime,.01);}
               else{swpReroll();}
             }else{swpReroll();}
           }
@@ -1755,6 +1794,15 @@ let multiHP=null,multiLP=null,multiFiltLo=0,multiFiltHi=100;
 let mathsSettingsOn=false;
 function filterV2F(v){return 20*Math.pow(1000,v/100);}
 function fmtFilterHz(v){var f=filterV2F(v);return f>=1000?(f/1000).toFixed(1)+'k':Math.round(f);}
+/* BIRDBOX pause length: slider position 0..100 -> seconds, log-spaced exactly like the filter scale.
+   Absolute, so a pause no longer tracks the sweep duration pool (and therefore SPEED, the MATHS
+   ratio list and the HARMONIC toggle) the way it did when it was a multiple of a fresh pool draw. */
+const BB_PAUSE_MIN=0.05,BB_PAUSE_MAX=30;          // 600:1 — one number each to retune the span
+function pauseV2S(v){return BB_PAUSE_MIN*Math.pow(BB_PAUSE_MAX/BB_PAUSE_MIN,v/100);}
+function fmtPauseSec(v){var s=pauseV2S(v);return s<1?s.toFixed(2):(s<10?s.toFixed(1):Math.round(s));}
+/* uniform in slider position == log-uniform in seconds, which matches the track's own spacing.
+   lo===hi therefore returns exactly that length, giving a fixed-pause mode at either extreme. */
+function bbPausePick(){return pauseV2S(bbPauseLo+Math.random()*(bbPauseHi-bbPauseLo));}
 let multiOscs=[];
 let multiPlaying=false,multiDur=5;
 let multiVolMin=65,multiVolMax=100;
@@ -1856,11 +1904,17 @@ function multiFiltApply(){
   multiHP.frequency.setTargetAtTime(filterV2F(multiFiltLo),AC.currentTime,.02);
   multiLP.frequency.setTargetAtTime(filterV2F(multiFiltHi),AC.currentTime,.02);
 }
+/* The caps are translateX(-50%) about their `left`, so a raw % lets them hang half a cap
+   (10px) past each groove end. The native volume <input> instead keeps its thumb wholly inside
+   the groove, so inset the travel to match: centre runs 10px .. width-10px. FILT_PAD must stay
+   half of .dual-thumb's width, and posFromX below inverts this exact mapping. */
+var FILT_PAD=10;
+function filtLeft(v){return 'calc('+FILT_PAD+'px + (100% - '+(FILT_PAD*2)+'px) * '+(v/100)+')';}
 function syncFiltRange(){
   var tL=document.getElementById('mfrL'),tR=document.getElementById('mfrR'),fill=document.getElementById('mfrFill');
   if(!tL)return;
-  tL.style.left=multiFiltLo+'%';tR.style.left=multiFiltHi+'%';
-  fill.style.left=multiFiltLo+'%';fill.style.width=(multiFiltHi-multiFiltLo)+'%';
+  tL.style.left=filtLeft(multiFiltLo);tR.style.left=filtLeft(multiFiltHi);
+  fill.style.left=filtLeft(multiFiltLo);fill.style.width='calc((100% - '+(FILT_PAD*2)+'px) * '+((multiFiltHi-multiFiltLo)/100)+')';
   var vL=document.getElementById('msFiltLoVal');if(vL){vL.textContent=fmtFilterHz(multiFiltLo);var adjL=(50-multiFiltLo)*0.15;vL.style.left=(multiFiltLo+adjL)+'%';}
   var vR=document.getElementById('msFiltHiVal');if(vR){vR.textContent=fmtFilterHz(multiFiltHi);var adjR=(50-multiFiltHi)*0.15;vR.style.left=(multiFiltHi+adjR)+'%';}
 }
@@ -1873,7 +1927,8 @@ function initMultiFiltRange(){
   wrap.appendChild(track);wrap.appendChild(fill);wrap.appendChild(tL);wrap.appendChild(tR);
   syncFiltRange();
   var dragging=null;
-  function posFromX(cx){var r=wrap.getBoundingClientRect();return Math.max(0,Math.min(100,(cx-r.left)/r.width*100));}
+  function posFromX(cx){var r=wrap.getBoundingClientRect(),w=r.width-FILT_PAD*2;if(w<=0)return 0;
+    return Math.max(0,Math.min(100,(cx-r.left-FILT_PAD)/w*100));}   // inverse of filtLeft()
   function update(pos){
     if(dragging==='L')multiFiltLo=Math.round(Math.min(pos,multiFiltHi));
     else if(dragging==='R')multiFiltHi=Math.round(Math.max(pos,multiFiltLo));
@@ -2464,7 +2519,7 @@ function recomputeHarmonicPools(fundOverride){
   if(bbArr.length>=4){bbFreqPool=bbRangeSlice(bbArr).slice().sort(function(a,b){return a-b;});}
   else bbFreqPool=BB_FREQS.slice();
   // BIRDBOX durations: inverse harmonic — 100 ÷ ratio (no fundamental), capped 300s (also tames ratio 0 → ∞), all 32
-  bbDurPool=ratios.map(function(r){return r2(Math.min(300,bbTempo/r));});
+  bbDurPool=ratios.map(function(r){return Math.min(300,bbTempo/r);});
   // RISER/VISTA: unchanged — octave-fold into low/high bands
   var raw=[];
   for(var k=0;k<ratios.length;k++){var f=fund*ratios[k];if(f>0)raw.push(f);}
@@ -2573,7 +2628,7 @@ function captureState(){
     mv:multiMVol,mw:multiWv,md:multiDur,mvm:multiVolMin,mvx:multiVolMax,mld:multiLfoDur,mlo:multiLfoOn?1:0,
     mvse:muVsOn?1:0,mvsau:muVsAuto?1:0,mvsa:muVsA,mvsb:muVsB,mvsf:muVsFader,mvsd:muVsDur,mvsr:DIR_ENC[muVsDir]||'fwd',mvsatk:muVsAtk,mvsdec:muVsDec,mvsp:muVsPerOsc?1:0,
     mhi:multiHarmonicIdx,mfu:multiFundamental,mor:multiOscRatios.slice(),mfl:multiFiltLo,mfh:multiFiltHi,bfr:bbFqRatio,
-    brl:bbRangeLo,brh:bbRangeHi,bfl:bbFiltLo,bfh:bbFiltHi,
+    brl:bbRangeLo,brh:bbRangeHi,bfl:bbFiltLo,bfh:bbFiltHi,bpdl:bbPauseLo,bpdh:bbPauseHi,
     mr:multiOscs.map(function(o){return{f:o.freq,v:o.vol,m:o.muted?1:0};}),
     xm:appMasterVol,
     ma:multiAutoOn?1:0,xa:appAutoOn?1:0,lm:appLimOn?1:0
@@ -2620,8 +2675,12 @@ function restoreState(o){
   bbRangeHi=o.brh!=null?Math.max(bbRangeLo,Math.min(32,o.brh)):32;
   bbFiltLo=o.bfl!=null?Math.max(0,Math.min(100,o.bfl)):0;
   bbFiltHi=o.bfh!=null?Math.max(bbFiltLo,Math.min(100,o.bfh)):100;
+  /* bpdl/bpdh, not the old bpl/bph: those held pm 0..4, which would decode here as 0.05-0.06s and
+     turn every pause into a stutter. Archives without the new keys fall back to the full span. */
+  bbPauseLo=o.bpdl!=null?Math.max(0,Math.min(100,o.bpdl)):0;
+  bbPauseHi=o.bpdh!=null?Math.max(bbPauseLo,Math.min(100,o.bpdh)):100;
   recomputeHarmonicPools();
-  bbSyncRange();bbFiltSync();bbFiltApply();bbUiSave();
+  bbSyncRange();bbFiltSync();bbFiltApply();bbPauseSync();bbUiSave();
   syncRiserUI();syncSweepUI();syncNoiseUI();syncMultiUI();syncMixerUI();
 }
 
@@ -2862,13 +2921,13 @@ function toggleBbDurMode(){
 }
 function bbSetTempo(pos){
   bbTempoPos=Math.max(0,Math.min(10000,pos));
-  bbTempo=Math.max(1,Math.min(100,Math.round(expS(bbTempoPos,1,100))));
-  bbDurPoolPool=BB_DURS.map(function(d){return r2(Math.min(300,d*bbTempo/100));});
+  bbTempo=Math.max(1,Math.min(100,bbTempoAt(bbTempoPos)));   // stays off expS() — that r2()s to 2dp, a coarser step than the track can resolve
+  bbDurPoolPool=BB_DURS.map(function(d){return Math.min(300,d*bbTempo/100);});
   recomputeHarmonicPools();
   var pct=bbTempoPos/100;                                    // % from the track TOP: reads 100 at the top, 1 at the bottom
   var th=document.getElementById('bbSpeedT');if(th)th.style.top=pct+'%';
   var sh=document.getElementById('bbSpeed');if(sh)sh.style.setProperty('--bbs-p',pct+'%');
-  var v=document.getElementById('bbTempoVal');if(v){v.textContent=Math.round(1+99*(100-pct)/100);v.style.top=pct+'%';} // 1..100 linear down the track; bbTempo itself stays log-spaced
+  var v=document.getElementById('bbTempoVal');if(v){v.textContent=(101-bbTempo).toFixed(1);v.style.top=pct+'%';} // mirrored exponential: value 1 reads 100.0 (fastest), value 100 reads 1.0 — matches the log-spaced bbTempo, so the number tracks what you hear
   updateBBBird();
 }
 function bbSpeedPosFromY(y){
@@ -2892,14 +2951,16 @@ function bbSpeedRoll(){
 function initBBSpeed(){
   var host=document.getElementById('bbSpeed');if(!host)return;
   var tk=document.getElementById('bbSpeedTrack');if(!tk)return;
-  var drag=false;
+  var drag=false,rolledAt=bbTempo;   // tempo as of the LAST reroll, not the last move - so a slow drag still accumulates to the threshold
   /* Bound to the TRACK, not the thumb, so a press anywhere jumps the value and starts a drag
      - the same press-to-jump the MIXER and EQ faders use. The thumb is a child, so grabbing it
      bubbles here too. (The range slider stays thumb-only: a jump there is ambiguous with two thumbs.) */
   function apply(y){
-    var before=bbTempo;
     bbSetTempo(bbSpeedPosFromY(y));
-    if(bbTempo!==before)bbSpeedRoll();
+    /* bbTempo is continuous, so "changed at all" would be true on every pointermove and restart the
+       sweep phase every frame - the module would never finish a roll while you drag. Gate on a ~2%
+       ratio step: constant in log space, so it triggers at the same rate all the way down the track. */
+    if(Math.abs(Math.log(bbTempo/rolledAt))>0.02){rolledAt=bbTempo;bbSpeedRoll();}
   }
   tk.addEventListener('pointerdown',function(e){
     e.preventDefault();e.stopPropagation();
@@ -2943,10 +3004,15 @@ function bbSyncRange(){
   if(vl){vl.textContent=bbRangeLo;vl.style.top=yl+'%';}
   if(vh){vh.textContent=bbRangeHi;vh.style.top=yh+'%';}
 }
-/* pbb_ui carries the birdbox strips: r* = list range (1..32), f* = filter cuts (0..100) */
-function bbUiSave(){try{localStorage.setItem('pbb_ui',JSON.stringify({rlo:bbRangeLo,rhi:bbRangeHi,flo:bbFiltLo,fhi:bbFiltHi}));}catch(e){}}
+/* pbb_ui carries the birdbox strips: r* = list range (1..32), f* = filter cuts (0..100),
+   pd* = pause-duration window, slider positions 0..100 (old p* held pm 0..4 — ignored) */
+function bbUiSave(){try{localStorage.setItem('pbb_ui',JSON.stringify({rlo:bbRangeLo,rhi:bbRangeHi,flo:bbFiltLo,fhi:bbFiltHi,pdl:bbPauseLo,pdh:bbPauseHi}));}catch(e){}}
 function bbUiLoad(){try{
-  var o=JSON.parse(localStorage.getItem('pbb_ui'))||{},lo=+o.rlo,hi=+o.rhi,fl=+o.flo,fh=+o.fhi;
+  var o=JSON.parse(localStorage.getItem('pbb_ui'))||{},lo=+o.rlo,hi=+o.rhi,fl=+o.flo,fh=+o.fhi,pl=+o.pdl,ph=+o.pdh;
+  if(isFinite(pl)&&isFinite(ph)){
+    bbPauseLo=Math.max(0,Math.min(100,Math.round(pl)));
+    bbPauseHi=Math.max(bbPauseLo,Math.min(100,Math.round(ph)));
+  }
   if(isFinite(lo)&&isFinite(hi)){
     bbRangeLo=Math.max(1,Math.min(32,Math.round(lo)));
     bbRangeHi=Math.max(bbRangeLo,Math.min(32,Math.round(hi)));
@@ -3049,8 +3115,57 @@ function initBBFilt(){
   });
   bbFiltSync();
 }
-/* ═══════ BIRDBOX VOLUME (mirrors a mixer channel; 4 = MASTER) ═══════ */
-var BB_VOL_CH=4;
+/* ═══════ BIRDBOX PAUSE DURATION (seconds of silence, drawn per pause) ═══════ */
+/* Both thumbs bracket a seconds window; every pause draws a fresh length from inside it, so the
+   two readouts are the shortest and longest silence you can get, not one value. Which gestures
+   pause at all is still the luck of the ROLL — pm>0 in the direction key gates it, nothing more. */
+function bbPauseSync(){
+  var h=document.getElementById('bbPause');if(!h)return;
+  h.style.setProperty('--bbp-a',bbPauseLo/100);
+  h.style.setProperty('--bbp-b',bbPauseHi/100);
+  var a=document.getElementById('bbPauseLoV'),b=document.getElementById('bbPauseHiV');
+  if(a)a.textContent=fmtPauseSec(bbPauseLo);
+  if(b)b.textContent=fmtPauseSec(bbPauseHi);
+  // stacked caps: keep whichever still has room on top, else the pair locks up at 0
+  var lo=document.getElementById('bbPauseLoT'),hi=document.getElementById('bbPauseHiT');
+  if(lo&&hi){var pinned=(bbPauseLo===bbPauseHi&&bbPauseLo<=0);
+    lo.style.zIndex=pinned?2:3;hi.style.zIndex=pinned?3:2;}
+}
+function bbPauseFromX(x){
+  var t=document.getElementById('bbPauseTrack');if(!t)return null;
+  var r=t.getBoundingClientRect(),w=r.width-10;if(w<=0)return null;
+  return Math.round(Math.max(0,Math.min(1,(x-r.left-5)/w))*100);
+}
+function initBBPause(){
+  var host=document.getElementById('bbPause');if(!host)return;
+  var drag=null;
+  ['lo','hi'].forEach(function(which){
+    var el=document.getElementById(which==='lo'?'bbPauseLoT':'bbPauseHiT');if(!el)return;
+    el.addEventListener('pointerdown',function(e){
+      e.preventDefault();e.stopPropagation();
+      drag=which;host.classList.add('dragging');
+      try{el.setPointerCapture(e.pointerId);}catch(_){}
+    });
+    el.addEventListener('pointermove',function(e){
+      if(drag!==which)return;e.preventDefault();
+      var v=bbPauseFromX(e.clientX);if(v===null)return;
+      if(which==='lo')bbPauseLo=Math.min(v,bbPauseHi);else bbPauseHi=Math.max(v,bbPauseLo);
+      bbPauseSync();
+    });
+    function end(e){
+      if(drag!==which)return;
+      drag=null;host.classList.remove('dragging');
+      try{el.releasePointerCapture(e.pointerId);}catch(_){}
+      bbUiSave();                       // no reconcile needed — the window applies to the next pause
+    }
+    el.addEventListener('pointerup',end);
+    el.addEventListener('pointercancel',end);
+  });
+  bbPauseSync();
+}
+/* ═══════ BIRDBOX VOLUME (mirrors the BIRDBOX mixer channel, not MASTER) ═══════ */
+/* looked up by key so reordering MIX_CH can't silently re-point this at another fader */
+var BB_VOL_CH=(function(){for(var i=0;i<MIX_CH.length;i++)if(MIX_CH[i].key==='birdbox')return i;return 2;})();
 function bbVolGet(){var c=MIX_CH[BB_VOL_CH];return c?Math.max(0,Math.min(100,Math.round(c.get()))):100;}
 function bbVolSync(){
   var h=document.getElementById('bbVol');if(!h)return;
@@ -3195,7 +3310,7 @@ function toggleRiser(){
 (function(){
   let sy=0,sx=0,live=false;
   document.addEventListener('touchstart',function(e){
-    if(e.target.closest('.tabs,.plus-menu,#bbRange,#bbSpeed,#bbFilt'))return;
+    if(e.target.closest('.tabs,.plus-menu,#bbRange,#bbSpeed,#bbFilt,#bbPause'))return;
     sy=e.touches[0].clientY;sx=e.touches[0].clientX;live=true;
   },{passive:true});
   document.addEventListener('touchend',function(e){
@@ -3215,6 +3330,7 @@ function toggleRiser(){
     if(e.target.closest('#bbSpeed'))return;
     if(e.target.closest('#bbFilt'))return;
     if(e.target.closest('#bbRange'))return;
+    if(e.target.closest('#bbPause'))return;
     randomizeBirdbox();
   });
 })();
@@ -3868,7 +3984,7 @@ rsVolRenderDir();rsPitchRenderDir();
 nsVsRenderDir();
 mkDirBtns('swpFqDirBtns','r',function(d){swpFqDir=d;swpBloopReturn=false;swpRepCount=0;if(swpPausing){swpPausing=false;swpFqFwd=parsDir(d).base!=='left';swpFqStart=performance.now();if(swpSigGn&&AC)swpSigGn.gain.setTargetAtTime(1,AC.currentTime,.01);}},BB_DIRS.map(function(d){return d.k;}));
 muVsRefreshFader();muVsUpdModes();muVsRenderDir();
-initEQ();initNP();multiInit();initMselWave();initMultiFiltRange();initMultiHarmonics();bbUiLoad();recomputeHarmonicPools();initMultiDualRange();initMuVsEnvRange();syncMultiUI();renderArchive();initMixer();initBBSpeed();initBBRange();initBBVol();initBBFilt();seedDefaultScore();renderScores();initScoreTab();
+initEQ();initNP();multiInit();initMselWave();initMultiFiltRange();initMultiHarmonics();bbUiLoad();recomputeHarmonicPools();initMultiDualRange();initMuVsEnvRange();syncMultiUI();renderArchive();initMixer();initBBSpeed();initBBRange();initBBVol();initBBFilt();initBBPause();seedDefaultScore();renderScores();initScoreTab();
 document.addEventListener('click',function(e){
   if(!e.target.closest('.msel'))document.querySelectorAll('.msel.open').forEach(function(s){s.classList.remove('open');});
   if(!e.target.closest('.mc-rclick')&&!e.target.closest('#mathsMenuLayer'))closeRatioMenu();
