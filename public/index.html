@@ -1474,13 +1474,17 @@ function bbRangeSlice(arr){
 let rsFreqPoolA=RS_FREQS_A.slice();
 let rsFreqPoolB=RS_FREQS_B.slice();
 // Direction types: {k=key, base=right|left|bloop, sm=sweep reps, pm=pause reps}
+/* 25 gestures per base, 75 in all. Key format is always p + sm [+ 'p' + pm] — the sm digit is never
+   elided, so r1p1 and r1 sit in the same scheme as r6p1.
+   sm = sweeps per cycle, pm = pause length as a multiple of the slider draw (0 = never pauses).
+   The cap is sm + pm <= 7, which is what fills the diagonal: r1p6 and r6p1 both exist, r6p2 doesn't.
+   Never-pausing gestures stop at sm 4; sm 5 and 6 exist only in pausing form. */
 const BB_DIRS=(function(){
   var d=[];
   [['right','r'],['left','l'],['bloop','bl']].forEach(function(pair){
     var base=pair[0],p=pair[1];
-    d.push({k:p,base:base,sm:1,pm:0});
-    for(var pm=1;pm<=4;pm++)d.push({k:p+'p'+pm,base:base,sm:1,pm:pm});
-    for(var sm=2;sm<=4;sm++)for(var pm=1;pm<=5-sm;pm++)d.push({k:p+sm+'p'+pm,base:base,sm:sm,pm:pm});
+    for(var sm=1;sm<=4;sm++)d.push({k:p+sm,base:base,sm:sm,pm:0});
+    for(var sm=1;sm<=6;sm++)for(var pm=1;pm<=7-sm;pm++)d.push({k:p+sm+'p'+pm,base:base,sm:sm,pm:pm});
   });
   return d;
 })();
@@ -1494,11 +1498,12 @@ function initVsTypes(containerId,active,cb){const c=document.getElementById(cont
 const swpWv=0; // BIRDBOX is sine-only
 let swpMVol=100;
 // Freq sweep params
-let swpFqMin=20,swpFqMax=2000,swpFqDur=5,swpFqType='linear',swpFqDir='r';
+let swpFqMin=20,swpFqMax=2000,swpFqDur=5,swpFqType='linear',swpFqDir='r1';
 let swpPausing=false,swpBloopReturn=false,swpRepCount=0;
 /* Pause length lives here rather than borrowing swpFqDur, which the pause used to overwrite: that
    fed updateBBBird() a value outside the duration pool it maps brightness against, and flickered
-   the DURATION readout. The sweep's own duration now survives the silence untouched. */
+   the DURATION readout. The sweep's own duration now survives the silence untouched.
+   Holds the FINAL length — the slider draw already multiplied by the gesture's pm. */
 let swpPauseDur=1;
 // Vol sweep params
 let swpPlaying=false,swpOsc=null,swpSigGn=null,swpMGn=null,swpRAF=null,swpStart=0;
@@ -1566,10 +1571,13 @@ function toggleSweep(){
           swpReroll();
         }else if(swpBloopReturn){
           swpBloopReturn=false;swpRepCount++;
-          if(swpRepCount<pd.sm){swpFqFwd=true;swpReroll();}
+          /* mid-cycle. A pausing gesture rerolls every rep as it always has; a never-pausing one
+             holds its frequency pair for the whole cycle instead, which is the only thing that
+             makes sm audible when there is no pause to count towards. */
+          if(swpRepCount<pd.sm){swpFqFwd=true;if(pd.pm>0)swpReroll();}
           else{
             swpRepCount=0;swpFqFwd=true;
-            if(pd.pm>0){swpPausing=true;swpPauseDur=bbPausePick();if(swpSigGn&&AC)swpSigGn.gain.setTargetAtTime(0,AC.currentTime,.01);}
+            if(pd.pm>0){swpPausing=true;swpPauseDur=bbPausePick()*pd.pm;if(swpSigGn&&AC)swpSigGn.gain.setTargetAtTime(0,AC.currentTime,.01);}
             else{swpReroll();}
           }
         }else{
@@ -1579,9 +1587,9 @@ function toggleSweep(){
             swpRepCount++;
             if(swpRepCount>=pd.sm){
               swpRepCount=0;
-              if(pd.pm>0){swpPausing=true;swpPauseDur=bbPausePick();if(swpSigGn&&AC)swpSigGn.gain.setTargetAtTime(0,AC.currentTime,.01);}
+              if(pd.pm>0){swpPausing=true;swpPauseDur=bbPausePick()*pd.pm;if(swpSigGn&&AC)swpSigGn.gain.setTargetAtTime(0,AC.currentTime,.01);}
               else{swpReroll();}
-            }else{swpReroll();}
+            }else if(pd.pm>0){swpReroll();}   // pm=0 holds the pair across the cycle — see the bloop branch
           }
         }
       }
@@ -1795,9 +1803,12 @@ let mathsSettingsOn=false;
 function filterV2F(v){return 20*Math.pow(1000,v/100);}
 function fmtFilterHz(v){var f=filterV2F(v);return f>=1000?(f/1000).toFixed(1)+'k':Math.round(f);}
 /* BIRDBOX pause length: slider position 0..100 -> seconds, log-spaced exactly like the filter scale.
-   Absolute, so a pause no longer tracks the sweep duration pool (and therefore SPEED, the MATHS
-   ratio list and the HARMONIC toggle) the way it did when it was a multiple of a fresh pool draw. */
-const BB_PAUSE_MIN=0.05,BB_PAUSE_MAX=30;          // 600:1 — one number each to retune the span
+   The slider sets the BASE window; the gesture's pm (1..6) then multiplies the draw, so a pause is
+   bbPausePick() * pm. That keeps the old per-gesture pause-length variation while cutting the tie
+   to the sweep duration pool — pauses no longer follow SPEED, the MATHS ratio list or HARMONIC.
+   Note BB_PAUSE_MAX * 6 (the largest pm) lands exactly on the tick loop's 120 s watchdog: raise
+   the max and the longest pm=6 pauses start being clamped rather than heard. */
+const BB_PAUSE_MIN=0.05,BB_PAUSE_MAX=20;          // 400:1 — one number each to retune the span
 function pauseV2S(v){return BB_PAUSE_MIN*Math.pow(BB_PAUSE_MAX/BB_PAUSE_MIN,v/100);}
 function fmtPauseSec(v){var s=pauseV2S(v);return s<1?s.toFixed(2):(s<10?s.toFixed(1):Math.round(s));}
 /* uniform in slider position == log-uniform in seconds, which matches the track's own spacing.
@@ -2646,7 +2657,7 @@ function restoreState(o){
   rsFreq=o.rsf!=null?+o.rsf:440;rsFqB=o.rfb!=null?+o.rfb:8000;
   rsSweepOn=!!o.rpon;rsPitchDur=o.rpd!=null?+o.rpd:4;rsPitchType=TYPE_DEC[o.rpt]||'linear';rsPitchDir=o.rpr||'fwd';
   rsVolSweepOn=!!o.rvon;rsVolDur=o.rvd!=null?+o.rvd:4;rsVolType=TYPE_DEC[o.rvt]||'linear';rsVolDir=o.rvr||'fwd';
-  swpMVol=o.sm;swpFqMin=o.si;swpFqMax=o.sx;swpFqDur=(o.sd!=null&&isFinite(+o.sd))?+o.sd:5;swpFqType=TYPE_DEC[o.st]||'linear';swpFqDir=DIR_DEC[o.sr]||'r';
+  swpMVol=o.sm;swpFqMin=o.si;swpFqMax=o.sx;swpFqDur=(o.sd!=null&&isFinite(+o.sd))?+o.sd:5;swpFqType=TYPE_DEC[o.st]||'linear';swpFqDir=DIR_DEC[o.sr]||'r1';
   nSl=o.ns.slice();nVol=o.nv;nAPre=o.np||null;
   nsVsOn=!!o.nse;nsVsAuto=!!o.nsau;nsVsA=o.nspa!=null?+o.nspa:0.001;nsVsB=o.nspb!=null?+o.nspb:10;nsVsFader=o.nsf!=null?+o.nsf:0;nsVsDur=o.nsvd!=null?+o.nsvd:10;nsVsDir=DIR_DEC[o.nsvr]||'fwd';nsVsType=TYPE_DEC[o.nsvt]||'linear';
   nTransActive=false;if(nTransRAF){cancelAnimationFrame(nTransRAF);nTransRAF=null;}nsVsStop();
@@ -3116,9 +3127,9 @@ function initBBFilt(){
   bbFiltSync();
 }
 /* ═══════ BIRDBOX PAUSE DURATION (seconds of silence, drawn per pause) ═══════ */
-/* Both thumbs bracket a seconds window; every pause draws a fresh length from inside it, so the
-   two readouts are the shortest and longest silence you can get, not one value. Which gestures
-   pause at all is still the luck of the ROLL — pm>0 in the direction key gates it, nothing more. */
+/* Both thumbs bracket a seconds window; every pause draws a fresh length from inside it. The
+   readouts are the BASE window, not the heard length — the gesture's pm scales the draw by 1..6,
+   so what you actually hear spans the window through to six times its top. */
 function bbPauseSync(){
   var h=document.getElementById('bbPause');if(!h)return;
   h.style.setProperty('--bbp-a',bbPauseLo/100);
@@ -3982,7 +3993,7 @@ nsVsRefreshFader();nsVsSyncDim();
 initSwpTypes('swpFqTypes','linear',t=>{swpFqType=t;});
 rsVolRenderDir();rsPitchRenderDir();
 nsVsRenderDir();
-mkDirBtns('swpFqDirBtns','r',function(d){swpFqDir=d;swpBloopReturn=false;swpRepCount=0;if(swpPausing){swpPausing=false;swpFqFwd=parsDir(d).base!=='left';swpFqStart=performance.now();if(swpSigGn&&AC)swpSigGn.gain.setTargetAtTime(1,AC.currentTime,.01);}},BB_DIRS.map(function(d){return d.k;}));
+mkDirBtns('swpFqDirBtns','r1',function(d){swpFqDir=d;swpBloopReturn=false;swpRepCount=0;if(swpPausing){swpPausing=false;swpFqFwd=parsDir(d).base!=='left';swpFqStart=performance.now();if(swpSigGn&&AC)swpSigGn.gain.setTargetAtTime(1,AC.currentTime,.01);}},BB_DIRS.map(function(d){return d.k;}));
 muVsRefreshFader();muVsUpdModes();muVsRenderDir();
 initEQ();initNP();multiInit();initMselWave();initMultiFiltRange();initMultiHarmonics();bbUiLoad();recomputeHarmonicPools();initMultiDualRange();initMuVsEnvRange();syncMultiUI();renderArchive();initMixer();initBBSpeed();initBBRange();initBBVol();initBBFilt();initBBPause();seedDefaultScore();renderScores();initScoreTab();
 document.addEventListener('click',function(e){
