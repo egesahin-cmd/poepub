@@ -165,9 +165,11 @@ input[type=range]::-moz-range-thumb{width:20px;height:20px;border-radius:50%;bac
 /* .ms-val sits at bottom:0 of the wrap, so the thumb->readout gap is whatever the block above
    leaves below its thumb. The 36px range box leaves 8px under its 20px cap, while the volume
    slider's inline <input> instead sits 3.5px ABOVE its own thumb bottom (5px descender line-box
-   slack minus 8.5px of cap overhang) -- so the filter numbers hang 11.5px lower. Pull that back
-   with a negative margin: it is a constant, so the gaps stay matched at every --mu-wrap-pad. */
-#multiFiltRange{margin-bottom:-11.5px}
+   slack minus 8.5px of cap overhang) -- so a dual-range's numbers hang 11.5px lower. Pull that back
+   with a negative margin: it is a constant, so the gaps stay matched at every --mu-wrap-pad.
+   Applies to EVERY .dual-* range sharing a panel with plain <input> sliders -- the filter in the
+   MATHS column and the volume-sweep range in settings both measure 12.5px thumb->readout with it. */
+#multiFiltRange,#multiDualRange{margin-bottom:-11.5px}
 .maths-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:6px;width:100%;max-width:360px}
 .maths-cell{position:relative;aspect-ratio:var(--mu-cell-ar);background:#f8f4eb;border:1px solid #ccc;border-radius:1px;cursor:pointer;display:flex;flex-direction:column;justify-content:flex-end;padding:5px 6px;transition:opacity .15s;min-width:0;overflow:hidden}
 .maths-cell.muted{opacity:.25}
@@ -217,7 +219,6 @@ input[type=range]::-moz-range-thumb{width:20px;height:20px;border-radius:50%;bac
 #appAutoBtn.on{background:#000}
 #appLimBtn{background:#ede7d4}
 #appLimBtn.on{background:#000}
-#msVolWrap{padding-bottom:5px}
 .dual-track{position:absolute;top:50%;left:0;right:0;height:3px;background:#ccc;border-radius:2px;transform:translateY(-50%)}
 .dual-fill{position:absolute;top:50%;height:3px;background:#333;border-radius:2px;transform:translateY(-50%);pointer-events:none}
 .dual-thumb{position:absolute;top:50%;width:20px;height:20px;border-radius:50%;background:#333;border:2px solid #ede7d4;transform:translate(-50%,-50%);cursor:pointer;touch-action:none;z-index:2}
@@ -271,67 +272,70 @@ input[type=range]::-moz-range-thumb{width:20px;height:20px;border-radius:50%;bac
    FILTER-to-VOLUME distance from it, so the 9:16 holds by construction at any viewport.
    max-height is an overflow guard for unusually short windows (#modBirdbox clips): if it bites,
    the box goes slightly wider than 9:16 rather than losing the strips off-screen. The frame is
-   centred, so the deepest overhang sets it: PAUSE sits on the bottom edge (+11px) and VOLUME hangs
-   30px below that (+41px), hence 2*(41+17px slack) = 116px.
+   centred, so the deepest overhang sets it: FILTER sits on the bottom edge (+11px) and VOLUME hangs
+   22px below that (+33px), hence 2*(33+17px slack) = 100px.
    pointer-events:none keeps the empty middle tappable for rolls — each strip re-enables its own. */
-#bbFrame{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:calc(85% - 30.8px);aspect-ratio:9/16;max-height:calc(100% - 116px);z-index:6;pointer-events:none}
+#bbFrame{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:calc(85% - 30.8px);aspect-ratio:9/16;max-height:calc(100% - 100px);z-index:6;pointer-events:none}
 #bbSpeed{position:absolute;left:-17px;top:0;bottom:0;width:34px;touch-action:none;pointer-events:auto;--bbs-p:50%}
 #bbSpeedTrack{position:absolute;left:0;right:0;top:22px;bottom:22px;cursor:pointer;touch-action:none}
-#bbSpeedTrack::before{content:'';position:absolute;left:50%;top:0;bottom:0;width:10px;background:linear-gradient(90deg,#cbc4b0,#ece6d5);box-shadow:inset 1px 0 3px rgba(0,0,0,.4);border-radius:2px;transform:translateX(-50%);-webkit-mask-image:linear-gradient(#000 0 calc(var(--bbs-p) - 8px),transparent calc(var(--bbs-p) - 8px) calc(var(--bbs-p) + 8px),#000 calc(var(--bbs-p) + 8px) 100%);mask-image:linear-gradient(#000 0 calc(var(--bbs-p) - 8px),transparent calc(var(--bbs-p) - 8px) calc(var(--bbs-p) + 8px),#000 calc(var(--bbs-p) + 8px) 100%)}
+#bbSpeedTrack::before{content:'';position:absolute;left:50%;top:0;bottom:0;width:3px;background:linear-gradient(90deg,#cbc4b0,#ece6d5);box-shadow:inset .5px 0 1px rgba(0,0,0,.4);border-radius:2px;transform:translateX(-50%);-webkit-mask-image:linear-gradient(#000 0 calc(var(--bbs-p) - 8px),transparent calc(var(--bbs-p) - 8px) calc(var(--bbs-p) + 8px),#000 calc(var(--bbs-p) + 8px) 100%);mask-image:linear-gradient(#000 0 calc(var(--bbs-p) - 8px),transparent calc(var(--bbs-p) - 8px) calc(var(--bbs-p) + 8px),#000 calc(var(--bbs-p) + 8px) 100%)}
 #bbTempoVal{left:38px;right:auto}   /* readout sits inboard of the strip, not off the screen edge */
-/* VOLUME: closes the bracket under the two vertical faders — 21px below where their tracks
-   end (85%), spanning exactly between their centre lines (24px in from each edge), so the
+/* VOLUME: closes the bracket under the two vertical faders — 22px below the FILTER line, the same
+   gap the vertical tracks keep from it, and spanning exactly between their centre lines, so the
    thumb sits under #bbSpeed at 0 and under #bbRange at 100. --bbv-f = the level 0..1; everything
    LEFT of the thumb is cut away, so the filled part is the gradient showing through. */
-/* FILTER: sits on the frame's BOTTOM edge with VOLUME 30px under it — same 19px/5px horizontal
+/* FILTER: sits on the frame's BOTTOM edge with VOLUME 22px under it — the same 22px the vertical
+   tracks are inset from this line, so every gap in the stack reads alike. Same 1.5px horizontal
    alignment as the other horizontal strips. Dual thumb: left = low-cut, right = high-cut, and the
    PASSBAND between them is cut out of the groove, so the open band reads as gradient exactly like
    the selected window on the list-range slider. */
-#bbFilt{position:absolute;left:-5px;right:-5px;top:calc(100% - 11px);height:22px;touch-action:none;pointer-events:none;--bbf-a:0;--bbf-b:1}
+#bbFilt{position:absolute;left:-1.5px;right:-1.5px;top:calc(100% - 11px);height:22px;touch-action:none;pointer-events:none;--bbf-a:0;--bbf-b:1}
 #bbFiltTrack{position:absolute;left:0;right:0;top:0;bottom:0;pointer-events:none}
-#bbFiltTrack::before{content:'';position:absolute;top:50%;left:0;right:0;height:10px;background:linear-gradient(180deg,#cbc4b0,#ece6d5);box-shadow:inset 0 1px 3px rgba(0,0,0,.4);border-radius:2px;transform:translateY(-50%);-webkit-mask-image:linear-gradient(90deg,#000 0 calc(-3px + (100% - 10px) * var(--bbf-a)),transparent calc(-3px + (100% - 10px) * var(--bbf-a)) calc(13px + (100% - 10px) * var(--bbf-b)),#000 calc(13px + (100% - 10px) * var(--bbf-b)) 100%);mask-image:linear-gradient(90deg,#000 0 calc(-3px + (100% - 10px) * var(--bbf-a)),transparent calc(-3px + (100% - 10px) * var(--bbf-a)) calc(13px + (100% - 10px) * var(--bbf-b)),#000 calc(13px + (100% - 10px) * var(--bbf-b)) 100%)}
+#bbFiltTrack::before{content:'';position:absolute;top:50%;left:0;right:0;height:3px;background:linear-gradient(180deg,#cbc4b0,#ece6d5);box-shadow:inset 0 .5px 1px rgba(0,0,0,.4);border-radius:2px;transform:translateY(-50%);-webkit-mask-image:linear-gradient(90deg,#000 0 calc(-6.5px + (100% - 3px) * var(--bbf-a)),transparent calc(-6.5px + (100% - 3px) * var(--bbf-a)) calc(9.5px + (100% - 3px) * var(--bbf-b)),#000 calc(9.5px + (100% - 3px) * var(--bbf-b)) 100%);mask-image:linear-gradient(90deg,#000 0 calc(-6.5px + (100% - 3px) * var(--bbf-a)),transparent calc(-6.5px + (100% - 3px) * var(--bbf-a)) calc(9.5px + (100% - 3px) * var(--bbf-b)),#000 calc(9.5px + (100% - 3px) * var(--bbf-b)) 100%)}
 /* dual thumb, so these ARE grabbable (unlike the single-thumb press-to-jump sliders) */
-#bbFiltLoT,#bbFiltHiT{top:50%;width:16px;height:26px;background:linear-gradient(90deg,transparent 41%,#d8d0ba 41%,#d8d0ba 59%,transparent 59%);pointer-events:auto}
-#bbFiltLoT{left:calc(5px + (100% - 10px) * var(--bbf-a))}
-#bbFiltHiT{left:calc(5px + (100% - 10px) * var(--bbf-b))}
+#bbFiltLoT,#bbFiltHiT{top:50%;width:16px;height:26px;pointer-events:auto}
+#bbFiltLoT{left:calc(1.5px + (100% - 3px) * var(--bbf-a))}
+#bbFiltHiT{left:calc(1.5px + (100% - 3px) * var(--bbf-b))}
 #bbFiltLoV,#bbFiltHiV{top:auto;bottom:calc(50% + 18px);transform:translateX(-50%)}
-#bbFiltLoV{left:calc(5px + (100% - 10px) * var(--bbf-a))}
-#bbFiltHiV{left:calc(5px + (100% - 10px) * var(--bbf-b))}
+#bbFiltLoV{left:calc(1.5px + (100% - 3px) * var(--bbf-a))}
+#bbFiltHiV{left:calc(1.5px + (100% - 3px) * var(--bbf-b))}
 /* PAUSE DURATION: brackets the seconds window every pause draws its length from. Horizontal
    dual-thumb skin lifted from #bbFilt, log-scaled the same way; the window BETWEEN the thumbs is
    cut out of the groove, so a selected range reads the same here as it does on FILTER and on RANGE.
    Closes the TOP of the frame — it and FILTER swapped edges, so the stack reads
    PAUSE / frame / FILTER / VOLUME from top to bottom. */
-#bbPause{position:absolute;left:-5px;right:-5px;top:-11px;height:22px;touch-action:none;pointer-events:none;--bbp-a:0;--bbp-b:1}
+#bbPause{position:absolute;left:-1.5px;right:-1.5px;top:-11px;height:22px;touch-action:none;pointer-events:none;--bbp-a:0;--bbp-b:1}
 #bbPauseTrack{position:absolute;left:0;right:0;top:0;bottom:0;pointer-events:none}
-#bbPauseTrack::before{content:'';position:absolute;top:50%;left:0;right:0;height:10px;background:linear-gradient(180deg,#cbc4b0,#ece6d5);box-shadow:inset 0 1px 3px rgba(0,0,0,.4);border-radius:2px;transform:translateY(-50%);-webkit-mask-image:linear-gradient(90deg,#000 0 calc(-3px + (100% - 10px) * var(--bbp-a)),transparent calc(-3px + (100% - 10px) * var(--bbp-a)) calc(13px + (100% - 10px) * var(--bbp-b)),#000 calc(13px + (100% - 10px) * var(--bbp-b)) 100%);mask-image:linear-gradient(90deg,#000 0 calc(-3px + (100% - 10px) * var(--bbp-a)),transparent calc(-3px + (100% - 10px) * var(--bbp-a)) calc(13px + (100% - 10px) * var(--bbp-b)),#000 calc(13px + (100% - 10px) * var(--bbp-b)) 100%)}
-#bbPauseLoT,#bbPauseHiT{top:50%;width:16px;height:26px;background:linear-gradient(90deg,transparent 41%,#d8d0ba 41%,#d8d0ba 59%,transparent 59%);pointer-events:auto}
-#bbPauseLoT{left:calc(5px + (100% - 10px) * var(--bbp-a))}
-#bbPauseHiT{left:calc(5px + (100% - 10px) * var(--bbp-b))}
+#bbPauseTrack::before{content:'';position:absolute;top:50%;left:0;right:0;height:3px;background:linear-gradient(180deg,#cbc4b0,#ece6d5);box-shadow:inset 0 .5px 1px rgba(0,0,0,.4);border-radius:2px;transform:translateY(-50%);-webkit-mask-image:linear-gradient(90deg,#000 0 calc(-6.5px + (100% - 3px) * var(--bbp-a)),transparent calc(-6.5px + (100% - 3px) * var(--bbp-a)) calc(9.5px + (100% - 3px) * var(--bbp-b)),#000 calc(9.5px + (100% - 3px) * var(--bbp-b)) 100%);mask-image:linear-gradient(90deg,#000 0 calc(-6.5px + (100% - 3px) * var(--bbp-a)),transparent calc(-6.5px + (100% - 3px) * var(--bbp-a)) calc(9.5px + (100% - 3px) * var(--bbp-b)),#000 calc(9.5px + (100% - 3px) * var(--bbp-b)) 100%)}
+#bbPauseLoT,#bbPauseHiT{top:50%;width:16px;height:26px;pointer-events:auto}
+#bbPauseLoT{left:calc(1.5px + (100% - 3px) * var(--bbp-a))}
+#bbPauseHiT{left:calc(1.5px + (100% - 3px) * var(--bbp-b))}
 /* readouts sit ABOVE the track (as FILTER's do) so they clear the volume strip 30px below */
 #bbPauseLoV,#bbPauseHiV{top:auto;bottom:calc(50% + 18px);transform:translateX(-50%)}
-#bbPauseLoV{left:calc(5px + (100% - 10px) * var(--bbp-a))}
-#bbPauseHiV{left:calc(5px + (100% - 10px) * var(--bbp-b))}
-#bbVol{position:absolute;left:-5px;right:-5px;top:calc(100% + 19px);height:22px;touch-action:none;pointer-events:none;--bbv-f:1}
+#bbPauseLoV{left:calc(1.5px + (100% - 3px) * var(--bbp-a))}
+#bbPauseHiV{left:calc(1.5px + (100% - 3px) * var(--bbp-b))}
+#bbVol{position:absolute;left:-1.5px;right:-1.5px;top:calc(100% + 11px);height:22px;touch-action:none;pointer-events:none;--bbv-f:1}
 /* host is inert; only the 22px track takes presses, so it steals as little as possible from the
    vertical thumbs' hit padding, which reaches 10px past the 85% line into this gap.
-   Track spans the vertical grooves' OUTER edges (19px in) so the horizontal line reaches as far
-   as they do; the cap's travel is inset 5px from each end to land on their CENTRE lines. */
+   Track spans the vertical grooves' OUTER edges (1.5px past each centre line) so the horizontal
+   line reaches exactly as far as they do; the dot's travel is inset 1.5px from each end to land on
+   their CENTRE lines. Every horizontal strip shares that 1.5px/(100% - 3px) basis — rebase all
+   three (and bb*FromX in the JS) together if the groove thickness ever changes again. */
 #bbVolTrack{position:absolute;left:0;right:0;top:0;bottom:0;pointer-events:auto;cursor:pointer;touch-action:none}
-#bbVolTrack::before{content:'';position:absolute;top:50%;left:0;right:0;height:10px;background:linear-gradient(180deg,#cbc4b0,#ece6d5);box-shadow:inset 0 1px 3px rgba(0,0,0,.4);border-radius:2px;transform:translateY(-50%);-webkit-mask-image:linear-gradient(90deg,transparent 0 calc(13px + (100% - 10px) * var(--bbv-f)),#000 calc(13px + (100% - 10px) * var(--bbv-f)) 100%);mask-image:linear-gradient(90deg,transparent 0 calc(13px + (100% - 10px) * var(--bbv-f)),#000 calc(13px + (100% - 10px) * var(--bbv-f)) 100%)}
+#bbVolTrack::before{content:'';position:absolute;top:50%;left:0;right:0;height:3px;background:linear-gradient(180deg,#cbc4b0,#ece6d5);box-shadow:inset 0 .5px 1px rgba(0,0,0,.4);border-radius:2px;transform:translateY(-50%);-webkit-mask-image:linear-gradient(90deg,#000 0 calc(-6.5px + (100% - 3px) * var(--bbv-f)),transparent calc(-6.5px + (100% - 3px) * var(--bbv-f)) 100%);mask-image:linear-gradient(90deg,#000 0 calc(-6.5px + (100% - 3px) * var(--bbv-f)),transparent calc(-6.5px + (100% - 3px) * var(--bbv-f)) 100%)}
 /* press-to-jump means the thumb never has to be grabbed, so it stays out of hit-testing entirely */
-#bbVolT{left:calc(5px + (100% - 10px) * var(--bbv-f));top:50%;width:16px;height:26px;background:linear-gradient(90deg,transparent 41%,#d8d0ba 41%,#d8d0ba 59%,transparent 59%);pointer-events:none}
-#bbVolV{left:calc(5px + (100% - 10px) * var(--bbv-f));top:calc(50% + 18px);bottom:auto;transform:translateX(-50%)}
+#bbVolT{left:calc(1.5px + (100% - 3px) * var(--bbv-f));top:50%;width:16px;height:26px;pointer-events:none}
+#bbVolV{left:calc(1.5px + (100% - 3px) * var(--bbv-f));top:calc(50% + 18px);bottom:auto;transform:translateX(-50%)}
 /* BIRDBOX list-range: vertical dual-thumb window into the active MATHS list.
    Console-fader skin lifted from the MIXER (.mix-track/.mix-thumb) — 1 at the bottom, 32 at the top. */
 /* --bbr-a/--bbr-b = upper/lower thumb centres as % from the track top; the groove is masked away
    between them so the selected window reads as a cut-out onto the live #bbBg gradient. */
 #bbRange{position:absolute;right:-17px;top:0;bottom:0;width:34px;touch-action:none;pointer-events:auto;--bbr-a:0%;--bbr-b:100%}
 #bbRangeTrack{position:absolute;left:0;right:0;top:22px;bottom:22px}
-#bbRangeTrack::before{content:'';position:absolute;left:50%;top:0;bottom:0;width:10px;background:linear-gradient(90deg,#cbc4b0,#ece6d5);box-shadow:inset 1px 0 3px rgba(0,0,0,.4);border-radius:2px;transform:translateX(-50%);-webkit-mask-image:linear-gradient(#000 0 calc(var(--bbr-a) - 8px),transparent calc(var(--bbr-a) - 8px) calc(var(--bbr-b) + 8px),#000 calc(var(--bbr-b) + 8px) 100%);mask-image:linear-gradient(#000 0 calc(var(--bbr-a) - 8px),transparent calc(var(--bbr-a) - 8px) calc(var(--bbr-b) + 8px),#000 calc(var(--bbr-b) + 8px) 100%)}
+#bbRangeTrack::before{content:'';position:absolute;left:50%;top:0;bottom:0;width:3px;background:linear-gradient(90deg,#cbc4b0,#ece6d5);box-shadow:inset .5px 0 1px rgba(0,0,0,.4);border-radius:2px;transform:translateX(-50%);-webkit-mask-image:linear-gradient(#000 0 calc(var(--bbr-a) - 8px),transparent calc(var(--bbr-a) - 8px) calc(var(--bbr-b) + 8px),#000 calc(var(--bbr-b) + 8px) 100%);mask-image:linear-gradient(#000 0 calc(var(--bbr-a) - 8px),transparent calc(var(--bbr-a) - 8px) calc(var(--bbr-b) + 8px),#000 calc(var(--bbr-b) + 8px) 100%)}
 /* thumb = the light strip only; the dark cap blocks are transparent so the gradient reads through.
    drop-shadow follows the alpha channel, so it shadows the strip and not an invisible box. */
-.bbr-thumb{position:absolute;left:50%;width:26px;height:16px;background:linear-gradient(180deg,transparent 41%,#d8d0ba 41%,#d8d0ba 59%,transparent 59%);border:none;transform:translate(-50%,-50%);cursor:pointer;touch-action:none;filter:drop-shadow(0 1px 1.5px rgba(0,0,0,.55))}
+.bbr-thumb{position:absolute;left:50%;width:26px;height:16px;background:radial-gradient(circle at 50% 50%,#d8d0ba 0 2.25px,transparent 2.75px);border:none;transform:translate(-50%,-50%);cursor:pointer;touch-action:none;filter:drop-shadow(0 1px 1.5px rgba(0,0,0,.55))}
 .bbr-thumb::before{content:'';position:absolute;left:-9px;right:-9px;top:-10px;bottom:-10px}
 #bbRangeLoV,#bbRangeHiV{left:auto;right:38px}   /* strip is now on the right edge, so read inboard */
 #bbRangeHiT{z-index:2}
@@ -355,13 +359,13 @@ input[type=range]::-moz-range-thumb{width:20px;height:20px;border-radius:50%;bac
 .af-frame{transition:opacity .2s}
 .af-frame.off{opacity:.4;pointer-events:none}
 .af-swp-lbl{font-size:8px;color:#a0ad95;letter-spacing:1.5px;margin-bottom:3px}
-/* ── console fader skin (shared, generalized from NOISE #nsVsFaderR) ── */
+/* ── console fader skin: the single source for every horizontal fader that wears it ── */
 .cfader input[type=range]{height:10px;border-radius:2px;background:linear-gradient(#cbc4b0,#ece6d5);box-shadow:inset 0 1px 3px rgba(0,0,0,.4)}
 .cfader input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:18px;height:28px;border-radius:3px;background:linear-gradient(90deg,#222 41%,#d8d0ba 41%,#d8d0ba 59%,#222 59%);border:1px solid #000;box-shadow:0 2px 4px rgba(0,0,0,.45)}
 .cfader input[type=range]::-moz-range-thumb{width:18px;height:28px;border-radius:3px;background:linear-gradient(90deg,#222 41%,#d8d0ba 41%,#d8d0ba 59%,#222 59%);border:1px solid #000}
 .cfader-master input[type=range]::-webkit-slider-thumb{background:linear-gradient(90deg,#1f4a37 41%,#8fbfa8 41%,#8fbfa8 59%,#1f4a37 59%)}
 .cfader-master input[type=range]::-moz-range-thumb{background:linear-gradient(90deg,#1f4a37 41%,#8fbfa8 41%,#8fbfa8 59%,#1f4a37 59%)}
-/* ── PULSE / FREQ B type selector (compact, mirror NOISE #nsVsTypeSel) ── */
+/* ── PULSE / FREQ B type selector (compact chip form of .msel) ── */
 .af-msel .msel-head{padding:1px 8px;border:none;border-radius:4px;background:rgba(0,0,0,.05);font-size:8.4px;letter-spacing:1px;color:#222}
 .af-msel .msel-arrow{display:none}
 /* ── PULSE / FREQ B inline blocks: label toggles on/off, controls dim when off ── */
@@ -384,19 +388,81 @@ input[type=range]::-moz-range-thumb{width:20px;height:20px;border-radius:50%;bac
 #nsControls{display:none;}
 #nsHidden{display:none;}
 #nsPlayBtn{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:25%;aspect-ratio:1;border-radius:50%;z-index:4;cursor:pointer;}
-#nsVsPanel{width:100%;max-width:400px;margin:0 auto;flex:0 0 auto;padding:8px 12px 10px;display:flex;flex-direction:column;gap:6px;position:relative;z-index:5;background:transparent;}
-#nsVsTop{display:flex;justify-content:space-between;align-items:center;width:100%;position:relative;top:-1px;}
-#nsVsHead{display:flex;align-items:center;gap:6px;min-width:0;}
-#nsVsBody{display:none;flex-direction:column;align-items:center;gap:8px;width:100%;position:relative;top:-3px;}
-#nsVsPanel.vs-open #nsVsBody{display:flex;}
-/* LINEAR type chip shares the PULSE row, only visible when panel is open */
-#nsVsTypeSel{display:none;}
-#nsVsPanel.vs-open #nsVsTypeSel{display:inline-block;}
-#nsVsTypeSel .msel-head{padding:1px 6px;border:none;border-radius:4px;background:rgba(0,0,0,.05);font-size:9.4px;letter-spacing:1px;color:#222;gap:0;}
-#nsVsTypeSel .msel-arrow{display:none;}
-#nsVsTypeSel .msel-opts{top:auto;bottom:100%;margin-top:0;margin-bottom:4px;border-radius:6px;right:0;left:auto;}
-#nsVsTypeSel .msel-opt{font-size:9.4px;letter-spacing:1px;color:#999;padding:5px 9px;border-radius:4px;}
-#nsVsTypeSel .msel-opt.active{color:#555;}
+#nsVsPanel{width:100%;max-width:400px;margin:0 auto;flex:0 0 auto;padding:4px 12px 8px;display:flex;flex-direction:column;gap:4px;position:relative;z-index:5;background:transparent;}
+#nsVsStrip{display:flex;flex-direction:column;align-items:center;gap:10px;width:100%;}
+#nsVsStripTop{display:flex;align-items:center;gap:6px;width:100%;}
+#nsVsFaderNum{margin-left:auto;}
+/* Footer rows are packed tight: the readouts moved onto the label line, so the 19px .maths-slider-wrap
+   reserves for an under-thumb bubble is dead space here. The 28px thumb overhangs its 10px track by 9px
+   either side, so each row still needs ~9px of clearance above and below the track — that is what the
+   header line and the 6px panel padding provide. Ids, not `#nsVsPanel .maths-slider-wrap`, so the
+   drawer's #nsVsEnvRow keeps the bottom padding its A/D readouts sit in. */
+#nsVsFaderWrap,#nsSpeedWrap,#nsVolWrap{padding-bottom:0;}
+/* the range input is inline-block by default, so it sits on a text baseline and the line's leading adds
+   ~11px of invisible space per row; block-level drops that with no visual change. */
+#nsVsFaderWrap input[type=range],#nsSpeedWrap input[type=range],#nsVolWrap input[type=range]{display:block;}
+/* BIRDBOX #bbSpeedTrack idiom: the groove has a thumb-width GAP masked out of it at the thumb, so the
+   module background — not the groove — shows through the thumb. The mask cannot live on the input: a mask
+   on the element takes its thumb with it, so the groove moves to a layer behind and the input goes
+   background-less on top. --f (0..1) is written by the refresh functions; --gp turns it into the thumb's
+   centre in px, accounting for the 18px the thumb cannot travel. */
+.ns-groove{position:relative;width:100%;}
+.ns-groove::before{content:'';position:absolute;left:0;right:0;top:0;bottom:0;border-radius:2px;background:linear-gradient(#cbc4b0,#ece6d5);box-shadow:inset 0 1px 3px rgba(0,0,0,.4);
+  --gp:calc(9px + (100% - 18px) * var(--f,0));
+  -webkit-mask-image:linear-gradient(90deg,#000 0 calc(var(--gp) - 11px),transparent calc(var(--gp) - 11px) calc(var(--gp) + 11px),#000 calc(var(--gp) + 11px) 100%);
+  mask-image:linear-gradient(90deg,#000 0 calc(var(--gp) - 11px),transparent calc(var(--gp) - 11px) calc(var(--gp) + 11px),#000 calc(var(--gp) + 11px) 100%);}
+.ns-groove input[type=range]{background:transparent;box-shadow:none;position:relative;z-index:1;height:5px;}
+/* Two-thumb variant: same groove, two gaps. The discs' left reuses the SAME expression as the mask's
+   --gp, so gap and disc are locked together by construction rather than by two sums happening to agree. */
+/* --gpa/--gpb live on the ELEMENT, not on ::before, so ::after can read them too and the fill between the
+   thumbs is derived from the same two numbers as the gaps and the discs. */
+.ns-groove-dual{height:5px;--gpa:calc(9px + (100% - 18px) * var(--fa,0));--gpb:calc(9px + (100% - 18px) * var(--fb,1));}
+/* the selected band: from the inner edge of one gap to the inner edge of the other. Collapses to nothing
+   when the thumbs meet, which is what a zero-width band should do. */
+.ns-groove-dual::after{content:'';position:absolute;top:0;bottom:0;left:calc(var(--gpa) + 11px);right:calc(100% - var(--gpb) + 11px);background:#c8c8c8;border-radius:2px;}
+.ns-groove-dual .ns-disc{background:radial-gradient(circle at 50% 50%,#b0b0b0 0 5px,transparent 5.5px);}
+.ns-groove-dual::before{
+  -webkit-mask-image:linear-gradient(90deg,#000 0 calc(var(--gpa) - 11px),transparent calc(var(--gpa) - 11px) calc(var(--gpa) + 11px),#000 calc(var(--gpa) + 11px) calc(var(--gpb) - 11px),transparent calc(var(--gpb) - 11px) calc(var(--gpb) + 11px),#000 calc(var(--gpb) + 11px) 100%);
+  mask-image:linear-gradient(90deg,#000 0 calc(var(--gpa) - 11px),transparent calc(var(--gpa) - 11px) calc(var(--gpa) + 11px),#000 calc(var(--gpa) + 11px) calc(var(--gpb) - 11px),transparent calc(var(--gpb) - 11px) calc(var(--gpb) + 11px),#000 calc(var(--gpb) + 11px) 100%);}
+.ns-disc{position:absolute;top:50%;width:18px;height:28px;transform:translate(-50%,-50%);cursor:pointer;touch-action:none;z-index:1;background:radial-gradient(circle at 50% 50%,#ede7d4 0 5px,transparent 5.5px);filter:drop-shadow(0 1px 1.5px rgba(0,0,0,.5));}
+#nsVolLoT{left:calc(9px + (100% - 18px) * var(--fa,0));}
+#nsVolHiT{left:calc(9px + (100% - 18px) * var(--fb,1));}
+/* header: "volume / range" grouped left, since .ns-fhdr spreads its children */
+.ns-hdr-left{display:flex;align-items:center;gap:6px;}
+.ns-sep{font-size:10px;color:#8a8478;line-height:1;}
+/* .pulse-lbl carries margin-left:-7px to seat it against the MATHS strip's edge; mid-header that would
+   just eat the gap after the slash. Everything else about it — fill, border, lit state — is shared.
+   z-index: a slider's TOUCH target is not its border box — Chrome hit-tests the thumb where it is drawn,
+   so the 28px thumb reaches ~11.5px above a 5px groove, right up into this button's row. Without this,
+   tapping the button's lower third moved the volume instead. Only the thumb's invisible upper margin is
+   covered: the 10px disc is centred on the groove, entirely below the button, so it stays grabbable. */
+/* 2px in on every edge: .pulse-lbl is 20px tall with 6px side padding, so 16px + 4px here. */
+#nsVolRangeBtn{margin-left:0;position:relative;z-index:2;border:none;height:16px;padding:0 4px;}
+/* lit state diverges from .pulse-lbl.on ON PURPOSE — grey, to sit with the range slider's own greys.
+   Scoped to this id so the NOISE and MATHS pulse buttons keep the black they share. Text colour still
+   comes from .pulse-lbl.on. */
+#nsVolRangeBtn.on{background:#b0b0b0;color:#222;}
+/* rate of change and volume are the SAME control visually, so the look lives on .ns-groove and neither row
+   restates it: a thin groove, no frame, and a 10px disc in the app beige floating in the masked gap. The
+   gap is 22px against an 18px thumb, so 2px of background shows either side of the disc. */
+.ns-groove input[type=range]::-webkit-slider-thumb{background:radial-gradient(circle at 50% 50%,#ede7d4 0 5px,transparent 5.5px);border:none;box-shadow:none;filter:drop-shadow(0 1px 1.5px rgba(0,0,0,.5));}
+.ns-groove input[type=range]::-moz-range-thumb{background:radial-gradient(circle at 50% 50%,#ede7d4 0 5px,transparent 5.5px);border:none;box-shadow:none;filter:drop-shadow(0 1px 1.5px rgba(0,0,0,.5));}
+/* Header height is set by the 20px value box, and the label sits at its TOP — which leaves exactly the
+   9px the thumb overhangs upward, so the track can start right under the header with nothing wasted.
+   min-height keeps the box-less volume row on the same rhythm instead of riding 9px higher. */
+.ns-fhdr{display:flex;align-items:flex-start;justify-content:space-between;width:100%;gap:8px;min-height:20px;margin-bottom:6px;}
+.ns-fnum{display:flex;align-items:center;gap:4px;}
+.ns-coef{font-size:11px;font-weight:600;color:#8a8478;line-height:1;}
+#nsVsBody{display:none;flex-direction:column;align-items:center;gap:8px;width:100%;}
+/* Open: the body leaves the flow and floats UPWARD over the stage, so the three faders below never
+   move. ::before draws one continuous rounded frame from the panel's bottom up past the floated body,
+   stretched by --nsvs-h, which nsVsMeasure() sets on this element. (No stage-lift rule is needed —
+   unlike the MATHS image, #nsBird is centred and the drawer only covers the stage's bottom strip.) */
+#nsVsPanel.vs-open #nsVsBody{display:flex;position:absolute;left:0;right:0;bottom:100%;padding:12px 12px 9px;box-sizing:border-box;}
+/* -8px, not 0: the fader is the panel's last child with no bottom padding left to spare, so the frame has
+   to reach past the panel box to enclose the thumb's 9px overhang. It is out of flow, so this costs no
+   layout and the three faders below still do not move. */
+#nsVsPanel.vs-open::before{content:"";position:absolute;z-index:-1;left:0;right:0;bottom:-8px;top:calc(-1 * var(--nsvs-h,0px));background:rgba(248,244,235,.98);border-radius:3px;box-shadow:0 0 0 1px #ccc,0 4px 14px rgba(0,0,0,.12);}
 #nsVsABrow{display:flex;justify-content:space-between;align-items:center;width:100%;gap:8px;}
 #nsVsCenter{flex:1;display:grid;grid-template-columns:repeat(3,1fr);gap:5px;align-items:center;}
 .ns-cell{display:flex;align-items:center;justify-content:center;gap:1px;height:34px;padding:0;border:1px solid #333;border-radius:1px;background:#f8f4eb;color:#111;font-size:9px;font-weight:600;letter-spacing:1px;cursor:pointer;font-family:inherit;}
@@ -410,17 +476,6 @@ input[type=range]::-moz-range-thumb{width:20px;height:20px;border-radius:50%;bac
 .ns-lfo-btn .ns-lfo-caret{width:8px;height:8px;fill:#888;transition:transform .2s,fill .15s;}
 .ns-lfo-btn.open{background:#000;color:#fff;border-color:#000;}
 .ns-lfo-btn.open .ns-lfo-caret{transform:rotate(180deg);fill:#fff;}
-/* PULSE label — styled like the pulse-type chip: subtle fill, no border, larger font, less rounded, no black on open */
-#nsVsLabelBtn{border:none;border-radius:2px;background:rgba(0,0,0,.05);color:#222;font-size:12px;letter-spacing:1.5px;padding:3px 10px;}
-#nsVsLabelBtn.open{background:rgba(0,0,0,.08);color:#222;border-color:transparent;}
-#nsVsLabelBtn .ns-lfo-caret{fill:#888;}
-#nsVsLabelBtn.open .ns-lfo-caret{fill:#888;}
-/* Pulse on/off toggle — original knife switch, scaled to 95% */
-.ns-switch{width:44px;height:30px;position:relative;top:-3px;cursor:pointer;flex-shrink:0;transform:scale(.9025);transform-origin:center;background:none;border:none;padding:0;}
-.ns-switch::before{content:'';position:absolute;left:5px;right:5px;bottom:1px;height:7px;background:linear-gradient(#2a2a2a,#000);border:1px solid #000;border-radius:2px;}
-.ns-switch .lever{position:absolute;bottom:5px;left:50%;width:5px;height:21px;background:linear-gradient(#8a8a8a,#333);border-radius:3px;transform-origin:bottom center;transform:translateX(-50%) rotate(-42deg);transition:transform .26s cubic-bezier(.5,1.7,.4,.9);}
-.ns-switch .lever::after{content:'';position:absolute;top:-7px;left:50%;width:13px;height:13px;border-radius:50%;background:radial-gradient(circle at 35% 30%,#6f6f6f,#333 70%);border:1px solid #000;transform:translateX(-50%);box-shadow:0 1px 2px rgba(0,0,0,.5);}
-.ns-switch.on .lever{transform:translateX(-50%) rotate(42deg);}
 /* [O][I] switch — used by AUDIO FUNCTION (riser) LFO/target toggles */
 .ns-pwr{display:inline-flex;align-items:stretch;height:22px;padding:0;background:#f8f4eb;border:1px solid #333;border-radius:3px;overflow:hidden;cursor:pointer;font-family:inherit;flex-shrink:0;}
 .ns-pwr span{display:flex;align-items:center;justify-content:center;width:20px;font-size:10px;font-weight:600;letter-spacing:0;color:#9a9483;transition:background .15s,color .15s;}
@@ -430,9 +485,18 @@ input[type=range]::-moz-range-thumb{width:20px;height:20px;border-radius:50%;bac
 .ns-pwr.on .ns-pwr-i{background:#111;color:#f8f4eb;}
 #nsVsPanel .vedit{color:#111;border-color:#333;font-size:14px;width:62px;padding:1px 3px;}
 #nsVsPanel .maths-slider-wrap{width:100%;}
-#nsVsFaderR{height:10px;border-radius:2px;background:linear-gradient(#cbc4b0,#ece6d5);box-shadow:inset 0 1px 3px rgba(0,0,0,.4);}
-#nsVsFaderR::-webkit-slider-thumb{-webkit-appearance:none;width:18px;height:28px;border-radius:3px;background:linear-gradient(90deg,#222 41%,#d8d0ba 41%,#d8d0ba 59%,#222 59%);border:1px solid #000;box-shadow:0 2px 4px rgba(0,0,0,.45);}
-#nsVsFaderR::-moz-range-thumb{width:18px;height:28px;border-radius:3px;background:linear-gradient(90deg,#222 41%,#d8d0ba 41%,#d8d0ba 59%,#222 59%);border:1px solid #000;}
+/* Rate-of-change and volume rows: SIBLINGS of the pulse panel, not part of it — same width and
+   centring, so all three faders in the footer line up as one stack. */
+#nsSpeedPanel,#nsVolPanel{width:100%;max-width:400px;margin:0 auto;flex:0 0 auto;padding:0 12px 0;box-sizing:border-box;position:relative;z-index:5;}
+#nsSpeedPanel{padding-bottom:10px;}   /* keeps all three grooves on one even pitch */
+#nsVolPanel{padding-bottom:31px;}   /* the thumb overhangs a 5px groove by 11.5px — plus edge clearance */
+#nsSpeedPanel .maths-slider-wrap,#nsVolPanel .maths-slider-wrap{width:100%;}
+/* PULSE envelope A/D: one track, two thumbs, both shortest at the CENTRE (mirror of #muVsEnvBar).
+   margin = thumb radius, so 1s at either edge stays inside the track. */
+#nsVsEnvRow{padding-bottom:15px;}
+#nsVsEnvBar{position:relative;height:28px;margin:0 11px;touch-action:none;}
+#nsVsEnvBar .ms-val{bottom:-13px;}
+#nsVsEnvBar .dual-thumb{display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:700;color:#f8f4eb;line-height:1;-webkit-user-select:none;user-select:none;}
 #nsVsPanel .af-title{color:#111;font-size:10px;letter-spacing:2px;font-weight:500;}
 #nsVsPanel .af-swp-lbl,#nsVsPanel .lbl{color:#222;}
 #nsVsPanel .vnum{color:#111;}
@@ -460,24 +524,27 @@ input[type=range]::-moz-range-thumb{width:20px;height:20px;border-radius:50%;bac
 #msMasterWrap{margin-top:calc(var(--mu-vol-gap) - 2px);margin-bottom:2px}
 /* fader value readout box (replaces the moving thumb bubble): shows Xs in per-osc, Xms otherwise */
 #muVsRight{display:flex;align-items:center;gap:6px;margin-left:auto}
-#muVsFaderNum{display:inline-flex;align-items:center;gap:1px;height:20px;padding:0 7px;border:1px solid rgba(0,0,0,.15);border-radius:2px;background:#efe9da;box-sizing:border-box;white-space:nowrap;flex:0 0 auto}
-#muVsFaderNum .mvfn-v{font-size:12px;font-weight:600;color:#111;letter-spacing:0;line-height:1}
-#muVsFaderNum .mvfn-u{font-size:8px;color:#8a8478;letter-spacing:.5px;margin-left:1px;line-height:1}
+/* fader value readout box, shared by MATHS and NOISE — a fixed box beside the label reads better than a
+   bubble riding the thumb, and costs no vertical space of its own since it sits on the label's line. */
+.pulse-num{display:inline-flex;align-items:center;gap:1px;height:20px;padding:0 7px;border:1px solid rgba(0,0,0,.15);border-radius:2px;background:#efe9da;box-sizing:border-box;white-space:nowrap;flex:0 0 auto}
+.pulse-num .pnum-v{font-size:12px;font-weight:600;color:#111;letter-spacing:0;line-height:1}
+.pulse-num .pnum-u{font-size:8px;color:#8a8478;letter-spacing:.5px;margin-left:1px;line-height:1}
 #muVsABrow.ns-dim{pointer-events:none}
-/* pulse label: bold; beige overlay + thin border when off, dark when the pulse module is ON */
-#muVsLabelBtn{display:inline-flex;align-items:center;height:20px;margin-left:-7px;padding:0 6px;font-family:inherit;font-size:8.4px;font-weight:700;letter-spacing:1px;color:#222;background:#ede7d4;border:1px solid rgba(0,0,0,.14);border-radius:2px;cursor:pointer;line-height:1;white-space:nowrap}
-#muVsLabelBtn.on{background:#222;color:#ede7d4;border-color:#222}
+/* pulse label: bold; beige overlay + thin border when off, dark when the pulse module is ON.
+   Shared by MATHS and NOISE — the word IS the on/off switch in both. */
+/* Shared by the MATHS and NOISE pulse switches. OFF is a quiet grey label at the same weight and
+   colour the rest of the small print uses (.ms-unit is #777 at this very size); turning it ON is what
+   makes it bold, so the weight change reads as the state change and not just the inverted chip. */
+.pulse-lbl{display:inline-flex;align-items:center;height:20px;margin-left:-7px;padding:0 6px;font-family:inherit;font-size:8.4px;font-weight:500;letter-spacing:1px;color:#777;background:#ede7d4;border:1px solid rgba(0,0,0,.14);border-radius:2px;cursor:pointer;line-height:1;white-space:nowrap}
+.pulse-lbl.on{background:#222;color:#ede7d4;border-color:#222;font-weight:700}
 /* panel caret: points UP while the panel is closed (it opens upward), flips DOWN once open */
 /* pulse-panel grip: borderless drawer handle (same idiom as #scoreTab .st-g). Bars darken and
    tighten when the panel is open — the box is gone, so the hit area is wider than the mark. */
-#muVsPanelBtn{width:28px;height:20px;padding:0;border:none;background:none;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;box-sizing:border-box;font-family:inherit;margin-left:0}
-#muVsPanelBtn .mvs-grip{display:flex;flex-direction:column;align-items:center;gap:3px;transition:gap .2s}
-#muVsPanelBtn .mvs-grip i{display:block;width:14px;height:2px;border-radius:1px;background:#f3eee1;box-shadow:0 1px 1.5px rgba(0,0,0,.28);transition:background .15s}
-#muVsPanelBtn.open .mvs-grip{gap:2px}
-#muVsPanelBtn.open .mvs-grip i{background:#222}
-#muVsFaderR{height:10px;border-radius:2px;background:linear-gradient(#cbc4b0,#ece6d5);box-shadow:inset 0 1px 3px rgba(0,0,0,.4)}
-#muVsFaderR::-webkit-slider-thumb{-webkit-appearance:none;width:18px;height:28px;border-radius:3px;background:linear-gradient(90deg,#222 41%,#d8d0ba 41%,#d8d0ba 59%,#222 59%);border:1px solid #000;box-shadow:0 2px 4px rgba(0,0,0,.45)}
-#muVsFaderR::-moz-range-thumb{width:18px;height:28px;border-radius:3px;background:linear-gradient(90deg,#222 41%,#d8d0ba 41%,#d8d0ba 59%,#222 59%);border:1px solid #000}
+.pulse-grip{width:28px;height:20px;padding:0;border:none;background:none;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;box-sizing:border-box;font-family:inherit;margin-left:0}
+.pulse-grip .mvs-grip{display:flex;flex-direction:column;align-items:center;gap:3px;transition:gap .2s}
+.pulse-grip .mvs-grip i{display:block;width:14px;height:2px;border-radius:1px;background:#f3eee1;box-shadow:0 1px 1.5px rgba(0,0,0,.28);transition:background .15s}
+.pulse-grip.open .mvs-grip{gap:2px}
+.pulse-grip.open .mvs-grip i{background:#222}
 #muVsABrow{display:flex;justify-content:space-between;align-items:center;width:100%;gap:8px}
 #muVsCenter{flex:1;display:grid;grid-template-columns:repeat(3,1fr);gap:5px;align-items:center}
 #muVsCenter .ns-cell{height:var(--mu-cell-h)}
@@ -766,14 +833,11 @@ input[type=range]::-moz-range-thumb{width:20px;height:20px;border-radius:50%;bac
     <div class="rr"><div class="lbl-row lbl"><span>0%</span><span id="nVolL">VOLUME — 60%</span><span>100%</span></div><input type="range" id="nVolR" min="0" max="100" value="60" oninput="nVol=+this.value;nTransStartVol=nVol;nTransTargetVol=nVol;document.getElementById('nVolL').textContent='VOLUME — '+nVol+'%';if(nMGain&&AC)nMGain.gain.setTargetAtTime(v2g(nVol)*nMixPost,AC.currentTime,.02);syncMixerUI()"></div>
   </div>
   <div id="nsVsPanel">
-    <div id="nsVsTop">
-      <div id="nsVsHead">
-        <button class="ns-lfo-btn" id="nsVsLabelBtn" onclick="nsVsTogglePanel()" aria-expanded="false" aria-label="Pulse settings">PULSE<svg class="ns-lfo-caret" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><path d="M233.4 406.6c12.5 12.5 32.8 12.5 45.3 0l192-192c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0L256 338.7 86.6 169.4c-12.5-12.5-32.8-12.5-45.3 0s-12.5 32.8 0 45.3l192 192z"/></svg></button>
-        <button class="ns-switch" id="nsVsEnableBtn" onclick="nsVsToggle()" role="switch" aria-label="Pulse on/off"><span class="lever"></span></button>
-      </div>
-      <div class="msel ns-dim" id="nsVsTypeSel" onclick="this.classList.toggle('open')"><div class="msel-head"><span id="nsVsTypeText">LINEAR</span><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" class="msel-arrow"><path d="M233.4 406.6c12.5 12.5 32.8 12.5 45.3 0l192-192c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0L256 338.7 86.6 169.4c-12.5-12.5-32.8-12.5-45.3 0s-12.5 32.8 0 45.3l192 192z"/></svg></div><div class="msel-opts" id="nsVsTypeOpts"></div></div>
-    </div>
     <div class="ns-dim" id="nsVsBody">
+      <div class="maths-slider-wrap" id="nsVsEnvRow">
+        <span class="ms-unit">ms</span><span class="ms-label">pulse envelope</span>
+        <div id="nsVsEnvBar"><span class="ms-val" id="nsVsAtkV">2</span><span class="ms-val" id="nsVsDecV">150</span></div>
+      </div>
       <div id="nsVsABrow">
         <div style="text-align:left"><span class="vnum" id="nsVsAV" style="font-size:18px" onclick="tapNum('nsVsAV',1,100000,function(v){nsVsA=v/1000;nsVsRefreshFader();},true)">1</span><span class="vunit">ms</span></div>
         <div id="nsVsCenter">
@@ -784,9 +848,28 @@ input[type=range]::-moz-range-thumb{width:20px;height:20px;border-radius:50%;bac
         <div style="text-align:right"><span class="vnum" id="nsVsBV" style="font-size:18px" onclick="tapNum('nsVsBV',1,100000,function(v){nsVsB=v/1000;nsVsRefreshFader();},true)">10000</span><span class="vunit">ms</span></div>
       </div>
     </div>
-    <div class="maths-slider-wrap" id="nsVsFaderWrap" style="max-width:100%">
-      <input type="range" id="nsVsFaderR" min="0" max="1000" value="0" oninput="nsVsFader=+this.value/1000;nsVsRefreshFader()">
-      <span class="ms-val" id="nsVsFaderVal">1</span>
+    <div id="nsVsStrip">
+      <div id="nsVsStripTop">
+        <button class="pulse-lbl" id="nsVsLabelBtn" onclick="nsVsToggle()" role="switch" aria-checked="false" aria-label="pulse on/off">pulse</button>
+        <button class="pulse-grip" id="nsVsPanelBtn" onclick="nsVsTogglePanel()" aria-expanded="false" aria-label="pulse settings"><span class="mvs-grip"><i></i><i></i></span></button>
+        <span class="pulse-num" id="nsVsFaderNum"><span class="pnum-v" id="nsVsFaderNumV">1</span><span class="pnum-u">ms</span></span>
+      </div>
+      <div class="maths-slider-wrap cfader" id="nsVsFaderWrap" style="max-width:100%">
+        <input type="range" id="nsVsFaderR" min="0" max="1000" value="1000" oninput="nsVsFader=sliderFlip(+this.value,1000)/1000;nsVsRefreshFader()">
+      </div>
+    </div>
+  </div>
+  <div id="nsSpeedPanel">
+    <div class="maths-slider-wrap cfader" id="nsSpeedWrap" style="max-width:100%">
+      <div class="ns-fhdr"><span class="ms-label">rate of change</span></div>
+      <div class="ns-groove" id="nsSpeedGroove"><input type="range" id="nsSpeedR" min="0" max="4000" value="1000" oninput="nsSetSpeed(+this.value)"></div>
+    </div>
+  </div>
+  <div id="nsVolPanel">
+    <div class="maths-slider-wrap cfader" id="nsVolWrap" style="max-width:100%">
+      <div class="ns-fhdr"><span class="ns-hdr-left"><span class="ms-label">volume</span><span class="ns-sep">/</span><button class="pulse-lbl" id="nsVolRangeBtn" onclick="nsVolRangeToggle()" aria-pressed="false">range</button></span></div>
+      <div class="ns-groove" id="nsVolGroove"><input type="range" id="nsVolR2" min="0" max="100" value="100" oninput="nsSetVol(+this.value)"></div>
+      <div class="ns-groove ns-groove-dual" id="nsVolRangeGroove" style="display:none"><div class="ns-disc" id="nsVolLoT"></div><div class="ns-disc" id="nsVolHiT"></div></div>
     </div>
   </div>
 </div>
@@ -833,15 +916,15 @@ input[type=range]::-moz-range-thumb{width:20px;height:20px;border-radius:50%;bac
       </div>
       <div id="muVsStrip">
         <div id="muVsStripTop">
-          <button id="muVsLabelBtn" onclick="muVsToggle()" role="switch" aria-checked="false" aria-label="pulse on/off">pulse</button>
-          <button id="muVsPanelBtn" onclick="muVsTogglePanel()" aria-expanded="false" aria-label="pulse settings"><span class="mvs-grip"><i></i><i></i></span></button>
+          <button class="pulse-lbl" id="muVsLabelBtn" onclick="muVsToggle()" role="switch" aria-checked="false" aria-label="pulse on/off">pulse</button>
+          <button class="pulse-grip" id="muVsPanelBtn" onclick="muVsTogglePanel()" aria-expanded="false" aria-label="pulse settings"><span class="mvs-grip"><i></i><i></i></span></button>
           <div id="muVsRight">
             <div id="muVsPerOscRow"><span class="ms-tlabel">Per Osc Ratio</span><button class="ms-toggle on" id="muVsPerOscBtn" onclick="muVsTogglePerOsc()">ON</button></div>
-            <span id="muVsFaderNum"><span class="mvfn-v" id="muVsFaderNumV">10</span><span class="mvfn-u" id="muVsFaderNumU">s</span></span>
+            <span class="pulse-num" id="muVsFaderNum"><span class="pnum-v" id="muVsFaderNumV">10</span><span class="pnum-u" id="muVsFaderNumU">s</span></span>
           </div>
         </div>
-        <div class="maths-slider-wrap" id="muVsFaderWrap">
-          <input type="range" id="muVsFaderR" min="0" max="1000" value="500" oninput="muVsFader=+this.value/1000;muVsRefreshFader()">
+        <div class="maths-slider-wrap cfader" id="muVsFaderWrap">
+          <input type="range" id="muVsFaderR" min="0" max="1000" value="500" oninput="muVsFader=sliderFlip(+this.value,1000)/1000;muVsRefreshFader()">
         </div>
       </div>
     </div>
@@ -865,20 +948,20 @@ input[type=range]::-moz-range-thumb{width:20px;height:20px;border-radius:50%;bac
       <input type="range" id="multiDurR" min="0" max="10000" value="6859" oninput="multiDur=expS(+this.value,0.10,30);updateSliderVal('msDurVal',this,multiDur.toFixed(2))">
       <span class="ms-val" id="msDurVal">5.00</span>
     </div>
-    <div class="maths-slider-wrap" id="msLfoWrap">
-      <span class="ms-unit">ms</span><span class="ms-label">tremolo</span>
-      <input type="range" id="multiLfoDurR" min="0" max="10000" value="8617" oninput="multiLfoDur=expS(+this.value,0.10,15);updateSliderVal('msLfoVal',this,Math.round(multiLfoDur*1000))">
-      <span class="ms-val" id="msLfoVal">7500</span>
+    <div class="maths-slider-wrap" id="msVolRateWrap">
+      <span class="ms-unit">×</span><span class="ms-label">volume sweep rate</span>
+      <input type="range" id="multiVolRateR" min="0" max="10000" value="3505" oninput="muVolDur=expS(sliderFlip(+this.value,10000),0.05,60);updateSliderVal('msVolRateVal',this,muVolDur.toFixed(2))">
+      <span class="ms-val" id="msVolRateVal">5.00</span>
     </div>
     <div class="maths-slider-wrap" id="msVolWrap">
-      <span class="ms-unit">%</span><span class="ms-label">vol chance range on roll</span>
+      <span class="ms-unit">%</span><span class="ms-label">volume sweep range</span>
       <div id="multiDualRange" style="position:relative;height:36px;width:100%;touch-action:none"></div>
       <span class="ms-val" id="msVolMinVal">65</span>
       <span class="ms-val" id="msVolMaxVal">100</span>
     </div>
     <div class="ms-toggle-row"><span class="ms-tlabel">Multi-AutoGain</span><button class="ms-toggle on" id="mAutoBtn" onclick="toggleMultiAuto()">ON</button></div>
-    <div class="ms-toggle-row"><span class="ms-tlabel"><span style="color:#111">MATHS</span> to <span style="color:#2d6a4e">BIRDBOX</span> Duration</span><button class="ms-toggle on" id="mathsRatioBtn" onclick="toggleBbDurMode()">ON</button></div>
-    <div class="ms-toggle-row"><span class="ms-tlabel"><span style="color:#111">MATHS</span> to <span style="color:#2d6a4e">BIRDBOX</span> Frequency Ratio</span><span class="ms-fxwrap"><span class="ms-fx">×</span><span class="ms-num" id="bbFqRatioV" onclick="tapNum('bbFqRatioV',0.1,16,function(v){bbFqRatio=v;recomputeHarmonicPools();},false,2)">2.00</span></span></div>
+    <div class="ms-toggle-row"><span class="ms-tlabel"><span style="color:#111">MATHS</span> to <span style="color:#2d6a4e">BIRDBOX</span> Duration</span><button class="ms-toggle" id="mathsRatioBtn" onclick="toggleBbDurMode()">OFF</button></div>
+    <div class="ms-toggle-row"><span class="ms-tlabel"><span style="color:#111">MATHS</span> to <span style="color:#2d6a4e">BIRDBOX</span> Frequency Ratio</span><span class="ms-fxwrap"><span class="ms-fx">×</span><span class="ms-num" id="bbFqRatioV" onclick="tapNum('bbFqRatioV',0.1,16,function(v){bbFqRatio=v;recomputeHarmonicPools();},false,2)">1.00</span></span></div>
   </div>
 </div>
 
@@ -989,36 +1072,36 @@ const FA=-6.398,FB=16.301;
 function s2f(v){const x=v/10000;return Math.max(1,Math.min(1e8,Math.exp(FA*x*x+FB*x)));}
 function f2s(f){const l=Math.log(Math.max(1,Math.min(1e8,f)));const d=FB*FB+4*FA*l;if(d<0)return 5000;return Math.round(Math.max(0,Math.min(10000,(FB-Math.sqrt(Math.max(0,d)))/(2*(-FA))*10000)));}
 function v2g(v){const n=v/100;return n*n*n;}
-// audio-rate tremolo helpers: period(sec)→LFO freq (0.5ms floor / 2000Hz cap), and click-free engage/disengage of a
-// gain-pair. uni=true drives a UNIPOLAR 0..1 modulator (base 0 / depth 1) instead of the DC-offset bipolar pair.
-function periodToFreq(P){return Math.min(2000,1/Math.max(P||1e9,0.0005));}
+// click-free engage/disengage of a tremolo gain-pair. uni=true drives a UNIPOLAR 0..1 modulator (base 0 / depth 1)
+// instead of the DC-offset bipolar pair — which is what both PULSE envelopes are.
 function tremEngage(g,d,on,uni){if(!g||!d||!AC)return;var t=AC.currentTime;g.gain.setTargetAtTime(on?(uni?0:0.5):1,t,.02);d.gain.setTargetAtTime(on?(uni?1:0.5):0,t,.02);}
 // PULSE auto sweep is geometric (STYPE shape applied in log-period space), matching the manual fader —
 // avoids linear-period's flaw where ~95% of the sweep collapses into a slow near-silent swell ("mid cut").
 function sweepPeriod(type,t,A,B){return (A>0&&B>0)?Math.exp(sweepVal(type,t,Math.log(A),Math.log(B))):sweepVal(type,t,A,B);}
 // PULSE envelope: ATTACK and DECAY are ABSOLUTE times, so the buffer holds them in real seconds followed by a
-// silent tail, and the PERIOD is set by loopEnd (muVsLoop) rather than by playbackRate. That is what keeps a 2ms
+// silent tail, and the PERIOD is set by loopEnd (pulseLoop) rather than by playbackRate. That is what keeps a 2ms
 // attack 2ms at every pulse rate — the old normalized-cycle buffer scaled its taper with the rate, so the onset
 // collapsed to a step (2ms x period) and snapped. Unipolar: holds env directly in 0..1, so a fresh zero-filled
-// buffer IS the silent tail and a rebuild only writes the head. Cached on the live A|D pair.
-var MUVS_BUF=12;                  // seconds of buffer = longest period reproduced with an exact absolute envelope
-var muVsEnvCache={};
-function muVsEnvBuf(){
-  var key=muVsAtk+'|'+muVsDec;
-  if(muVsEnvCache[key])return muVsEnvCache[key];
-  var sr=AC.sampleRate,buf=AC.createBuffer(1,Math.round(MUVS_BUF*sr),sr),d=buf.getChannelData(0);
-  var na=Math.max(1,Math.round(muVsAtk*sr)),nd=Math.max(1,Math.min(Math.round(muVsDec*sr),d.length-na));
+// buffer IS the silent tail and a rebuild only writes the head.
+// Shared by MATHS (muVs) and NOISE (nsVs): the SHAPE is defined once, the STATE is not — atk/dec arrive as
+// arguments and each module hands in its OWN one-slot cache, so both shapes stay live without evicting each other.
+var PULSE_BUF=12;                 // seconds of buffer = longest period reproduced with an exact absolute envelope
+function pulseEnvBuf(cache,atk,dec){
+  var key=atk+'|'+dec;
+  if(cache.key===key)return cache.buf;
+  var sr=AC.sampleRate,buf=AC.createBuffer(1,Math.round(PULSE_BUF*sr),sr),d=buf.getChannelData(0);
+  var na=Math.max(1,Math.round(atk*sr)),nd=Math.max(1,Math.min(Math.round(dec*sr),d.length-na));
   for(var i=0;i<na;i++)d[i]=(i+1)/na;                            // attack: linear 0 -> 1
   for(var j=0;j<nd;j++)d[na+j]=1-sweepVal('cascade',j/nd,0,1);   // decay: normalized exponential 1 -> 0
-  muVsEnvCache={};muVsEnvCache[key]=buf;return buf;              // one shape live at a time — a 12s buffer is 2MB
+  cache.key=key;cache.buf=buf;return buf;                        // one shape live per module — a 12s buffer is 2MB
 }
 // loopEnd sets the cycle IN BUFFER SECONDS; rate stays 1 across the musical range and only compresses (cycle
 // shorter than the envelope) or stretches (cycle longer than the buffer). Real cycle = loopEnd/rate = P, and the
 // wrap lands inside the silent tail, so there is no discontinuity to click on.
-function muVsLoop(src,P){
+function pulseLoop(src,P,atk,dec){
   if(!src||!AC)return;
-  var span=Math.max(0.0005,muVsAtk+muVsDec);
-  var cb=Math.min(MUVS_BUF,Math.max(span,P));
+  var span=Math.max(0.0005,atk+dec);
+  var cb=Math.min(PULSE_BUF,Math.max(span,P));
   src.loopEnd=cb;
   src.playbackRate.setTargetAtTime(cb/Math.max(P,0.0005),AC.currentTime,.02);
   // Track how far through the cycle we are, so an A/D rebuild can RESUME instead of re-firing the attack.
@@ -1027,6 +1110,28 @@ function muVsLoop(src,P){
   src._ph=((src._ph||0)+d/Math.max(P,0.0005))%1;
   src._t=t;src._P=P;
 }
+// A/D change: a buffer source's buffer is set-once, so the source has to be recreated with the new shape.
+// start(t, offset) picks the new one up at the SAME point in the cycle the old one had reached — otherwise every
+// rebuild restarts at buffer 0 (the attack) and force-fires the envelope, which during a drag reads as a second
+// pulse rate riding over the real one. Loop params come from the retired node so the new one is right at once.
+function pulseReplace(old,depth,buf,atk,dec){
+  var ph=old?(old._ph||0):0,P=old?(old._P||1):1,t=AC.currentTime;
+  if(old){try{old.stop();}catch(e){}try{old.disconnect();}catch(e){}}
+  var s=AC.createBufferSource();s.buffer=buf;s.loop=true;s.loopStart=0;
+  s.loopEnd=Math.min(PULSE_BUF,Math.max(Math.max(0.0005,atk+dec),P));
+  s.playbackRate.value=s.loopEnd/Math.max(P,0.0005);
+  s._ph=ph;s._P=P;s._t=t;
+  s.connect(depth);s.start(t,ph*s.loopEnd);
+  return s;
+}
+// Per-module bindings — same engine, separate state: nsVsAtk never reaches muTremSrc, and vice versa.
+var muVsEnvC={},nsVsEnvC={};
+function muVsEnvBuf(){return pulseEnvBuf(muVsEnvC,muVsAtk,muVsDec);}
+function muVsLoop(src,P){pulseLoop(src,P,muVsAtk,muVsDec);}
+function muVsReplace(old,depth,buf){return pulseReplace(old,depth,buf,muVsAtk,muVsDec);}
+function nsVsEnvBuf(){return pulseEnvBuf(nsVsEnvC,nsVsAtk,nsVsDec);}
+function nsVsLoop(src,P){pulseLoop(src,P,nsVsAtk,nsVsDec);}
+function nsVsReplace(old,depth,buf){return pulseReplace(old,depth,buf,nsVsAtk,nsVsDec);}
 function mkNB(ctx){const s=ctx.sampleRate*4,b=ctx.createBuffer(1,s,ctx.sampleRate),d=b.getChannelData(0);for(let i=0;i<s;i++)d[i]=Math.random()*2-1;return b;}
 function spdS2V(v){return Math.round(Math.exp(v/10000*Math.log(3300))*100)/100;}
 function spdV2S(v){return Math.round(Math.log(Math.max(1,v))/Math.log(3300)*10000);}
@@ -1287,7 +1392,7 @@ var MIX_CH=[
   {key:'voice',label:'VOICE',get:function(){return vtVol;},set:function(v){vtVol=v;document.getElementById('vtVolR').value=v;if(vtMGn&&AC)vtMGn.gain.setTargetAtTime(v2g(v),AC.currentTime,.02);}},
   {key:'multi',label:'MATHS',get:function(){return multiMVol;},set:function(v){multiMVol=v;var el=document.getElementById('multiMVolR');if(el){el.value=v;updateSliderVal('msVolumeVal',el,v);}if(multiMGain&&AC)multiMGain.gain.setTargetAtTime(v2g(v),AC.currentTime,.02);}},
   {key:'birdbox',label:'BIRDBOX',get:function(){return swpMVol;},set:function(v){swpMVol=v;document.getElementById('swpMVolL').textContent='VOLUME \u2014 '+v+'%';document.getElementById('swpMVolR').value=v;if(swpMGn&&AC)swpMGn.gain.setTargetAtTime(v2g(v),AC.currentTime,.02);}},
-  {key:'noise',label:'NOISE',get:function(){return Math.round(nMixPost*100);},set:function(v){nMixPost=v/100;if(nMGain&&AC)nMGain.gain.setTargetAtTime(v2g(nVol)*nMixPost,AC.currentTime,.02);}},
+  {key:'noise',label:'NOISE',get:function(){return Math.round(nMixPost*100);},set:function(v){nMixPost=v/100;if(nMGain&&AC)nMGain.gain.setTargetAtTime(v2g(nVol)*nMixPost,AC.currentTime,.02);nsVolRefresh();}},
   {key:'master',label:'MASTER',master:true,get:function(){return appMasterVol;},set:function(v){appMasterVol=v;if(appMaster&&AC)appMaster.gain.setTargetAtTime(v2g(v),AC.currentTime,.02);}}
 ];
 /* ═══════ AUTOGAIN ═══════ */
@@ -1454,9 +1559,9 @@ const RS_FREQS_A=[50,100,150,200,250,300,350,400];
 const RS_FREQS_B=[4000,5000,6000,7000,8000,9000,10000,11000,12000,13000,14000,15000,16000];
 const RS_DURS=[30,45,60,80,90,100,120,150,200,250,300,400,500];
 let bbFreqPool=BB_FREQS.slice();
-let bbFqRatio=2;
+let bbFqRatio=1;
 let bbDurPool=BB_DURS.slice();
-let bbDurHarmonic=true;
+let bbDurHarmonic=false;
 /* Speed-slider curve. BB_TEMPO_CURVE is the scaling degree by itself: 100 reproduces the old
    pure-exponential map, 1 is dead linear, anything lower than 100 is flatter. The endpoints are
    pinned to 1 and 100 either way, so every speed stays reachable and the audible range never moves. */
@@ -1577,7 +1682,11 @@ function toggleSweep(){
           if(swpRepCount<pd.sm){swpFqFwd=true;if(pd.pm>0)swpReroll();}
           else{
             swpRepCount=0;swpFqFwd=true;
-            if(pd.pm>0){swpPausing=true;swpPauseDur=bbPausePick()*pd.pm;if(swpSigGn&&AC)swpSigGn.gain.setTargetAtTime(0,AC.currentTime,.01);}
+            /* A zero-length pause is skipped outright rather than entered: entering it would meet
+               the 0.02s floor below and still ramp the gate down over 10ms — an audible dip where
+               the point is nothing at all. Skipping ends the cycle exactly as pm=0 does. */
+            let pdur=pd.pm>0?bbPausePick()*pd.pm:0;
+            if(pdur>0){swpPausing=true;swpPauseDur=pdur;if(swpSigGn&&AC)swpSigGn.gain.setTargetAtTime(0,AC.currentTime,.01);}
             else{swpReroll();}
           }
         }else{
@@ -1587,7 +1696,11 @@ function toggleSweep(){
             swpRepCount++;
             if(swpRepCount>=pd.sm){
               swpRepCount=0;
-              if(pd.pm>0){swpPausing=true;swpPauseDur=bbPausePick()*pd.pm;if(swpSigGn&&AC)swpSigGn.gain.setTargetAtTime(0,AC.currentTime,.01);}
+              /* A zero-length pause is skipped outright rather than entered: entering it would meet
+                 the 0.02s floor below and still ramp the gate down over 10ms — an audible dip where
+                 the point is nothing at all. Skipping ends the cycle exactly as pm=0 does. */
+              let pdur=pd.pm>0?bbPausePick()*pd.pm:0;
+              if(pdur>0){swpPausing=true;swpPauseDur=pdur;if(swpSigGn&&AC)swpSigGn.gain.setTargetAtTime(0,AC.currentTime,.01);}
               else{swpReroll();}
             }else if(pd.pm>0){swpReroll();}   // pm=0 holds the pair across the cycle — see the bloop branch
           }
@@ -1620,15 +1733,28 @@ const NOISE_SPEC=Object.keys(PRESETS).slice(8);
 let nNodes=[],nMGain=null,nOn=false,nSl=[50,50,50,50,50,50,50,50,50,50],nVol=60,nAPre='White',eqDrag=-1,nMixPost=1;
 let nsInitialized=false;
 let nTransActive=false,nTransStart=0,nTransDur=5,nTransType='linear';
+// Roll speed: a live coefficient on the 3-30s duration pool nTransDur is drawn from. Applied where the
+// duration is CONSUMED (nsTransTick), not where it is drawn, so it steers the roll already in flight.
+// Track is 0..4000 = one decade per 1000 -> 3000 lands on exactly 1x. Kept off expS(), which r2()s to
+// 2dp and would quantise the bottom decades into ten steps (same reason bbSetTempo avoids it).
+// The bottom of the range is ASYMPTOTIC: the roll is driven by rAF, so it cannot complete in less than
+// one frame. The pool draws 3-30s, so below ~0.0056x the short draws saturate at one roll per frame and
+// further travel only pulls the long draws down to that same limit. At 0.001x every roll lands in 1-2
+// frames — a fresh random target ~30-60x/sec, which reads as texture rather than as a sweep.
+let nsSpdPos=1000,nsSpd=1;
+function nsSpdAt(pos){return 0.001*Math.pow(10,(4000-pos)/1000);}   // 10x (left, slow) .. 0.001x (right, fast), log
 let nTransStartSl=[],nTransTargetSl=[];
 let nTransStartVol=60,nTransTargetVol=60;
+let nsVolLo=66,nsVolHi=100;   // volume-sweep band: every roll draws its target from inside it
+let nsVolRangeOn=false;       // view state: is the row showing the range slider instead of the master fader
 let nTransRAF=null;
 // Volume-Sweep LFO — a tremolo on the noise master gain whose PERIOD is the swept quantity
 let nsVsOn=false,nsVsAuto=false;
-let nsTremGain=null,nsTremOsc=null,nsTremDepth=null;
+let nsTremGain=null,nsTremSrc=null,nsTremDepth=null;
 let nsVsA=0.001,nsVsB=10;          // period targets in seconds (A=fast 1ms … B=slow 10000ms)
 let nsVsFader=0;                   // 0..1 manual position between A and B
-let nsVsDur=10,nsVsDir='fwd',nsVsType='linear';
+let nsVsDur=10,nsVsDir='fwd';
+let nsVsAtk=0.002,nsVsDec=0.15;    // envelope attack/decay in SECONDS (1ms..1s each), as in MATHS
 let nsVsAutoStart=0,nsVsPhase=0;
 let nsVsActive=false,nsVsRAF=null,nsVsLastFrame=0;   // dedicated pulse-LFO steering loop, independent of the roll transition
 var nsMobile=window.matchMedia('(hover:none) and (pointer:coarse)').matches;
@@ -1671,24 +1797,35 @@ function toggleNoise(){
   if(!nMGain){nMGain=c.createGain();
     nsTremGain=c.createGain();nsTremGain.gain.value=1;         // tremolo node — pass-through when off
     nsTremDepth=c.createGain();nsTremDepth.gain.value=0;       // depth (silent when off)
-    nsTremOsc=c.createOscillator();nsTremOsc.type='sine';nsTremOsc.frequency.value=1;
-    nsTremOsc.connect(nsTremDepth);nsTremDepth.connect(nsTremGain.gain);
+    nsTremSrc=c.createBufferSource();nsTremSrc.buffer=nsVsEnvBuf();nsTremSrc.loop=true;nsTremSrc.loopStart=0;nsVsLoop(nsTremSrc,1);
+    nsTremSrc.connect(nsTremDepth);nsTremDepth.connect(nsTremGain.gain);
     nMGain.connect(nsTremGain);nsTremGain.connect(appMaster);
-    nsTremOsc.start();
-    if(nsVsOn)tremEngage(nsTremGain,nsTremDepth,true);
+    nsTremSrc.start();
+    if(nsVsOn)tremEngage(nsTremGain,nsTremDepth,true,true);
   }
   nMGain.gain.setTargetAtTime(v2g(nVol)*nMixPost,c.currentTime,.02);
   const buf=mkNB(c);
   nNodes=BANDS.map((fc,i)=>{const s=c.createBufferSource();s.buffer=buf;s.loop=true;const f=c.createBiquadFilter();f.type='bandpass';f.frequency.value=fc;f.Q.value=fc<100?.5:1.2;const g=c.createGain();g.gain.value=v2g(nSl[i]);s.connect(f);f.connect(g);g.connect(nMGain);s.start();return{src:s,gain:g};});
   nOn=true;setPB('n',true);showNsBirdFlash();appAutoRecalc();
-  if(nsTremGain&&AC)tremEngage(nsTremGain,nsTremDepth,nsVsOn);nsVsStart();
+  if(nsTremGain&&AC)tremEngage(nsTremGain,nsTremDepth,nsVsOn,true);nsVsStart();nsTransResume();
+}
+// The roll transition is torn down on stop, and again in restoreState's reset preamble — but nothing ever
+// re-armed it. After a stop->play (or an archive load) the loop was dead, so a "rate of change" change was
+// stored in nsSpd and never consumed by anyone: only a manual roll revived it. Resume-only, so the caller
+// decides whether this is a resume or a fresh draw. nsLastFrame MUST be re-stamped: nsTransTick's dt is
+// unclamped, so a stale one would span the whole stop and jump nsProgress straight to the target.
+function nsTransResume(){
+  if(nTransActive||!nTransTargetSl.length)return;
+  nTransActive=true;nsLastFrame=performance.now();
+  if(nTransRAF)cancelAnimationFrame(nTransRAF);
+  nTransRAF=requestAnimationFrame(nsTransTick);
 }
 function randomizeNoise(){
   nTransStartSl=nSl.slice();
   nTransStartVol=nVol;
   nAPre=bbRand(NS_PRESETS);
   nTransTargetSl=PRESETS[nAPre].slice();
-  nTransTargetVol=+(66+Math.random()*34).toFixed(2);
+  nTransTargetVol=+(nsVolLo+Math.random()*(nsVolHi-nsVolLo)).toFixed(2);
   nTransDur=+(3.00+Math.random()*27.00).toFixed(2);
   nTransType=bbRand(STYPES);
   nTransStart=performance.now();
@@ -1706,17 +1843,20 @@ var nsLastFrame=0;
 function nsTransTick(){
   if(!nTransActive){nTransRAF=null;return;}
   var now=performance.now();
-  nsVisDur+=(nTransDur-nsVisDur)*0.05;
+  nsVisDur+=(nTransDur*nsSpd-nsVisDur)*0.05;   // eased, so a slider drag glides in over ~1s
   var dt=(now-nsLastFrame)/1000;
   nsLastFrame=now;
-  nsProgress=Math.min(1,nsProgress+dt/Math.max(nsVisDur,0.1));
+  // 0.002 floor, not 0.1: at 0.001x the pool draws 0.003-0.03s, and the original floor silently ignored
+  // anything under 100ms — the whole fast end of the slider would have done nothing. Purely a div guard
+  // now; 0.003s is the shortest duration reachable, so it never binds.
+  nsProgress=Math.min(1,nsProgress+dt/Math.max(nsVisDur,0.002));
   var t=nsProgress;
   for(var i=0;i<10;i++){
     nSl[i]=Math.round(sweepVal(nTransType,t,nTransStartSl[i],nTransTargetSl[i]));
   }
   nVol=sweepVal(nTransType,t,nTransStartVol,nTransTargetVol);
   // Pulse (volume-sweep) LFO frequency is steered by its own loop (nsVsTick), not the roll transition.
-  if(++nsFrameCount%(nsMobile?4:2)===0){
+  if(++nsFrameCount%(nsVisDur<1?1:(nsMobile?4:2))===0){   // sub-second rolls need every frame to read as a sweep
     for(var j=0;j<10;j++){if(nNodes[j]&&AC)nNodes[j].gain.gain.setTargetAtTime(v2g(nSl[j]),AC.currentTime,.02);}
     if(nMGain&&AC)nMGain.gain.setTargetAtTime(v2g(nVol)*nMixPost,AC.currentTime,.02);
     updateNsBackground();
@@ -1751,23 +1891,27 @@ function showNsBirdFlash(){
 }
 function nsVsToggle(){
   nsVsOn=!nsVsOn;
-  var b=document.getElementById('nsVsEnableBtn');if(b)b.classList.toggle('on',nsVsOn);
+  var b=document.getElementById('nsVsLabelBtn');if(b){b.classList.toggle('on',nsVsOn);b.setAttribute('aria-checked',nsVsOn?'true':'false');}
   nsVsSyncDim();
   if(nsVsOn)nsVsAutoStart=performance.now();
-  tremEngage(nsTremGain,nsTremDepth,nsVsOn);
+  tremEngage(nsTremGain,nsTremDepth,nsVsOn,true);
   if(nsVsOn)nsVsStart();else nsVsStop();
 }
 function nsVsSyncDim(){
-  var lab=document.getElementById('nsVsLabelBtn');if(lab)lab.classList.toggle('ns-half',!nsVsOn);
-  var en=document.getElementById('nsVsEnableBtn');if(en)en.classList.toggle('ns-half',!nsVsOn);
   var body=document.getElementById('nsVsBody');if(body)body.classList.toggle('ns-dim',!nsVsOn);
-  var vt=document.getElementById('nsVsTypeSel');if(vt)vt.classList.toggle('ns-dim',!nsVsOn);
   nsVsUpdModes();
 }
 function nsVsTogglePanel(){
   var p=document.getElementById('nsVsPanel');if(!p)return;
   var open=p.classList.toggle('vs-open');
-  var b=document.getElementById('nsVsLabelBtn');if(b){b.classList.toggle('open',open);b.setAttribute('aria-expanded',open?'true':'false');}
+  if(open)nsVsMeasure();
+  var b=document.getElementById('nsVsPanelBtn');if(b){b.classList.toggle('open',open);b.setAttribute('aria-expanded',open?'true':'false');}
+}
+// The floated body is out of flow, so the frame behind it has to be told how tall it is.
+function nsVsMeasure(){
+  var p=document.getElementById('nsVsPanel'),b=document.getElementById('nsVsBody');
+  if(!p||!b||!p.classList.contains('vs-open'))return;
+  p.style.setProperty('--nsvs-h',b.offsetHeight+'px');
 }
 function nsVsToggleAuto(){
   nsVsAuto=!nsVsAuto;
@@ -1775,19 +1919,99 @@ function nsVsToggleAuto(){
   nsVsUpdModes();
   if(nsVsAuto)nsVsAutoStart=performance.now();
 }
-function nsVsUpdModes(){var f=document.getElementById('nsVsFaderWrap');if(f)f.classList.toggle('ns-dim',nsVsAuto||!nsVsOn);var d=document.getElementById('nsVsDurWrap');if(d)d.classList.toggle('ns-dim',!nsVsAuto);var g=document.getElementById('nsVsDirCycle');if(g)g.classList.toggle('ns-dim',!nsVsAuto);}
+// The manual fader and its readout are one control: #nsVsFaderNum only ever shows nsVsFaderToPeriod()
+// (nsVsTick never writes it), so it is exactly as moot as the fader whenever AUTO drives the period or
+// the pulse is off. Dim them on the same flag so they can never disagree.
+function nsVsUpdModes(){var moot=nsVsAuto||!nsVsOn;var f=document.getElementById('nsVsFaderWrap');if(f)f.classList.toggle('ns-dim',moot);var n=document.getElementById('nsVsFaderNum');if(n)n.classList.toggle('ns-dim',moot);var d=document.getElementById('nsVsDurWrap');if(d)d.classList.toggle('ns-dim',!nsVsAuto);var g=document.getElementById('nsVsDirCycle');if(g)g.classList.toggle('ns-dim',!nsVsAuto);}
 // Manual fader is log-scaled A→B; midpoint (f=0.5) is the geometric median √(A·B) — no hardcoded pin.
+// NOISE volume is the mixer's noise channel: the roll's own 66-100% volume sweep happens INSIDE it.
+// (nVol, which the roll rewrites every frame, is deliberately not what this slider touches.)
+function nsSetVol(v){
+  nMixPost=Math.max(0,Math.min(100,v))/100;
+  if(nMGain&&AC)nMGain.gain.setTargetAtTime(v2g(nVol)*nMixPost,AC.currentTime,.02);
+  nsVolRefresh();syncMixerUI();
+}
+function nsVolRefresh(){
+  var r=document.getElementById('nsVolR2');if(!r)return;
+  var pct=Math.round(nMixPost*100);
+  if(+r.value!==pct)r.value=pct;                 // so a mixer drag moves this thumb too (no readout by design)
+  nsGrooveF('nsVolGroove',r);
+}
+// ── volume-sweep range: the band every roll draws its target volume from ──────────────────────────
+function nsVolRangeSync(){
+  var g=document.getElementById('nsVolRangeGroove');if(!g)return;
+  g.style.setProperty('--fa',nsVolLo/100);
+  g.style.setProperty('--fb',nsVolHi/100);
+}
+function nsVolRangeToggle(){
+  nsVolRangeOn=!nsVolRangeOn;
+  var b=document.getElementById('nsVolRangeBtn');if(b){b.classList.toggle('on',nsVolRangeOn);b.setAttribute('aria-pressed',nsVolRangeOn?'true':'false');}
+  var one=document.getElementById('nsVolGroove'),two=document.getElementById('nsVolRangeGroove');
+  if(one)one.style.display=nsVolRangeOn?'none':'';
+  if(two)two.style.display=nsVolRangeOn?'':'none';
+  nsVolRangeSync();
+}
+function initNsVolRange(){
+  var wrap=document.getElementById('nsVolRangeGroove');if(!wrap)return;
+  var tL=document.getElementById('nsVolLoT'),tR=document.getElementById('nsVolHiT');
+  nsVolRangeSync();
+  var dragging=null;
+  // NOT x/width: both discs and gaps inset 9px at each end (the native thumb's half-width), so this is
+  // the exact inverse of the CSS above. The naive mapping would leave the discs drifting out of them.
+  function posFromX(cx){
+    var r=wrap.getBoundingClientRect(),span=r.width-18;
+    return Math.max(0,Math.min(100,(cx-r.left-9)/(span>0?span:1)*100));
+  }
+  function update(pos){
+    if(dragging==='L')nsVolLo=Math.round(Math.min(pos,nsVolHi));
+    else if(dragging==='R')nsVolHi=Math.round(Math.max(pos,nsVolLo));
+    else return;
+    nsVolRangeSync();
+  }
+  function release(){dragging=null;}
+  tL.addEventListener('mousedown',function(e){e.preventDefault();dragging='L';});
+  tR.addEventListener('mousedown',function(e){e.preventDefault();dragging='R';});
+  document.addEventListener('mousemove',function(e){if(dragging)update(posFromX(e.clientX));});
+  document.addEventListener('mouseup',release);
+  tL.addEventListener('touchstart',function(e){e.preventDefault();dragging='L';},{passive:false});
+  tR.addEventListener('touchstart',function(e){e.preventDefault();dragging='R';},{passive:false});
+  wrap.addEventListener('touchmove',function(e){if(!dragging)return;e.preventDefault();update(posFromX(e.touches[0].clientX));},{passive:false});
+  wrap.addEventListener('touchend',release,{passive:true});
+}
+function nsSetSpeed(pos){
+  nsSpdPos=Math.max(0,Math.min(4000,pos));
+  nsSpd=nsSpdAt(nsSpdPos);
+  // Write the track back, so this is the single entry point: updateSliderVal positions the readout from
+  // range.value, which oninput has already set but a programmatic call has not — without this the number
+  // strands at the old thumb position. Assigning .value does not re-fire input, so no loop.
+  var r=document.getElementById('nsSpeedR');if(r&&+r.value!==nsSpdPos)r.value=nsSpdPos;
+  nsSpdRefresh();
+}
+function nsGrooveF(groove,r){   // 0..1 thumb position, so the groove can mask its gap under the thumb
+  var g=document.getElementById(groove);
+  if(g)g.style.setProperty('--f',(r.value-r.min)/((r.max-r.min)||1));
+}
+function nsSpdRefresh(){   // no readout by design — the gap in the groove is the whole indication
+  var r=document.getElementById('nsSpeedR');if(!r)return;
+  nsGrooveF('nsSpeedGroove',r);
+}
 function nsVsFaderToPeriod(f){var A=nsVsA,B=nsVsB;return A>0?A*Math.pow(B/Math.max(A,1e-9),f):A+(B-A)*f;}
-function nsVsRefreshFader(){var r=document.getElementById('nsVsFaderR');if(r)updateSliderVal('nsVsFaderVal',r,Math.round(nsVsFaderToPeriod(nsVsFader)*1000));}
+function nsVsRefreshFader(){var v=document.getElementById('nsVsFaderNumV');if(v)v.textContent=Math.round(nsVsFaderToPeriod(nsVsFader)*1000);}
 // Pulse-LFO steering loop — runs whenever the pulse is on and the noise module is playing, independent of the
 // roll transition (nTransActive). Reads fader/AUTO live each frame, so both control paths stay responsive.
 function nsVsStart(){if(nsVsActive||!nsVsOn||!nOn)return;nsVsLastFrame=performance.now();nsVsActive=true;nsVsRAF=requestAnimationFrame(nsVsTick);}
 function nsVsStop(){if(nsVsRAF)cancelAnimationFrame(nsVsRAF);nsVsActive=false;nsVsRAF=null;}
+// A/D change: re-seat the source on the new shape. Guarded on the node, not on nOn — unlike multiOscs the noise
+// trem graph is built once and outlives a stop, so a rebuild while stopped is both harmless and correct.
+function nsVsRewave(){
+  if(!AC||!nsTremDepth)return;
+  nsTremSrc=nsVsReplace(nsTremSrc,nsTremDepth,nsVsEnvBuf());
+}
 function nsVsTick(){
   if(!nsVsOn||!nOn){nsVsActive=false;nsVsRAF=null;return;}
   var now=performance.now();
-  var P=nsVsAuto?sweepPeriod(nsVsType,rsPhase(nsVsAutoStart,nsVsDur,nsVsDir,now),nsVsA,nsVsB):nsVsFaderToPeriod(nsVsFader);
-  if(nsTremOsc&&AC)nsTremOsc.frequency.setTargetAtTime(periodToFreq(P),AC.currentTime,.02);
+  var P=nsVsAuto?sweepPeriod('linear',rsPhase(nsVsAutoStart,nsVsDur,nsVsDir,now),nsVsA,nsVsB):nsVsFaderToPeriod(nsVsFader);
+  if(nsTremSrc&&AC)nsVsLoop(nsTremSrc,P);
   nsVsRAF=requestAnimationFrame(nsVsTick);
 }
 var NS_DIR_ORDER=['fwd','rev','pp'];
@@ -1808,21 +2032,32 @@ function fmtFilterHz(v){var f=filterV2F(v);return f>=1000?(f/1000).toFixed(1)+'k
    to the sweep duration pool — pauses no longer follow SPEED, the MATHS ratio list or HARMONIC.
    Note BB_PAUSE_MAX * 6 (the largest pm) lands exactly on the tick loop's 120 s watchdog: raise
    the max and the longest pm=6 pauses start being clamped rather than heard. */
-const BB_PAUSE_MIN=0.05,BB_PAUSE_MAX=20;          // 400:1 — one number each to retune the span
-function pauseV2S(v){return BB_PAUSE_MIN*Math.pow(BB_PAUSE_MAX/BB_PAUSE_MIN,v/100);}
-function fmtPauseSec(v){var s=pauseV2S(v);return s<1?s.toFixed(2):(s<10?s.toFixed(1):Math.round(s));}
-/* uniform in slider position == log-uniform in seconds, which matches the track's own spacing.
-   lo===hi therefore returns exactly that length, giving a fixed-pause mode at either extreme. */
-function bbPausePick(){return pauseV2S(bbPauseLo+Math.random()*(bbPauseHi-bbPauseLo));}
+/* Position 0 is a discrete NO-PAUSE stop, not the bottom of the curve — a log scale cannot reach
+   zero, so it is carved out. 1..100 then run 0.01s..20s, log-spaced over the remaining 99 steps. */
+const BB_PAUSE_FLOOR=0.01,BB_PAUSE_MAX=20;        // 2000:1 across stops 1..100
+function pauseV2S(v){return v<1?0:BB_PAUSE_FLOOR*Math.pow(BB_PAUSE_MAX/BB_PAUSE_FLOOR,(v-1)/99);}
+function fmtPauseSec(v){var s=pauseV2S(v);return s<=0?'0':(s<1?s.toFixed(2):(s<10?s.toFixed(1):Math.round(s)));}
+/* Draws a whole STOP, not a continuous position: 0 has to be a real outcome you can land on, and
+   the track's own 101 stops are the natural grain. Uniform in stop == log-uniform in seconds.
+   lo===hi returns exactly that length, so both thumbs hard left means every pause is skipped.
+   floor(rand*n) not round(): rounding a continuous position halves the weight of the two end
+   stops, which would make "no pause" half as likely as every other stop it sits beside. */
+function bbPausePick(){
+  var n=bbPauseHi-bbPauseLo+1;
+  return pauseV2S(Math.min(bbPauseHi,bbPauseLo+Math.floor(Math.random()*n)));
+}
 let multiOscs=[];
 let multiPlaying=false,multiDur=5;
 let multiVolMin=65,multiVolMax=100;
 let multiSweepActive=false,multiSweepRAF=null,multiSweepLastFrame=0;
-let multiSweepVolType='linear';
-let multiFreqFrom=[],multiFreqTo=[],multiVolFrom=[],multiVolTo=[];
+let multiFreqFrom=[],multiFreqTo=[];
 let multiFreqTypes=[];
-let multiLfoDur=7.5,multiLfoOn=true;
-let multiLfoActive=false,multiLfoRAF=null,multiLfoLastFrame=0,multiLfoPhase=[];
+// MATHS 8-channel stochastic volume sweeper: each osc drifts toward its own random target on its own
+// clock, forever. Same shape as the noise 10-band sweeper (randomizeNoise/nsTransTick); it REPLACED
+// both the sine tremolo (multiLfo*) and the per-roll volume dice, so ROLL is frequency-only now.
+let muVolDur=5;                    // "volume sweep rate": CENTRE duration between targets, in seconds
+let muVolFrom=[],muVolTo=[],muVolProg=[],muVolLen=[],muVolJit=[],muVolType=[];
+let muVolActive=false,muVolRAF=null,muVolLastFrame=0;
 // MATHS volume-sweep LFO (muVs) — tremolo on multiMGain whose PERIOD is the swept quantity
 let muVsOn=false,muVsAuto=false,muVsA=0.001,muVsB=10,muVsFader=0.5;
 let muTremGain=null,muTremSrc=null,muTremDepth=null;
@@ -1843,7 +2078,7 @@ function multiInit(){
   multiOscs=[];
   for(var i=0;i<8;i++){
     multiOscRatios[i]=list[Math.floor(Math.random()*list.length)];
-    multiOscs.push({osc:null,gain:null,lfoGain:null,muted:i>=4,freq:Math.max(0.01,Math.min(1e8,r2(multiFundamental*multiOscRatios[i]))),vol:50});
+    multiOscs.push({osc:null,gain:null,lfoGain:null,muted:i>=4,freq:Math.max(0.01,Math.min(1e8,r2(multiFundamental*multiOscRatios[i]))),vol:75});
   }
   renderMulti();
 }
@@ -1853,8 +2088,7 @@ function multiToggle(){
     multiOscs.forEach(function(o){if(o.osc){try{o.osc.stop();}catch(e){}o.osc=null;}});
     if(multiSweepRAF)cancelAnimationFrame(multiSweepRAF);
     multiSweepActive=false;multiSweepRAF=null;
-    if(multiLfoRAF)cancelAnimationFrame(multiLfoRAF);
-    multiLfoActive=false;multiLfoRAF=null;
+    muVolStop();
     muVsStop(false);
     multiPlaying=false;var _img=document.getElementById('mathsImg');if(_img){_img.style.transition='none';_img.style.filter='none';}renderMulti();multiAutoRecalc();appAutoRecalc();return;
   }
@@ -1877,6 +2111,7 @@ function multiToggle(){
   });
   multiPlaying=true;var _img=document.getElementById('mathsImg');if(_img){_img.style.transition='none';_img.style.filter='brightness(5)';}renderMulti();multiAutoRecalc();appAutoRecalc();
   muVsApplyTrem();muVsStart();
+  muVolSeed();muVolStart();
 }
 function multiMuteToggle(idx){
   var o=multiOscs[idx];o.muted=!o.muted;
@@ -1968,28 +2203,20 @@ function multiRoll(){
     for(var i=pool.length-1;i>0;i--){var j=Math.floor(Math.random()*(i+1));var tmp=pool[i];pool[i]=pool[j];pool[j]=tmp;}
     targets=pool.slice(0,8);
   }
-  multiSweepVolType=bbRand(STYPES);
-  multiFreqFrom=[];multiFreqTo=[];multiVolFrom=[];multiVolTo=[];multiFreqTypes=[];
+  multiFreqFrom=[];multiFreqTo=[];multiFreqTypes=[];
   for(var k=0;k<8;k++){
     multiFreqFrom[k]=multiOscs[k].freq;
     multiFreqTo[k]=targets[k];
-    multiVolFrom[k]=multiOscs[k].vol;
-    multiVolTo[k]=Math.round(multiVolMin+Math.random()*(multiVolMax-multiVolMin));
     multiFreqTypes[k]='linear';
   }
   multiHarmonicSweep=false;
-  if(multiLfoActive){cancelAnimationFrame(multiLfoRAF);multiLfoActive=false;multiLfoRAF=null;}
-  multiLfoPhase=[];for(var p=0;p<8;p++)multiLfoPhase[p]=Math.random();
   multiSweepLastFrame=performance.now();
   multiSweepActive=true;multiFrameCount=0;multiSweepTick._prog=0;
   if(multiSweepRAF)cancelAnimationFrame(multiSweepRAF);
   multiSweepRAF=requestAnimationFrame(multiSweepTick);
 }
-function multiLfoMod(phase,baseVol){
-  var depth=Math.min(baseVol,100-baseVol,15);
-  var mod=Math.sin(phase*2*Math.PI)*depth;
-  return Math.max(0,Math.min(100,Math.round(baseVol+mod)));
-}
+// ROLL sweeps FREQUENCY ONLY. Volume is owned end-to-end by muVolTick below, which never stops while
+// MATHS plays — so a roll no longer interrupts, restarts or hands off the volume animation.
 function multiSweepTick(){
   if(!multiSweepActive){multiSweepRAF=null;return;}
   var now=performance.now();
@@ -2001,47 +2228,60 @@ function multiSweepTick(){
   for(var i=0;i<8;i++){
     var o=multiOscs[i];
     o.freq=r2(sweepVal(multiFreqTypes[i]||'linear',t,multiFreqFrom[i],multiFreqTo[i]));
-    o.vol=Math.round(sweepVal(multiSweepVolType,t,multiVolFrom[i],multiVolTo[i]));
-  }
-  if(multiLfoOn){
-    var lfoPeriod=Math.max(multiLfoDur,0.01);
-    for(var li=0;li<8;li++)multiLfoPhase[li]=(multiLfoPhase[li]||0)+dt/lfoPeriod;
-  }
-  for(var j=0;j<8;j++){
-    var oj=multiOscs[j];
-    if(oj.osc&&AC)oj.osc.frequency.setTargetAtTime(oj.freq,AC.currentTime,.008);
-    var applyVol=multiLfoOn?multiLfoMod(multiLfoPhase[j]||0,oj.vol):oj.vol;
-    if(oj.gain&&AC)oj.gain.gain.setTargetAtTime(oj.muted?0:v2g(applyVol),AC.currentTime,.02);
+    if(o.osc&&AC)o.osc.frequency.setTargetAtTime(o.freq,AC.currentTime,.008);
   }
   if(++multiFrameCount%(multiIsMobile?4:2)===0){
     renderMultiRows();
   }
   if(t>=1){
-    for(var k=0;k<8;k++){multiOscs[k].freq=multiFreqTo[k];multiOscs[k].vol=multiVolTo[k];}
+    for(var k=0;k<8;k++)multiOscs[k].freq=multiFreqTo[k];
     if(multiHarmonicSweep){multiFundamental=multiFundTo;multiHarmonicSweep=false;}
     multiSweepActive=false;multiSweepRAF=null;multiSweepTick._prog=0;
     renderMulti();
-    if(multiLfoOn&&multiPlaying){multiLfoLastFrame=performance.now();multiLfoActive=true;multiLfoRAF=requestAnimationFrame(multiLfoTick);}
     return;
   }
   multiSweepRAF=requestAnimationFrame(multiSweepTick);
 }
-function multiLfoTick(){
-  if(!multiLfoActive||!multiLfoOn||!multiPlaying){multiLfoActive=false;multiLfoRAF=null;return;}
+// ── MATHS 8-channel stochastic volume sweeper (muVol) ─────────────────────────────────────────────
+// Same shape as the noise 10-band sweeper (nsTransTick): a rAF loop walks each channel from where it
+// is toward a fresh random target, then re-picks. Two differences: each osc carries its OWN progress
+// and its OWN hop length (the rate slider +/-50%), so the 8 never arrive together; and every hop draws
+// a fresh curve from STYPES. Targets are bounded by the "volume sweep range" dual slider, read live at
+// pick time, so dragging its thumbs steers the very next hop.
+function muVolPick(i){
+  muVolFrom[i]=multiOscs[i].vol;
+  muVolTo[i]=multiVolMin+Math.random()*(multiVolMax-multiVolMin);
+  muVolJit[i]=0.5+Math.random();      // this hop runs at 0.5x .. 1.5x the slider value
+  muVolType[i]=bbRand(STYPES);
+  muVolProg[i]=0;
+}
+// Scatter the 8 across their cycles: without the random progress they would spend the first hop in
+// lockstep, and the jitter would only pull them apart from the second hop on.
+function muVolSeed(){
+  for(var i=0;i<8;i++){muVolPick(i);muVolProg[i]=Math.random();muVolLen[i]=muVolDur*muVolJit[i];}
+}
+function muVolStart(){if(muVolActive||!multiPlaying)return;if(muVolJit.length!==8)muVolSeed();muVolActive=true;muVolLastFrame=performance.now();muVolRAF=requestAnimationFrame(muVolTick);}
+function muVolStop(){if(muVolRAF)cancelAnimationFrame(muVolRAF);muVolActive=false;muVolRAF=null;}
+function muVolTick(){
+  if(!muVolActive||!multiPlaying){muVolActive=false;muVolRAF=null;return;}
   var now=performance.now();
-  var dt=(now-multiLfoLastFrame)/1000;
-  multiLfoLastFrame=now;
-  var lfoPeriod=Math.max(multiLfoDur,0.01);
-  for(var i=0;i<8;i++)multiLfoPhase[i]=(multiLfoPhase[i]||0)+dt/lfoPeriod;
-  for(var j=0;j<8;j++){
-    var oj=multiOscs[j];
-    var applyVol=multiLfoMod(multiLfoPhase[j]||0,oj.vol);
-    if(oj.gain&&AC)oj.gain.gain.setTargetAtTime(oj.muted?0:v2g(applyVol),AC.currentTime,.02);
+  var dt=Math.min(0.25,(now-muVolLastFrame)/1000);   // clamp: a backgrounded tab must not jump the sweep
+  muVolLastFrame=now;
+  for(var i=0;i<8;i++){
+    var o=multiOscs[i];
+    if(!o)continue;
+    // eased toward the live slider value (as nsVisDur is), so a drag glides in over ~1s instead of
+    // waiting out the hop in flight — which at the slow end of the slider would be a whole minute.
+    muVolLen[i]+=(muVolDur*muVolJit[i]-muVolLen[i])*0.05;
+    muVolProg[i]=Math.min(1,muVolProg[i]+dt/Math.max(muVolLen[i],0.01));
+    o.vol=sweepVal(muVolType[i],muVolProg[i],muVolFrom[i],muVolTo[i]);
+    if(muVolProg[i]>=1){o.vol=muVolTo[i];muVolPick(i);}
+    if(o.gain&&AC)o.gain.gain.setTargetAtTime(o.muted?0:v2g(o.vol),AC.currentTime,.02);
   }
   if(++multiFrameCount%(multiIsMobile?4:2)===0){
     renderMultiRows();
   }
-  multiLfoRAF=requestAnimationFrame(multiLfoTick);
+  muVolRAF=requestAnimationFrame(muVolTick);
 }
 // ── MATHS volume-sweep LFO (muVs) — modelled on the noise nsVs LFO, applied to multiMGain ──
 // the open PULSE body is an upward overlay; --muvs-h is its height, used by the frame and the stage
@@ -2090,45 +2330,51 @@ function muVsRenderDir(){var b=document.getElementById('muVsDirCycle');if(b)b.in
 // ── PULSE envelope A/D slider ──────────────────────────────────────────────────────────────────────
 // One track, two thumbs, both shortest at the CENTRE: the left one travels the LEFT half (centre 1ms -> far left
 // 1s attack), the right one the RIGHT half, mirrored (centre 1ms -> far right 1s decay). Log, via shared expS/expSI.
-function muVsEnvEdgeToMs(e){return expS(Math.max(0,Math.min(1,e))*10000,1,1000);}
-function muVsEnvMsToEdge(ms){return expSI(ms,1,1000)/10000;}
-function muVsEnvLbl(ms){return ms<10?ms.toFixed(1):Math.round(ms);}
-// A rebuild allocates a fresh 12s buffer AND re-seats the sources, so: never rebuild when the value did not
-// actually change (a held thumb still fires touchmove/mousemove), and throttle while one is moving.
-var muVsEnvLastBuild=0,muVsEnvLastKey='';
-function muVsEnvApply(live){
-  var k=muVsAtk+'|'+muVsDec;
-  if(k===muVsEnvLastKey)return;                                     // thumb held still — nothing to rebuild
-  if(live&&performance.now()-muVsEnvLastBuild<120)return;           // throttled; the release pass will apply it
-  muVsEnvLastKey=k;muVsEnvLastBuild=performance.now();
-  muVsRewave();
-}
-function syncMuVsEnv(){
-  var tL=document.getElementById('muVsEnvL'),tR=document.getElementById('muVsEnvR'),fill=document.getElementById('muVsEnvFill');
-  if(!tL)return;
-  var pL=(1-muVsEnvMsToEdge(muVsAtk*1000))*50,pR=50+muVsEnvMsToEdge(muVsDec*1000)*50;
-  tL.style.left=pL+'%';tR.style.left=pR+'%';
-  fill.style.left=pL+'%';fill.style.width=(pR-pL)+'%';
-  var a=document.getElementById('muVsAtkV');if(a){a.textContent=muVsEnvLbl(muVsAtk*1000);a.style.left=(pL+(50-pL)*0.15)+'%';}
-  var d=document.getElementById('muVsDecV');if(d){d.textContent=muVsEnvLbl(muVsDec*1000);d.style.left=(pR+(50-pR)*0.15)+'%';}
-}
-function initMuVsEnvRange(){
-  var wrap=document.getElementById('muVsEnvBar');if(!wrap)return;
+function pulseEnvEdgeToMs(e){return expS(Math.max(0,Math.min(1,e))*10000,1,1000);}
+function pulseEnvMsToEdge(ms){return expSI(ms,1,1000)/10000;}
+function pulseEnvLbl(ms){return ms<10?ms.toFixed(1):Math.round(ms);}
+// One factory, one instance per module (MATHS + NOISE): ids names that module's elements, get() reads its A/D pair
+// in seconds, setA/setD write it, rewave() re-seats its sources. The throttle state is per instance — a rebuild
+// allocates a fresh 12s buffer AND re-seats the sources, so: never rebuild when the value did not actually change
+// (a held thumb still fires touchmove/mousemove), and throttle while one is moving. refresh() is the preset-load
+// entry: adopt whatever was just loaded as the live shape and rebuild once, no throttle, no diff.
+function initPulseEnvRange(ids,get,setA,setD,rewave){
+  var lastBuild=0,lastKey='';
+  function apply(live){
+    var ad=get(),k=ad[0]+'|'+ad[1];
+    if(k===lastKey)return;                                          // thumb held still — nothing to rebuild
+    if(live&&performance.now()-lastBuild<120)return;                // throttled; the release pass will apply it
+    lastKey=k;lastBuild=performance.now();
+    rewave();
+  }
+  function sync(){
+    var tL=document.getElementById(ids.L),tR=document.getElementById(ids.R),fill=document.getElementById(ids.fill);
+    if(!tL)return;
+    var ad=get();
+    var pL=(1-pulseEnvMsToEdge(ad[0]*1000))*50,pR=50+pulseEnvMsToEdge(ad[1]*1000)*50;
+    tL.style.left=pL+'%';tR.style.left=pR+'%';
+    fill.style.left=pL+'%';fill.style.width=(pR-pL)+'%';
+    var a=document.getElementById(ids.atkV);if(a){a.textContent=pulseEnvLbl(ad[0]*1000);a.style.left=(pL+(50-pL)*0.15)+'%';}
+    var d=document.getElementById(ids.decV);if(d){d.textContent=pulseEnvLbl(ad[1]*1000);d.style.left=(pR+(50-pR)*0.15)+'%';}
+  }
+  function refresh(){var ad=get();lastKey=ad[0]+'|'+ad[1];lastBuild=performance.now();sync();rewave();}
+  var ctl={sync:sync,apply:apply,refresh:refresh};
+  var wrap=document.getElementById(ids.bar);if(!wrap)return ctl;
   var track=document.createElement('div');track.className='dual-track';
-  var fill=document.createElement('div');fill.className='dual-fill';fill.id='muVsEnvFill';
-  var tL=document.createElement('div');tL.className='dual-thumb';tL.id='muVsEnvL';tL.textContent='A';
-  var tR=document.createElement('div');tR.className='dual-thumb';tR.id='muVsEnvR';tR.textContent='D';
+  var fill=document.createElement('div');fill.className='dual-fill';fill.id=ids.fill;
+  var tL=document.createElement('div');tL.className='dual-thumb';tL.id=ids.L;tL.textContent='A';
+  var tR=document.createElement('div');tR.className='dual-thumb';tR.id=ids.R;tR.textContent='D';
   wrap.appendChild(track);wrap.appendChild(fill);wrap.appendChild(tL);wrap.appendChild(tR);
-  syncMuVsEnv();
+  sync();
   var dragging=null;
   function posFromX(cx){var r=wrap.getBoundingClientRect();return Math.max(0,Math.min(100,(cx-r.left)/r.width*100));}
   function update(pos){
-    if(dragging==='L')muVsAtk=muVsEnvEdgeToMs(1-Math.min(50,pos)/50)/1000;
-    else if(dragging==='R')muVsDec=muVsEnvEdgeToMs((Math.max(50,pos)-50)/50)/1000;
+    if(dragging==='L')setA(pulseEnvEdgeToMs(1-Math.min(50,pos)/50)/1000);
+    else if(dragging==='R')setD(pulseEnvEdgeToMs((Math.max(50,pos)-50)/50)/1000);
     else return;
-    syncMuVsEnv();muVsEnvApply(true);
+    sync();apply(true);
   }
-  function release(){if(!dragging)return;dragging=null;muVsEnvApply(false);}
+  function release(){if(!dragging)return;dragging=null;apply(false);}
   tL.addEventListener('mousedown',function(e){e.preventDefault();dragging='L';});
   tR.addEventListener('mousedown',function(e){e.preventDefault();dragging='R';});
   document.addEventListener('mousemove',function(e){if(dragging)update(posFromX(e.clientX));});
@@ -2137,6 +2383,14 @@ function initMuVsEnvRange(){
   tR.addEventListener('touchstart',function(e){e.preventDefault();dragging='R';},{passive:false});
   wrap.addEventListener('touchmove',function(e){if(!dragging)return;e.preventDefault();update(posFromX(e.touches[0].clientX));},{passive:false});
   wrap.addEventListener('touchend',release,{passive:true});
+  return ctl;
+}
+var muVsEnv=null,nsVsEnv=null;    // controllers, built by initPulseEnvs() once the DOM is up
+function initPulseEnvs(){
+  muVsEnv=initPulseEnvRange({bar:'muVsEnvBar',fill:'muVsEnvFill',L:'muVsEnvL',R:'muVsEnvR',atkV:'muVsAtkV',decV:'muVsDecV'},
+    function(){return [muVsAtk,muVsDec];},function(v){muVsAtk=v;},function(v){muVsDec=v;},muVsRewave);
+  nsVsEnv=initPulseEnvRange({bar:'nsVsEnvBar',fill:'nsVsEnvFill',L:'nsVsEnvL',R:'nsVsEnvR',atkV:'nsVsAtkV',decV:'nsVsDecV'},
+    function(){return [nsVsAtk,nsVsDec];},function(v){nsVsAtk=v;},function(v){nsVsDec=v;},nsVsRewave);
 }
 function muVsCycleDir(){var i=NS_DIR_ORDER.indexOf(muVsDir);muVsDir=NS_DIR_ORDER[(i+1)%NS_DIR_ORDER.length];muVsRenderDir();}
 function muVsStart(){if(muVsActive||!muVsOn||!multiPlaying)return;muVsActive=true;muVsRAF=requestAnimationFrame(muVsTick);}
@@ -2158,22 +2412,8 @@ function muVsTick(){
   }
   muVsRAF=requestAnimationFrame(muVsTick);
 }
-// A/D change: a buffer source's buffer is set-once, so the sources have to be recreated with the new shape.
-// start(t, offset) picks the new one up at the SAME point in the cycle the old one had reached — otherwise every
-// rebuild restarts at buffer 0 (the attack) and force-fires the envelope, which during a drag reads as a second
-// pulse rate riding over the real one. Loop params come from the retired node so the new one is right at once.
-function muVsReplace(old,depth,buf){
-  var ph=old?(old._ph||0):0,P=old?(old._P||1):1,t=AC.currentTime;
-  if(old){try{old.stop();}catch(e){}try{old.disconnect();}catch(e){}}
-  var s=AC.createBufferSource();s.buffer=buf;s.loop=true;s.loopStart=0;
-  s.loopEnd=Math.min(MUVS_BUF,Math.max(Math.max(0.0005,muVsAtk+muVsDec),P));
-  s.playbackRate.value=s.loopEnd/Math.max(P,0.0005);
-  s._ph=ph;s._P=P;s._t=t;
-  s.connect(depth);s.start(t,ph*s.loopEnd);
-  return s;
-}
 function muVsRewave(){
-  if(!AC||!multiPlaying)return;
+  if(!AC)return;   // NOT multiPlaying: a preset load stops playback first, and muTremSrc runs either way
   var buf=muVsEnvBuf();
   if(muTremDepth)muTremSrc=muVsReplace(muTremSrc,muTremDepth,buf);
   multiOscs.forEach(function(o){if(o.lfoDepth)o.lfoSrc=muVsReplace(o.lfoSrc,o.lfoDepth,buf);});
@@ -2271,12 +2511,11 @@ function multiSetOscRatio(idx,ratio){
   var rat=document.getElementById('mrat'+idx);
   if(rat)rat.textContent='\u00d7'+fmtRatio(ratio);
   // Snapshot current state of every osc (where each one is right now)
-  var curFreqs=[],curVols=[];
-  for(var k=0;k<8;k++){curFreqs[k]=multiOscs[k].freq;curVols[k]=multiOscs[k].vol;}
+  var curFreqs=[];
+  for(var k=0;k<8;k++)curFreqs[k]=multiOscs[k].freq;
   // If a sweep is currently in flight (e.g. from a roll), preserve the
   // other oscs' targets so they continue toward their original goals.
   var prevFreqTo=(multiSweepActive&&multiFreqTo&&multiFreqTo.length===8)?multiFreqTo.slice():null;
-  var prevVolTo =(multiSweepActive&&multiVolTo &&multiVolTo .length===8)?multiVolTo .slice():null;
   var newFrom=curFreqs.slice();
   var newTo=curFreqs.slice();
   if(prevFreqTo){
@@ -2285,14 +2524,9 @@ function multiSetOscRatio(idx,ratio){
   newTo[idx]=newFreq;
   multiFreqFrom=newFrom;
   multiFreqTo=newTo;
-  multiVolFrom=curVols.slice();
-  multiVolTo=prevVolTo?prevVolTo.slice():curVols.slice();
   if(!multiFreqTypes||multiFreqTypes.length!==8)multiFreqTypes=['linear','linear','linear','linear','linear','linear','linear','linear'];
   for(var t=0;t<8;t++)if(!multiFreqTypes[t])multiFreqTypes[t]='linear';
-  if(!multiSweepVolType)multiSweepVolType='linear';
   multiHarmonicSweep=false;
-  // Pause LFO so the sweep is the only animator; it auto-restarts when sweep ends
-  if(multiLfoActive){cancelAnimationFrame(multiLfoRAF);multiLfoActive=false;multiLfoRAF=null;}
   // Restart the sweep from the current state over multiDur seconds
   multiSweepLastFrame=performance.now();
   multiSweepActive=true;
@@ -2314,6 +2548,8 @@ function attachVolSlider(hit,fill,idx){
     if(o.gain&&AC&&!o.muted){
       o.gain.gain.setTargetAtTime(v2g(vol),AC.currentTime,.02);
     }
+    // the sweeper owns o.vol, so a drag would be gone next frame: re-aim it from where it was dropped
+    muVolFrom[idx]=vol;muVolProg[idx]=0;
   }
   hit.addEventListener('pointerdown',function(e){
     e.stopPropagation();e.preventDefault();
@@ -2395,6 +2631,10 @@ function renderMultiRows(){
     if(fill)fill.style.height=Math.max(0,Math.min(100,Math.round(multiOscs[i].vol)))+'%';
   }
 }
+// FAST-RIGHT faders: the widget runs the opposite way to the value behind it. The flip lives only at the
+// widget boundary — reading it and writing it back — so nsVsFader/muVsFader/muVolDur keep the meaning
+// every saved archive was written with, and nothing downstream has to know.
+function sliderFlip(v,max){return max-v;}
 function updateSliderVal(id,range,val){
   var el=document.getElementById(id);if(!el)return;
   el.textContent=val;
@@ -2468,17 +2708,12 @@ function multiComputeHarmonicFreqs(fund,ratios){
   return out;
 }
 function multiStartHarmonicSweep(targets){
-  multiFreqFrom=[];multiFreqTo=[];multiVolFrom=[];multiVolTo=[];multiFreqTypes=[];
-  multiSweepVolType='linear';
+  multiFreqFrom=[];multiFreqTo=[];multiFreqTypes=[];
   for(var k=0;k<8;k++){
     multiFreqFrom[k]=multiOscs[k].freq;
     multiFreqTo[k]=targets[k];
-    multiVolFrom[k]=multiOscs[k].vol;
-    multiVolTo[k]=multiOscs[k].vol;
     multiFreqTypes[k]='linear';
   }
-  if(multiLfoActive){cancelAnimationFrame(multiLfoRAF);multiLfoActive=false;multiLfoRAF=null;}
-  multiLfoPhase=[];for(var p=0;p<8;p++)multiLfoPhase[p]=Math.random();
   multiSweepLastFrame=performance.now();
   multiSweepActive=true;multiFrameCount=0;multiSweepTick._prog=0;
   if(multiSweepRAF)cancelAnimationFrame(multiSweepRAF);
@@ -2635,8 +2870,8 @@ function captureState(){
     rpon:rsSweepOn?1:0,rpd:rsPitchDur,rpt:TYPE_ENC[rsPitchType]||'l',rpr:rsPitchDir,
     rvon:rsVolSweepOn?1:0,rvd:rsVolDur,rvt:TYPE_ENC[rsVolType]||'l',rvr:rsVolDir,
     sw:swpWv,sm:swpMVol,si:swpFqMin,sx:swpFqMax,sd:swpFqDur,st:TYPE_ENC[swpFqType]||'l',sr:DIR_ENC[swpFqDir]||'f',
-    ns:nSl.slice(),nv:nVol,np:nAPre,nse:nsVsOn?1:0,nsau:nsVsAuto?1:0,nspa:nsVsA,nspb:nsVsB,nsf:nsVsFader,nsvd:nsVsDur,nsvr:DIR_ENC[nsVsDir]||'fwd',nsvt:TYPE_ENC[nsVsType]||'l',
-    mv:multiMVol,mw:multiWv,md:multiDur,mvm:multiVolMin,mvx:multiVolMax,mld:multiLfoDur,mlo:multiLfoOn?1:0,
+    ns:nSl.slice(),nv:nVol,np:nAPre,nse:nsVsOn?1:0,nsau:nsVsAuto?1:0,nspa:nsVsA,nspb:nsVsB,nsf:nsVsFader,nsvd:nsVsDur,nsvr:DIR_ENC[nsVsDir]||'fwd',nsvatk:nsVsAtk,nsvdec:nsVsDec,nsvlo:nsVolLo,nsvhi:nsVolHi,
+    mv:multiMVol,mw:multiWv,md:multiDur,mvm:multiVolMin,mvx:multiVolMax,mvr:muVolDur,
     mvse:muVsOn?1:0,mvsau:muVsAuto?1:0,mvsa:muVsA,mvsb:muVsB,mvsf:muVsFader,mvsd:muVsDur,mvsr:DIR_ENC[muVsDir]||'fwd',mvsatk:muVsAtk,mvsdec:muVsDec,mvsp:muVsPerOsc?1:0,
     mhi:multiHarmonicIdx,mfu:multiFundamental,mor:multiOscRatios.slice(),mfl:multiFiltLo,mfh:multiFiltHi,bfr:bbFqRatio,
     brl:bbRangeLo,brh:bbRangeHi,bfl:bbFiltLo,bfh:bbFiltHi,bpdl:bbPauseLo,bpdh:bbPauseHi,
@@ -2651,20 +2886,22 @@ function restoreState(o){
   if(nOn)toggleNoise();
   if(multiPlaying)multiToggle();
   if(multiSweepRAF){cancelAnimationFrame(multiSweepRAF);multiSweepRAF=null;}
-  if(multiLfoRAF){cancelAnimationFrame(multiLfoRAF);multiLfoRAF=null;}
-  multiSweepActive=false;multiLfoActive=false;multiSweepTick._prog=0;
+  muVolStop();
+  multiSweepActive=false;multiSweepTick._prog=0;
   rsWv=o.rw||0;rsMVol=o.rm!=null?o.rm:70;
   rsFreq=o.rsf!=null?+o.rsf:440;rsFqB=o.rfb!=null?+o.rfb:8000;
   rsSweepOn=!!o.rpon;rsPitchDur=o.rpd!=null?+o.rpd:4;rsPitchType=TYPE_DEC[o.rpt]||'linear';rsPitchDir=o.rpr||'fwd';
   rsVolSweepOn=!!o.rvon;rsVolDur=o.rvd!=null?+o.rvd:4;rsVolType=TYPE_DEC[o.rvt]||'linear';rsVolDir=o.rvr||'fwd';
   swpMVol=o.sm;swpFqMin=o.si;swpFqMax=o.sx;swpFqDur=(o.sd!=null&&isFinite(+o.sd))?+o.sd:5;swpFqType=TYPE_DEC[o.st]||'linear';swpFqDir=DIR_DEC[o.sr]||'r1';
   nSl=o.ns.slice();nVol=o.nv;nAPre=o.np||null;
-  nsVsOn=!!o.nse;nsVsAuto=!!o.nsau;nsVsA=o.nspa!=null?+o.nspa:0.001;nsVsB=o.nspb!=null?+o.nspb:10;nsVsFader=o.nsf!=null?+o.nsf:0;nsVsDur=o.nsvd!=null?+o.nsvd:10;nsVsDir=DIR_DEC[o.nsvr]||'fwd';nsVsType=TYPE_DEC[o.nsvt]||'linear';
+  nsVsOn=!!o.nse;nsVsAuto=!!o.nsau;nsVsA=o.nspa!=null?+o.nspa:0.001;nsVsB=o.nspb!=null?+o.nspb:10;nsVsFader=o.nsf!=null?+o.nsf:0;nsVsDur=o.nsvd!=null?+o.nsvd:10;nsVsDir=DIR_DEC[o.nsvr]||'fwd';   // o.nsvt (pre-redesign sweep shape) is ignored — always linear now
+  nsVsAtk=o.nsvatk!=null?+o.nsvatk:0.002;nsVsDec=o.nsvdec!=null?+o.nsvdec:0.15;   // pre-A/D archives fall back
+  nsVolLo=o.nsvlo!=null?+o.nsvlo:66;nsVolHi=o.nsvhi!=null?+o.nsvhi:100;            // pre-range archives keep the old fixed band
   nTransActive=false;if(nTransRAF){cancelAnimationFrame(nTransRAF);nTransRAF=null;}nsVsStop();
   multiMVol=o.mv!=null?o.mv:80;multiFiltLo=o.mfl!=null?Math.max(0,Math.min(100,o.mfl)):0;multiFiltHi=o.mfh!=null?Math.max(multiFiltLo,Math.min(100,o.mfh)):100;bbFqRatio=o.bfr!=null?o.bfr:1;
   multiWv=o.mw||0;multiDur=o.md||1.5;
   multiVolMin=o.mvm!=null?o.mvm:65;multiVolMax=o.mvx!=null?o.mvx:100;
-  multiLfoDur=o.mld||3;multiLfoOn=true;
+  muVolDur=o.mvr!=null?+o.mvr:5;   // pre-sweeper archives carried mld/mlo (tremolo): fall back to 5s
   muVsOn=!!o.mvse;muVsAuto=!!o.mvsau;muVsA=o.mvsa!=null?+o.mvsa:0.001;muVsB=o.mvsb!=null?+o.mvsb:10;muVsFader=o.mvsf!=null?+o.mvsf:0;muVsDur=o.mvsd!=null?+o.mvsd:10;muVsDir=DIR_DEC[o.mvsr]||'fwd';muVsPerOsc=!!o.mvsp;
   muVsAtk=o.mvsatk!=null?+o.mvsatk:0.002;muVsDec=o.mvsdec!=null?+o.mvsdec:0.15;   // pre-A/D archives fall back
   multiHarmonicIdx=o.mhi!=null?o.mhi:0;
@@ -2672,7 +2909,7 @@ function restoreState(o){
   multiOscRatios=o.mor&&o.mor.length===8?o.mor.slice():[];
   multiHarmonicSweep=false;
   if(o.mr&&o.mr.length===8&&o.mr[0].m!==undefined){
-    multiOscs=o.mr.map(function(r){return{osc:null,gain:null,muted:!!r.m,freq:r.f||400,vol:r.v!=null?r.v:50};});
+    multiOscs=o.mr.map(function(r){return{osc:null,gain:null,muted:!!r.m,freq:r.f||400,vol:r.v!=null?r.v:75};});
   }else{multiInit();}
   if(multiHarmonicIdx>=0&&multiOscRatios.length===8){
     var hFreqs=multiComputeHarmonicFreqs(multiFundamental,multiOscRatios);
@@ -2711,18 +2948,21 @@ function syncNoiseUI(){
   document.getElementById('nVolR').value=nVol;
   document.querySelectorAll('#modNoise .preset').forEach(b=>b.classList.toggle('on',nAPre&&b.textContent===nAPre));
   updateNsBackground();
-  var vsEn=document.getElementById('nsVsEnableBtn');if(vsEn)vsEn.classList.toggle('on',nsVsOn);
+  var vsEn=document.getElementById('nsVsLabelBtn');if(vsEn){vsEn.classList.toggle('on',nsVsOn);vsEn.setAttribute('aria-checked',nsVsOn?'true':'false');}
   var vsAu=document.getElementById('nsVsAutoBtn');if(vsAu)vsAu.classList.toggle('on',nsVsAuto);
-  if(nsTremGain&&AC)tremEngage(nsTremGain,nsTremDepth,nsVsOn);
+  if(nsTremGain&&AC)tremEngage(nsTremGain,nsTremDepth,nsVsOn,true);
   if(nsVsOn&&nOn)nsVsStart();else if(!nsVsOn)nsVsStop();
   nsVsSyncDim();
   var vsAV=document.getElementById('nsVsAV');if(vsAV)vsAV.textContent=Math.round(nsVsA*1000);
   var vsBV=document.getElementById('nsVsBV');if(vsBV)vsBV.textContent=Math.round(nsVsB*1000);
   var vsDV=document.getElementById('nsVsDurV');if(vsDV)vsDV.textContent=nsVsDur.toFixed(2);
-  var vsFd=document.getElementById('nsVsFaderR');if(vsFd)vsFd.value=Math.round(nsVsFader*1000);
+  var vsFd=document.getElementById('nsVsFaderR');if(vsFd)vsFd.value=sliderFlip(Math.round(nsVsFader*1000),1000);
   nsVsRefreshFader();
+  if(nsVsEnv)nsVsEnv.refresh();
+  nsVolRangeSync();
+  nTransStartSl=nSl.slice();nTransStartVol=nVol;nsProgress=0;   // the loaded values are the new origin
+  nsTransResume();                                              // ...and the roll carries on from them
   nsVsRenderDir();
-  setSwpTypeSel('nsVsTypeSel',nsVsType);
   setPB('n',false);
 }
 function syncMultiUI(){
@@ -2730,9 +2970,9 @@ function syncMultiUI(){
   var durR=document.getElementById('multiDurR');
   durR.value=expSI(multiDur,0.10,30);
   updateSliderVal('msDurVal',durR,multiDur.toFixed(2));
-  var lfoR=document.getElementById('multiLfoDurR');
-  lfoR.value=expSI(multiLfoDur,0.10,15);
-  updateSliderVal('msLfoVal',lfoR,Math.round(multiLfoDur*1000));
+  var vrR=document.getElementById('multiVolRateR');
+  vrR.value=sliderFlip(expSI(muVolDur,0.05,60),10000);
+  updateSliderVal('msVolRateVal',vrR,muVolDur.toFixed(2));
   syncDualRange();
   var ht=document.getElementById('mselHarmText');if(ht&&HARMONIC_LISTS[multiHarmonicIdx])ht.textContent=HARMONIC_LISTS[multiHarmonicIdx].name.toUpperCase();
   var hopts=document.querySelectorAll('#mselHarmOpts .msel-opt');
@@ -2750,12 +2990,13 @@ function syncMultiUI(){
   var mvAV=document.getElementById('muVsAV');if(mvAV)mvAV.textContent=Math.round(muVsA*1000);
   var mvBV=document.getElementById('muVsBV');if(mvBV)mvBV.textContent=Math.round(muVsB*1000);
   var mvDV=document.getElementById('muVsDurV');if(mvDV)mvDV.textContent=muVsDur.toFixed(2);
-  var mvFd=document.getElementById('muVsFaderR');if(mvFd)mvFd.value=Math.round(muVsFader*1000);
+  var mvFd=document.getElementById('muVsFaderR');if(mvFd)mvFd.value=sliderFlip(Math.round(muVsFader*1000),1000);
   var mvPo=document.getElementById('muVsPerOscBtn');if(mvPo){mvPo.classList.toggle('on',muVsPerOsc);mvPo.textContent=muVsPerOsc?'ON':'OFF';}
   var mvRw=document.getElementById('muVsEnvRow');if(mvRw)mvRw.classList.toggle('ns-dim',!muVsOn);
-  muVsPerOscUpd();muVsRefreshFader();muVsRenderDir();syncMuVsEnv();
+  muVsPerOscUpd();muVsRefreshFader();muVsRenderDir();if(muVsEnv)muVsEnv.refresh();
   muVsApplyTrem();
   if(muVsOn&&multiPlaying)muVsStart();else if(!muVsOn)muVsStop(false);
+  if(multiPlaying){muVolSeed();muVolStart();}else muVolStop();
   renderMulti();
 }
 function archiveSave(){
@@ -3096,8 +3337,8 @@ function bbFiltSync(){
 }
 function bbFiltFromX(x){
   var t=document.getElementById('bbFiltTrack');if(!t)return null;
-  var r=t.getBoundingClientRect(),w=r.width-10;if(w<=0)return null;
-  return Math.round(Math.max(0,Math.min(1,(x-r.left-5)/w))*100);
+  var r=t.getBoundingClientRect(),w=r.width-3;if(w<=0)return null;
+  return Math.round(Math.max(0,Math.min(1,(x-r.left-1.5)/w))*100);
 }
 function initBBFilt(){
   var host=document.getElementById('bbFilt');if(!host)return;
@@ -3144,8 +3385,8 @@ function bbPauseSync(){
 }
 function bbPauseFromX(x){
   var t=document.getElementById('bbPauseTrack');if(!t)return null;
-  var r=t.getBoundingClientRect(),w=r.width-10;if(w<=0)return null;
-  return Math.round(Math.max(0,Math.min(1,(x-r.left-5)/w))*100);
+  var r=t.getBoundingClientRect(),w=r.width-3;if(w<=0)return null;
+  return Math.round(Math.max(0,Math.min(1,(x-r.left-1.5)/w))*100);
 }
 function initBBPause(){
   var host=document.getElementById('bbPause');if(!host)return;
@@ -3186,8 +3427,8 @@ function bbVolSync(){
 }
 function bbVolFromX(x){
   var t=document.getElementById('bbVolTrack');if(!t)return bbVolGet();
-  var r=t.getBoundingClientRect(),w=r.width-10;if(w<=0)return bbVolGet();
-  return Math.round(Math.max(0,Math.min(1,(x-r.left-5)/w))*100);
+  var r=t.getBoundingClientRect(),w=r.width-3;if(w<=0)return bbVolGet();
+  return Math.round(Math.max(0,Math.min(1,(x-r.left-1.5)/w))*100);
 }
 function initBBVol(){
   var host=document.getElementById('bbVol');if(!host)return;
@@ -3988,21 +4229,20 @@ function vtToggleFree(){var on=!VT.getFree();VT.setFree(on);document.getElementB
 syncRsW();
 initSwpTypeSel('rsPitchTypeSel','linear',function(t){rsPitchType=t;});
 initSwpTypeSel('rsVolTypeSel','linear',function(t){rsVolType=t;});
-initSwpTypeSel('nsVsTypeSel','linear',function(t){nsVsType=t;});
-nsVsRefreshFader();nsVsSyncDim();
+nsVsRefreshFader();nsVsSyncDim();nsSpdRefresh();nsVolRefresh();initNsVolRange();
 initSwpTypes('swpFqTypes','linear',t=>{swpFqType=t;});
 rsVolRenderDir();rsPitchRenderDir();
 nsVsRenderDir();
 mkDirBtns('swpFqDirBtns','r1',function(d){swpFqDir=d;swpBloopReturn=false;swpRepCount=0;if(swpPausing){swpPausing=false;swpFqFwd=parsDir(d).base!=='left';swpFqStart=performance.now();if(swpSigGn&&AC)swpSigGn.gain.setTargetAtTime(1,AC.currentTime,.01);}},BB_DIRS.map(function(d){return d.k;}));
 muVsRefreshFader();muVsUpdModes();muVsRenderDir();
-initEQ();initNP();multiInit();initMselWave();initMultiFiltRange();initMultiHarmonics();bbUiLoad();recomputeHarmonicPools();initMultiDualRange();initMuVsEnvRange();syncMultiUI();renderArchive();initMixer();initBBSpeed();initBBRange();initBBVol();initBBFilt();initBBPause();seedDefaultScore();renderScores();initScoreTab();
+initEQ();initNP();multiInit();initMselWave();initMultiFiltRange();initMultiHarmonics();bbUiLoad();recomputeHarmonicPools();initMultiDualRange();initPulseEnvs();syncMultiUI();renderArchive();initMixer();initBBSpeed();initBBRange();initBBVol();initBBFilt();initBBPause();seedDefaultScore();renderScores();initScoreTab();
 document.addEventListener('click',function(e){
   if(!e.target.closest('.msel'))document.querySelectorAll('.msel.open').forEach(function(s){s.classList.remove('open');});
   if(!e.target.closest('.mc-rclick')&&!e.target.closest('#mathsMenuLayer'))closeRatioMenu();
 });
 // --tab-h can't be derived in CSS (it depends on rendered font metrics), so measure it
 function measureTabH(){var t=document.querySelector('.tabs');if(t)document.documentElement.style.setProperty('--tab-h',t.offsetHeight+'px');}
-function onViewportResize(){closeRatioMenu();measureTabH();muVsMeasure();}
+function onViewportResize(){closeRatioMenu();measureTabH();muVsMeasure();nsVsMeasure();}
 window.addEventListener('resize',onViewportResize);
 window.addEventListener('orientationchange',onViewportResize);
 measureTabH();
@@ -4021,7 +4261,7 @@ document.addEventListener('visibilitychange',function(){
   if(nTransActive){nsLastFrame=performance.now();if(nTransRAF)cancelAnimationFrame(nTransRAF);nTransRAF=requestAnimationFrame(nsTransTick);}
   if(nsVsActive){if(nsVsAuto)nsVsAutoStart+=gone;if(nsVsRAF)cancelAnimationFrame(nsVsRAF);nsVsRAF=requestAnimationFrame(nsVsTick);}
   if(multiSweepActive){multiSweepLastFrame=performance.now();if(multiSweepRAF)cancelAnimationFrame(multiSweepRAF);multiSweepRAF=requestAnimationFrame(multiSweepTick);}
-  if(multiLfoActive){multiLfoLastFrame=performance.now();if(multiLfoRAF)cancelAnimationFrame(multiLfoRAF);multiLfoRAF=requestAnimationFrame(multiLfoTick);}
+  if(muVolActive){muVolLastFrame=performance.now();if(muVolRAF)cancelAnimationFrame(muVolRAF);muVolRAF=requestAnimationFrame(muVolTick);}
   if(vtMounted&&vtRAF){cancelAnimationFrame(vtRAF);vtRAF=requestAnimationFrame(vtRedraw);}
 });
 
