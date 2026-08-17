@@ -565,6 +565,12 @@ input[type=range]::-moz-range-thumb{width:20px;height:20px;border-radius:50%;bac
 /* ═══ VOICE (Pink Trombone) ═══ */
 #modVoice.active{display:flex;flex-direction:column;align-items:center;gap:10px}
 #vtCanvasWrap{position:relative;width:100%;max-width:480px;aspect-ratio:600/730;overflow:visible;background:#ede7d4;touch-action:none;margin-top:20px}
+/* The tract is by far the tallest thing in this module, and SPEAK adds a text
+   field and a transport row beneath it. Bound the diagram against viewport
+   height so it gives up a little size instead of pushing the controls under the
+   fold — the same trade the --mu-* density tokens make elsewhere. Width is what
+   drives height here (aspect-ratio), so the cap has to be on max-width. */
+@supports (height:1svh){#vtCanvasWrap{max-width:min(480px,44svh);margin-top:clamp(6px,2svh,20px)}}
 #vtCanvasWrap canvas{position:absolute;top:0;left:0;width:100%;height:100%}
 #vtBackCanvas{z-index:0}
 #vtTractCanvas{z-index:1}
@@ -579,6 +585,19 @@ input[type=range]::-moz-range-thumb{width:20px;height:20px;border-radius:50%;bac
 #modVoice input[type=range]::-webkit-slider-thumb{background:#C070C6;width:10px;height:22px;border-radius:3px}
 #modVoice input[type=range]::-moz-range-thumb{background:#C070C6;width:10px;height:22px;border-radius:3px}
 #modVoice .lbl{color:#d9a0d5}
+/* SPEAK. Geometry copies #scoreEditor, recoloured to the VOICE palette. The
+   user-select override is mandatory, not decorative: the global *{user-select:
+   none} reset at the top of this sheet otherwise makes the field uneditable on
+   iOS. */
+#vtSpeakText{width:100%;max-width:360px;min-height:44px;background:#FFEEF5;border:1px solid #f5d5ef;border-radius:8px;color:#8a5f88;font-family:Arial,sans-serif;font-size:15px;line-height:1.4;padding:10px 12px;outline:none;resize:vertical;-webkit-user-select:text;user-select:text}
+#vtSpeakText::placeholder{color:#e2b8dd}
+#vtSpeakText:focus{border-color:#C070C6}
+#vtSpeakRow{display:flex;justify-content:center;align-items:flex-end;gap:10px;width:100%;max-width:360px}
+#modVoice #vtSpeakRow .bsm{padding:6px 22px;font-size:14px}
+#vtSpeakRateWrap{flex:1;min-width:0}
+/* A dimmed control is one AUTO ignores, so it must also be unclickable —
+   otherwise it can be toggled into a state that silently does nothing. */
+#modVoice .bsm.ns-dim{pointer-events:none}
 /* Genuinely short viewports: flatten the harmonic cells. Their in-flow content
    (.mc-ratio 9px + .mc-freq 13px + padding) needs ~36px, so 1.7 stays safe. */
 @media (max-height:520px){:root{--mu-cell-ar:1.7}}
@@ -1046,6 +1065,15 @@ input[type=range]::-moz-range-thumb{width:20px;height:20px;border-radius:50%;bac
     <button class="bsm" id="vtAutoWobbleBtn" onclick="vtToggleAutoWobble()">wobble</button>
   </div>
   <button class="bsm" id="vtAlwaysVoiceBtn" onclick="vtToggleAlwaysVoice()">always voice</button>
+  <textarea id="vtSpeakText" rows="2" placeholder="type something for it to read…" oninput="vtSpkUiSave()" spellcheck="false"></textarea>
+  <div id="vtSpeakRow">
+    <button class="bsm" id="vtSpeakBtn" onclick="vtSpkToggle()">speak</button>
+    <button class="bsm" id="vtLoopBtn" onclick="vtSpkToggleLoop()">loop</button>
+    <div class="rr" id="vtSpeakRateWrap">
+      <div class="lbl" style="text-align:center;font-size:11px;margin-bottom:3px">rate</div>
+      <input type="range" id="vtSpeakRateR" min="0" max="100" value="33" oninput="vtSpkSetRate(+this.value)">
+    </div>
+  </div>
   <div class="rr">
     <div class="lbl" style="text-align:center;font-family:Arial,sans-serif;font-size:11px;margin-bottom:3px">volume</div>
     <input type="range" id="vtVolR" min="0" max="100" value="100" oninput="vtVol=+this.value;if(vtMGn&&AC)vtMGn.gain.setTargetAtTime(v2g(vtVol),AC.currentTime,.02);syncMixerUI()">
@@ -2877,10 +2905,15 @@ function captureState(){
     brl:bbRangeLo,brh:bbRangeHi,bfl:bbFiltLo,bfh:bbFiltHi,bpdl:bbPauseLo,bpdh:bbPauseHi,
     mr:multiOscs.map(function(o){return{f:o.freq,v:o.vol,m:o.muted?1:0};}),
     xm:appMasterVol,
-    ma:multiAutoOn?1:0,xa:appAutoOn?1:0,lm:appLimOn?1:0
+    ma:multiAutoOn?1:0,xa:appAutoOn?1:0,lm:appLimOn?1:0,
+    /* VOICE was the only module absent from archives; capture it while we are here. */
+    vst:(vtSpkText||'').slice(0,2000),vspr:vtSpkRate,vspl:vtSpkLoop?1:0,vvol:vtVol,
+    vsot:vtInitialized&&VT.getOtotune()?1:0,vsfr:vtInitialized&&VT.getFree()?1:0,
+    vswb:vtInitialized&&VT.getAutoWobble()?1:0,vsav:vtInitialized&&VT.getAlwaysVoice()?1:0
   };
 }
 function restoreState(o){
+  if(vtSpkPlaying)vtSpkStop();
   if(rsPlaying)toggleRiser();
   if(swpPlaying)toggleSweep();
   if(nOn)toggleNoise();
@@ -2929,7 +2962,16 @@ function restoreState(o){
   bbPauseHi=o.bpdh!=null?Math.max(bbPauseLo,Math.min(100,o.bpdh)):100;
   recomputeHarmonicPools();
   bbSyncRange();bbFiltSync();bbFiltApply();bbPauseSync();bbUiSave();
-  syncRiserUI();syncSweepUI();syncNoiseUI();syncMultiUI();syncMixerUI();
+  /* Every field validated and clamped, never trusted — archives outlive schemas. */
+  if(typeof o.vst==='string')vtSpkText=o.vst;
+  vtSpkRate=isFinite(o.vspr)?Math.max(0.6,Math.min(1.8,+o.vspr)):1.0;
+  vtSpkLoop=!!o.vspl;
+  vtVol=o.vvol!=null?Math.max(0,Math.min(100,+o.vvol)):100;
+  if(vtMGn&&AC)vtMGn.gain.setTargetAtTime(v2g(vtVol),AC.currentTime,.02);
+  if(vtInitialized){VT.setOtotune(!!o.vsot);VT.setFree(!!o.vsfr);
+    VT.setAutoWobble(!!o.vswb);VT.setAlwaysVoice(!!o.vsav);}
+  vtSpkUiSave();
+  syncRiserUI();syncSweepUI();syncNoiseUI();syncMultiUI();syncMixerUI();syncVoiceUI();
 }
 
 function syncSweepUI(){
@@ -3597,7 +3639,7 @@ function toggleRiser(){
 
 
 /* ═══════ VOICE (Pink Trombone) ═══════ */
-var vtInitialized=false,vtMounted=false,vtRAF=null,vtMGn=null,vtSigGn=null,vtVol=100;
+var vtInitialized=false,vtMounted=false,vtRAF=null,vtMGn=null,vtSigGn=null,vtPrsF=null,vtVol=100;
 var vtRedraw=null;
 /* OTOTUNE — pitch set derived from the MATHS list, octave-folded into a human vocal range.
    VT_OTO_OCT is the single knob: 2 => F2..F4, 3 => F2..F5. */
@@ -3645,8 +3687,40 @@ function vtOtoSnap(f){
 }
 var VT=(function(){
 var backCanvas,backCtx,tractCanvas,tractCtx;
-var sampleRate,time=0,temp={a:0,b:0};
+var sampleRate,time=0;
 var alwaysVoice=false,autoWobble=false,ototune=false,free=false;
+/* SPEAK: set while a compiled gesture program is driving the tract. Declared up
+   here because Glottis.handleTouches/finishBlock both have to defer to it. */
+var spkOn=false,spkBuf=null,spkN=0,spkStep=1,spkT0=0,spkEndCb=null,spkSlots=null;
+/* 1 while a deliberately held sound ("aaaa", "hhhh") is playing. Only used to
+   damp the pitch wobble — a 0.6s note inherits it as an audible warble. */
+var spkSteady=0;
+/* Per-keyframe frication gain, multiplying the GLOBAL VT_SPK_FRIC. It must
+   scale the global and never touch a slot's fricative_intensity: that field is
+   pinned at 1 because it is the flag handleTouches uses to refuse a touch as
+   the tongue, and writing it per-frame lets an /l/ hijack articulation. That
+   was tried once and reverted; this sidesteps it entirely.
+   Defaults to 1, and every row constructor must set it — a Float64Array is
+   zero-filled, so a missed row would silently mute all frication. */
+var spkFricM=1;
+/* ── SPEAK calibration ───────────────────────────────────────────────────────
+   The phoneme table's durations were optimised against a tract whose
+   articulators move faster than this port's defaults, so consonants are
+   systematically undershot. These three constants close that gap. They apply
+   ONLY while speaking, so hand-played VOICE is bit-for-bit unchanged.
+     WIDTH  handleTouches carves +/-10 of 44 sections below index 25, which
+            smears a velar stop across the whole tract and destroys the place-of-
+            articulation cue that separates /b/ from /d/ from /g/.
+     MOVE   at movementSpeed 15 a /b/ release needs ~81ms but is allotted ~51ms.
+     VELUM  closing at amount*0.1 takes ~259ms, so nasal colour bleeds a quarter
+            of a second past every /m n ŋ/. */
+var VT_SPK_WIDTH=0.55,VT_SPK_MOVE=34,VT_SPK_VELUM_DOWN=0.35;
+/* Fricative turbulence is the one lever that reaches /s/ and /ʃ/: Glottis
+   .loudness scales only the periodic glottal pulse, so it cannot lift noise.
+   Measured, fricatives sat about an order of magnitude below vowels. */
+var VT_SPK_FRIC=1.0;
+/* Speech-only burst strength; hand play keeps the original 0.3. */
+var VT_SPK_BURST=0.15;
 var palePink='#FFEEF5';
 var _gainNode=null;
 
@@ -3752,7 +3826,7 @@ var AudioSystem={
 };
 
 var Glottis={
-  timeInWaveform:0,oldFrequency:140,newFrequency:140,UIFrequency:140,smoothFrequency:140,rawFrequency:140,
+  timeInWaveform:0,oldFrequency:140,newFrequency:140,UIFrequency:140,smoothFrequency:140,rawFrequency:140,basePitch:140,
   oldTenseness:0.6,newTenseness:0.6,UITenseness:0.6,totalTime:0,
   vibratoAmount:0.005,vibratoFrequency:6,intensity:0,loudness:1,isTouched:false,
   touch:0,x:240,y:623,
@@ -3802,6 +3876,18 @@ var Glottis={
     backCtx.lineTo(0,-ahw);backCtx.lineTo(ahl,0);backCtx.lineTo(0,ahw);backCtx.lineTo(0,0);
     backCtx.closePath();backCtx.stroke();backCtx.fill();
   },
+  pitchToX:function(f){
+    /* The inverse of whichever mapping handleTouches used to PRODUCE f.
+       freqToX is NOT that inverse when OTOTUNE is off: it divides by
+       VT_OTO_SEMIS (24), while the plain strip spans this.semitones (20) with a
+       half-semitone offset. Measured, that puts a marker up to 78px left of the
+       finger at the top of the range — which is exactly why the puck below
+       falls back to touch.x instead of calling freqToX. */
+    var s=12*Math.log(f/this.baseNote)/Math.LN2;
+    if(!ototune)s=(s-0.5)*this.keyboardWidth/this.semitones;
+    else s=s*this.keyboardWidth/VT_OTO_SEMIS;
+    return clamp(this.keyboardLeft+s,this.keyboardLeft,this.keyboardLeft+this.keyboardWidth);
+  },
   freqToX:function(f){
     var s=12*Math.log(f/this.baseNote)/Math.LN2;
     return clamp(this.keyboardLeft+s*this.keyboardWidth/VT_OTO_SEMIS,this.keyboardLeft,this.keyboardLeft+this.keyboardWidth);
@@ -3810,12 +3896,46 @@ var Glottis={
     if(this.touch!=0&&!this.touch.alive)this.touch=0;
     if(this.touch==0){for(var j=0;j<UI.touchesWithMouse.length;j++){
       var touch=UI.touchesWithMouse[j];if(!touch.alive)continue;if(touch.y<this.keyboardTop)continue;this.touch=touch;}}
+    /* While SPEAK owns the voice the strip is PITCH ONLY: it sets the base the
+       NEXT phrase will start from, and writes nothing else. The full branch
+       below would fight the contour spkTick draws every block — rawFrequency,
+       UITenseness and loudness are all overwritten within one block anyway, but
+       smoothFrequency is the sharp edge: its guard is `intensity==0`, which is
+       true during every stop closure, so a finger would snap the pitch
+       mid-word. basePitch is the one field speech never touches; it is read at
+       phrase start by vtSpkSpeakCurrent, so a move here lands on the next
+       phrase and leaves the one playing alone. The vertical axis stays inert
+       for the same reason — the contour owns tenseness and loudness.
+       The tract itself remains live: TractUI.handleTouches takes the minimum
+       diameter, so a finger ADDS a constriction on top of the speech. */
+    if(spkOn){
+      if(this.touch!=0){
+        var slx=this.touch.x-this.keyboardLeft;
+        var ssemi=ototune?VT_OTO_SEMIS*slx/this.keyboardWidth:this.semitones*slx/this.keyboardWidth+0.5;
+        var sf=this.baseNote*Math.pow(2,ssemi/12);
+        Glottis.basePitch=ototune&&!free?vtOtoSnap(sf):sf;
+      }
+      /* Left false deliberately. Its only two readers are already !spkOn-guarded
+         (spkTick owns intensity), so this changes nothing — but a finger on the
+         strip must never be able to force voicing through a stop closure. */
+      Glottis.isTouched=false;
+      return;
+    }
     if(this.touch!=0){
       var ly=this.touch.y-this.keyboardTop-10,lx=this.touch.x-this.keyboardLeft;
       ly=clamp(ly,0,this.keyboardHeight-26);
       var semi=ototune?VT_OTO_SEMIS*lx/this.keyboardWidth:this.semitones*lx/this.keyboardWidth+0.5;
       Glottis.rawFrequency=this.baseNote*Math.pow(2,semi/12);
       Glottis.UIFrequency=ototune&&!free?vtOtoSnap(Glottis.rawFrequency):Glottis.rawFrequency;
+      /* The pitch the USER asked for, kept apart from the pitch currently
+         sounding. finishBlock overwrites UIFrequency every block while SPEAK is
+         running, so reading it back as the base for the next phrase fed each
+         phrase its own ending pitch — statements walked down to the 70Hz floor,
+         questions pinned at 260Hz within two phrases. Assigned after the OTOTUNE
+         snap so the speaking base stays quantised. This is the only place the
+         user sets pitch: the guard above returns early while SPEAK owns the
+         voice, so speech can never reach here. */
+      Glottis.basePitch=Glottis.UIFrequency;
       if(Glottis.intensity==0)Glottis.smoothFrequency=Glottis.UIFrequency;
       var t=clamp(1-ly/(this.keyboardHeight-28),0,1);
       Glottis.UITenseness=1-Math.cos(t*Math.PI*0.5);
@@ -3836,19 +3956,38 @@ var Glottis={
     return this.UITenseness*this.intensity*voiced+(1-this.UITenseness*this.intensity)*0.3;
   },
   finishBlock:function(){
+    if(spkOn)spkTick();
     if(ototune)this.UIFrequency=free?this.rawFrequency:vtOtoSnap(this.rawFrequency);
+    /* OTOTUNE is the only thing that normally copies rawFrequency across, so
+       without it SPEAK's contour would never reach the glottis. With it on, the
+       speech melody snaps to the MATHS harmonic scale for free. */
+    else if(spkOn)this.UIFrequency=this.rawFrequency;
     var vib=0;vib+=this.vibratoAmount*Math.sin(2*Math.PI*this.totalTime*this.vibratoFrequency);
     if(ototune)vib+=VT_OTO_WOBBLE*(0.02*noise.simplex1(this.totalTime*4.07)+0.04*noise.simplex1(this.totalTime*2.15));
     else{vib+=0.02*noise.simplex1(this.totalTime*4.07);vib+=0.04*noise.simplex1(this.totalTime*2.15);}
-    if(autoWobble){vib+=0.2*noise.simplex1(this.totalTime*0.98);vib+=0.4*noise.simplex1(this.totalTime*0.5);}
+    /* A deliberately held sound is damped, and ONLY that: spkSteady is 0 for
+       hand play and for ordinary speech, so this multiplies by exactly 1 in
+       both — the VT_OTO_WOBBLE_CENTS contract above is untouched. */
+    if(spkOn&&spkSteady>0)vib*=1-0.75*spkSteady;
+    /* autoWobble peaks near +/-0.6 — about ten semitones — which is unusable
+       under speech, so SPEAK suppresses it. The mini-wobble above is KEPT: it is
+       what stops the voice sounding dead, and the OTOTUNE 9-cent contract still
+       governs it. */
+    if(autoWobble&&!spkOn){vib+=0.2*noise.simplex1(this.totalTime*0.98);vib+=0.4*noise.simplex1(this.totalTime*0.5);}
     if(this.UIFrequency>this.smoothFrequency)this.smoothFrequency=Math.min(this.smoothFrequency*1.1,this.UIFrequency);
     if(this.UIFrequency<this.smoothFrequency)this.smoothFrequency=Math.max(this.smoothFrequency/1.1,this.UIFrequency);
     this.oldFrequency=this.newFrequency;this.newFrequency=this.smoothFrequency*(1+vib);
     this.oldTenseness=this.newTenseness;
     this.newTenseness=this.UITenseness+0.1*noise.simplex1(this.totalTime*0.46)+0.05*noise.simplex1(this.totalTime*0.36);
-    if(!this.isTouched&&alwaysVoice)this.newTenseness+=(3-this.UITenseness)*(1-this.intensity);
-    if(this.isTouched||alwaysVoice)this.intensity+=0.13;else this.intensity-=0.05;
-    this.intensity=clamp(this.intensity,0,1);
+    /* alwaysVoice would force intensity up every block, so no stop closure could
+       ever reach silence and every plosive would smear. And the stock chase is
+       far too slow either way: +0.13/-0.05 per block is 93ms up but 232ms down,
+       against a ~45ms /b/ closure. While speaking, spkTick writes intensity. */
+    if(!this.isTouched&&alwaysVoice&&!spkOn)this.newTenseness+=(3-this.UITenseness)*(1-this.intensity);
+    if(!spkOn){
+      if(this.isTouched||alwaysVoice)this.intensity+=0.13;else this.intensity-=0.05;
+      this.intensity=clamp(this.intensity,0,1);
+    }
   },
   setupWaveform:function(lambda){
     this.frequency=this.oldFrequency*(1-lambda)+this.newFrequency*lambda;
@@ -3900,7 +4039,8 @@ var Tract={
     this.calculateReflections();this.calculateNoseReflections();this.noseDiameter[0]=this.velumTarget;
   },
   reshapeTract:function(deltaTime){
-    var amount=deltaTime*this.movementSpeed,newLO=-1;
+    var spd=spkOn?VT_SPK_MOVE:this.movementSpeed;
+    var amount=deltaTime*spd,newLO=-1;
     for(var i=0;i<this.n;i++){
       var d=this.diameter[i],td=this.targetDiameter[i];if(d<=0)newLO=i;
       var sr;if(i<this.noseStart)sr=0.6;else if(i>=this.tipStart)sr=1.0;
@@ -3908,8 +4048,8 @@ var Tract={
       this.diameter[i]=moveTowards(d,td,sr*amount,2*amount);
     }
     if(this.lastObstruction>-1&&newLO==-1&&this.noseA[0]<0.05)this.addTransient(this.lastObstruction);
-    this.lastObstruction=newLO;amount=deltaTime*this.movementSpeed;
-    this.noseDiameter[0]=moveTowards(this.noseDiameter[0],this.velumTarget,amount*0.25,amount*0.1);
+    this.lastObstruction=newLO;amount=deltaTime*spd;
+    this.noseDiameter[0]=moveTowards(this.noseDiameter[0],this.velumTarget,amount*0.25,amount*(spkOn?VT_SPK_VELUM_DOWN:0.1));
     this.noseA[0]=this.noseDiameter[0]*this.noseDiameter[0];
   },
   calculateReflections:function(){
@@ -3951,7 +4091,14 @@ var Tract={
     this.noseOutput=this.noseR[this.noseLength-1];
   },
   finishBlock:function(){this.reshapeTract(AudioSystem.blockTime);this.calculateReflections();},
-  addTransient:function(pos){this.transients.push({position:pos,timeAlive:0,lifeTime:0.2,strength:0.3,exponent:200});},
+  addTransient:function(pos){
+    /* Half-life is 1/exponent = 5ms and it is audible for ~35ms. Note runStep
+       is called twice per output sample, so the injected peak is 2x strength.
+       Speech gets a softer burst than hand play, which keeps Pink Trombone's
+       original 0.3 — the burst is still the main cue for WHICH stop it was, so
+       this is a trim rather than a removal. */
+    this.transients.push({position:pos,timeAlive:0,lifeTime:0.2,
+      strength:spkOn?VT_SPK_BURST:0.3,exponent:200});},
   processTransients:function(){
     for(var i=0;i<this.transients.length;i++){var tr=this.transients[i];
       var amp=tr.strength*Math.pow(2,-tr.exponent*tr.timeAlive);
@@ -3960,9 +4107,11 @@ var Tract={
   },
   addTurbulenceNoise:function(tn){
     for(var j=0;j<UI.touchesWithMouse.length;j++){var touch=UI.touchesWithMouse[j];
-      if(touch.index<2||touch.index>Tract.n)continue;if(touch.diameter<=0)continue;
+      /* n-3, not n: the writes below land at i+1 and i+2, and R/L are only
+         Tract.n long, so a constriction above 41 silently loses half its noise. */
+      if(touch.index<2||touch.index>Tract.n-3)continue;if(touch.diameter<=0)continue;
       var inten=touch.fricative_intensity;if(inten==0)continue;
-      this.addTurbulenceNoiseAtIndex(0.66*tn*inten,touch.index,touch.diameter);}
+      this.addTurbulenceNoiseAtIndex(0.66*(spkOn?VT_SPK_FRIC*spkFricM:1)*tn*inten,touch.index,touch.diameter);}
   },
   addTurbulenceNoiseAtIndex:function(tn,index,diameter){
     var i=Math.floor(index),delta=index-i;tn*=Glottis.getNoiseModulator();
@@ -4078,6 +4227,25 @@ var TractUI={
     this.ctx.globalAlpha=0.15;this.ctx.fill();this.ctx.globalAlpha=1.0;this.ctx.fillStyle='orchid';
   },
   drawPitchControl:function(){
+    /* While speaking, spkPuck drives the puck below from the LIVE melody every
+       block, so it cannot also show where the next phrase will start. This
+       ghost marks that: stroke-only, thinner and fainter than the puck so the
+       two never read as the same thing, and it stays put after the finger
+       lifts. Hidden when not speaking, where the puck IS the base pitch. */
+    if(spkOn&&Glottis.basePitch){
+      var gx=Glottis.pitchToX(Glottis.basePitch),gw=3;
+      /* Sized to the main pitch bar (drawKeyboard's drawBar(0,0.4)), with a
+         few px of overhang past its marks so it reads as a cursor over them.
+         The puck's own range runs the full keyboard height because it is a
+         draggable handle; this is a target line and must not spill into the
+         second bar or the 'pitch' label below it. */
+      var gy0=Glottis.keyboardTop+5,gy1=Glottis.keyboardTop+Glottis.keyboardHeight*0.4-5;
+      this.ctx.lineWidth=2;this.ctx.strokeStyle='orchid';this.ctx.globalAlpha=0.45;
+      this.ctx.beginPath();
+      this.ctx.moveTo(gx-gw,gy0);this.ctx.lineTo(gx+gw,gy0);
+      this.ctx.lineTo(gx+gw,gy1);this.ctx.lineTo(gx-gw,gy1);
+      this.ctx.closePath();this.ctx.stroke();this.ctx.globalAlpha=1.0;
+    }
     var w=9,h=15;if(Glottis.x){
       this.ctx.lineWidth=4;this.ctx.strokeStyle='orchid';this.ctx.globalAlpha=0.7;this.ctx.beginPath();
       this.ctx.moveTo(Glottis.x-w,Glottis.y-h);this.ctx.lineTo(Glottis.x+w,Glottis.y-h);
@@ -4112,14 +4280,22 @@ var TractUI={
     for(var j=0;j<UI.touchesWithMouse.length;j++){var touch=UI.touchesWithMouse[j];if(!touch.alive)continue;
       var x=touch.x,y=touch.y,idx=TractUI.getIndex(x,y),dia=TractUI.getDiameter(x,y);
       if(idx>Tract.noseStart&&dia<-this.noseOffset)Tract.velumTarget=0.4;
-      temp.a=idx;temp.b=dia;if(dia<-0.85-this.noseOffset)continue;
-      dia-=0.3;if(dia<0)dia=0;var width=2;
+      if(dia<-0.85-this.noseOffset)continue;
+      dia-=0.3;if(dia<0)dia=0;var width;
       if(idx<25)width=10;else if(idx>=Tract.tipStart)width=5;else width=10-5*(idx-25)/(Tract.tipStart-25);
+      if(spkOn)width*=VT_SPK_WIDTH;   /* narrow the carve so place of articulation survives */
       if(idx>=2&&idx<Tract.n&&y<730&&dia<3){var ii=Math.round(idx);
         for(var i=-Math.ceil(width)-1;i<width+1;i++){if(ii+i<0||ii+i>=Tract.n)continue;
           var rp=(ii+i)-idx;rp=Math.abs(rp)-0.5;var sh;
           if(rp<=0)sh=0;else if(rp>width)sh=1;else sh=0.5*(1-Math.cos(Math.PI*rp/width));
-          if(dia<Tract.targetDiameter[ii+i])Tract.targetDiameter[ii+i]=dia+(Tract.targetDiameter[ii+i]-dia)*sh;}}}
+          /* Hand-played, each touch blends against whatever the previous one
+             left, so overlapping fingers dig DEEPER than either alone and the
+             result depends on their order in the array. That is fine for a
+             played instrument but wrong for independent articulators, so while
+             speaking each zone is evaluated against restDiameter and the
+             minimum wins — order-independent and non-compounding. */
+          var v=spkOn?dia+(Tract.restDiameter[ii+i]-dia)*sh:dia+(Tract.targetDiameter[ii+i]-dia)*sh;
+          if(v<Tract.targetDiameter[ii+i])Tract.targetDiameter[ii+i]=v;}}}
   }
 };
 
@@ -4168,10 +4344,179 @@ var UI={
   handleTouches:function(){TractUI.handleTouches();Glottis.handleTouches();},
   updateTouches:function(){var fat=0.1;
     for(var j=UI.touchesWithMouse.length-1;j>=0;j--){var touch=UI.touchesWithMouse[j];
+      /* SPEAK owns its own slots: it sets fricative_intensity per keyframe, so
+         a fricative is loud and an /l/ is silent. Ageing them here would
+         overwrite that on every frame VOICE happens to be visible. */
+      if(touch.synthetic)continue;
       if(!touch.alive&&time>touch.endTime+1)UI.touchesWithMouse.splice(j,1);
       else if(touch.alive)touch.fricative_intensity=clamp((time-touch.startTime)/fat,0,1);
       else touch.fricative_intensity=clamp(1-(time-touch.endTime)/fat,0,1);}}
 };
+
+/* ═══ SPEAK: gesture-program adapter ═══
+   Drives the tract from a compiled program instead of a finger, so VOICE reads
+   text through the mechanism it already has rather than through a bolted-on
+   second synthesiser.
+
+   The program is a flat Float64Array of stride VT_SPK_STRIDE. It is flat, not an
+   array of objects, because spkTick runs inside the ScriptProcessor callback on
+   the main thread — the same callback vtScheduleBack() below already protects
+   from starvation — so the tick must never allocate and never megamorph.
+
+   Articulation is split three ways, because the touch path is only partly
+   usable:
+     tongue  — written directly. TractUI.handleTouches clamps a touch-driven
+               tongue to the human-reachable pad (diameter 2.05..3.5), but the
+               phoneme table needs 1.50 for /ŋ/, 1.60 for /r/, 1.80 for /n/.
+               setRestDiameter() reads the fields directly and does not clamp.
+     front /
+     back    — two persistent synthetic touches, ordinary members of
+               UI.touchesWithMouse. TractUI.handleTouches carves
+               Tract.targetDiameter[] from them exactly as for a human, and
+               addTurbulenceNoise/addTransient then fire on their own.
+     velum   — set explicitly after handleTouches, which resets it to 0.01.
+   Timing is Glottis.totalTime, a sample-accurate accumulator, so the schedule
+   cannot drift against the audio no matter what the main thread is doing. */
+var VT_SPK_STRIDE=18;
+var VT_SPK_T=0,VT_SPK_INT=1,VT_SPK_TEN=2,VT_SPK_LOU=3,VT_SPK_FRQ=4,
+    VT_SPK_TI=5,VT_SPK_TD=6,VT_SPK_VEL=11,VT_SPK_STEADY=16,VT_SPK_FRICM=17;
+/* ── articulator zones ───────────────────────────────────────────────────────
+   Four constrictions, one per anatomical region, each pinned to its own stretch
+   of the tract. The point is not that any phoneme needs four at once — almost
+   none need more than two — it is that a slot NEVER LEAVES ITS ZONE, so nothing
+   sweeps across the tract between phonemes and an idle slot always rests
+   somewhere harmless.
+
+   THROAT exists because nothing else can reach there: setRestDiameter only
+   writes sections bladeStart..lipStart (10..38) and the tongue is clamped to
+   index >= 11, so sections 1-9 are shapeable ONLY by an articulator. The
+   glottal source enters at section 0 behind a 0.75 reflection, so a constriction
+   at 4-12 is a genuine source-side constriction with a resonating back cavity —
+   which is what /h/ and the pharyngeal component of /r/ actually are.
+
+   Column pairs are additive: the two old slots keep columns 7-10, the two new
+   ones append at 12-15, and VT_SPK_VEL stays at 11. */
+var VT_SPK_ZONES=[
+  {name:'tip', i:7, d:8,  park:34},   /* 27-38  alveolar / palatal        */
+  {name:'bod', i:9, d:10, park:22},   /* 17-26  velar                     */
+  {name:'lip', i:12,d:13, park:41},   /* 39-43  labial                    */
+  {name:'thr', i:14,d:15, park:8}     /*  4-12  pharyngeal                */
+];
+/* Where a constriction sits when it is not in use. NOT the reference's sentinel
+   of 5: at 5 the radius 298-60*d goes negative, which flips the point through
+   the origin and makes getIndex return garbage. 4.5 keeps r positive (28), stays
+   above the 3.3 that handleTouches needs in order to skip the carve (it
+   subtracts 0.3 before testing <3), and sits outside the box that would adopt a
+   touch as the tongue. */
+var VT_SPK_PARK_D=4.5;
+/* The diagram's rest pose, restored when an utterance ends. */
+var VT_SPK_REST_TI=12.9,VT_SPK_REST_TD=2.43;
+
+function spkSlot(id){
+  /* startTime far in the past pins fricative_intensity to 1 whenever
+     UI.updateTouches runs, and leaves it correct when it does not (it only runs
+     while VOICE is the visible tab). fricative_intensity===1 is also exactly the
+     flag TractUI.handleTouches already tests to refuse a touch as the tongue —
+     one field, two problems solved, no edit to handleTouches needed. */
+  /* fricative_intensity stays pinned at 1 and must NEVER be written per-frame:
+     handleTouches uses `fricative_intensity==1` as the test that refuses a
+     touch as the tongue, so a slot at any other value could be captured as the
+     tongue mid-word and hijack articulation. Turbulence is shaped by constriction
+     diameter (the thin/open window in addTurbulenceNoiseAtIndex) and scaled by
+     VT_SPK_FRIC times the per-keyframe VT_SPK_FRICM column — which multiplies
+     the GLOBAL, precisely so this field never has to move. */
+  return{startTime:-1e9,endTime:0,alive:true,id:id,synthetic:true,
+         x:0,y:0,index:-1,diameter:VT_SPK_PARK_D,fricative_intensity:1};
+}
+function spkPlace(touch,index,diameter){
+  /* Exact inverse of TractUI.getIndex/getDiameter. addTurbulenceNoise reads the
+     stored index/diameter rather than recomputing from x/y, so both must be
+     kept in step. */
+  touch.index=index;touch.diameter=diameter;
+  var a=TractUI.angleOffset+index*TractUI.angleScale*Math.PI/(Tract.lipStart-1);
+  var r=TractUI.radius-TractUI.scale*diameter;
+  touch.x=TractUI.originX-r*Math.cos(a);touch.y=TractUI.originY-r*Math.sin(a);
+}
+function spkAttach(){
+  /* Built and iterated from VT_SPK_ZONES so there is no per-slot list anywhere
+     that could fall out of step — a slot missing from spkDetach would leak
+     forever, since synthetic slots are deliberately exempt from the reaper. */
+  if(!spkSlots){spkSlots=[];for(var z=0;z<VT_SPK_ZONES.length;z++)spkSlots.push(spkSlot('vtspk_'+VT_SPK_ZONES[z].name));}
+  for(var i=0;i<spkSlots.length;i++){
+    spkSlots[i].alive=true;
+    spkPlace(spkSlots[i],VT_SPK_ZONES[i].park,VT_SPK_PARK_D);
+    if(UI.touchesWithMouse.indexOf(spkSlots[i])<0)UI.touchesWithMouse.push(spkSlots[i]);
+  }
+}
+function spkDetach(){
+  /* Spliced by identity rather than left to the one-second reaper in
+     updateTouches, which only runs while VOICE is mounted. */
+  if(!spkSlots)return;
+  for(var j=UI.touchesWithMouse.length-1;j>=0;j--){
+    if(spkSlots.indexOf(UI.touchesWithMouse[j])>=0)UI.touchesWithMouse.splice(j,1);
+  }
+  for(var i=0;i<spkSlots.length;i++)spkSlots[i].alive=false;
+}
+function spkReset(){
+  spkOn=false;spkSteady=0;spkFricM=1;spkDetach();
+  /* Hand the voice back at the pitch the user set, not wherever the last phrase
+     happened to end — otherwise hand play resumes on the speech's final note
+     and the strip marker sits somewhere it was never put. Safe between phrases
+     too: spkBegin sets smoothFrequency from the program's first row before any
+     audio, so nothing glides in. */
+  Glottis.UIFrequency=Glottis.smoothFrequency=Glottis.basePitch;
+  Glottis.x=Glottis.pitchToX(Glottis.basePitch);
+  Glottis.intensity=0;Tract.velumTarget=0.01;
+  TractUI.tongueIndex=VT_SPK_REST_TI;TractUI.tongueDiameter=VT_SPK_REST_TD;
+  TractUI.handleTouches();
+}
+function spkFinish(){
+  spkReset();
+  /* Dispatched, never called inline: this runs inside the audio callback, and
+     the callback compiles nothing and touches no DOM. setTimeout also works
+     whether or not VOICE is mounted, which a rAF hop would not. */
+  var cb=spkEndCb;if(cb)setTimeout(cb,0);
+}
+function spkTick(){
+  var b=spkBuf,S=VT_SPK_STRIDE,t=Glottis.totalTime-spkT0;
+  while(spkStep<spkN&&t>=b[spkStep*S+VT_SPK_T])spkStep++;
+  if(spkStep>=spkN){spkFinish();return;}
+  var p=(spkStep-1)*S,q=spkStep*S;
+  var t0=b[p+VT_SPK_T],t1=b[q+VT_SPK_T],u=t1>t0?(t-t0)/(t1-t0):1;
+  u=clamp(u,0,1);
+  /* Linear, not smoothstep: reshapeTract already applies a first-order lag at
+     movementSpeed, and smoothing twice turns consonants to mush. */
+  TractUI.tongueIndex   =b[p+VT_SPK_TI]+(b[q+VT_SPK_TI]-b[p+VT_SPK_TI])*u;
+  TractUI.tongueDiameter=b[p+VT_SPK_TD]+(b[q+VT_SPK_TD]-b[p+VT_SPK_TD])*u;
+  for(var zi=0;zi<VT_SPK_ZONES.length;zi++){
+    var Z=VT_SPK_ZONES[zi];
+    spkPlace(spkSlots[zi],b[p+Z.i]+(b[q+Z.i]-b[p+Z.i])*u,
+                          b[p+Z.d]+(b[q+Z.d]-b[p+Z.d])*u);
+  }
+  Glottis.rawFrequency=b[p+VT_SPK_FRQ]+(b[q+VT_SPK_FRQ]-b[p+VT_SPK_FRQ])*u;
+  Glottis.UITenseness =b[p+VT_SPK_TEN]+(b[q+VT_SPK_TEN]-b[p+VT_SPK_TEN])*u;
+  Glottis.loudness    =b[p+VT_SPK_LOU]+(b[q+VT_SPK_LOU]-b[p+VT_SPK_LOU])*u;
+  Glottis.intensity   =clamp(b[p+VT_SPK_INT]+(b[q+VT_SPK_INT]-b[p+VT_SPK_INT])*u,0,1);
+  spkSteady           =b[p+VT_SPK_STEADY]+(b[q+VT_SPK_STEADY]-b[p+VT_SPK_STEADY])*u;
+  spkFricM            =b[p+VT_SPK_FRICM]+(b[q+VT_SPK_FRICM]-b[p+VT_SPK_FRICM])*u;
+  TractUI.handleTouches();
+  /* After handleTouches, which resets velumTarget to 0.01 every call. Written
+     explicitly rather than left to the touch heuristic, which needs a diameter
+     below -0.8 and so never fires for /ŋ/ (its back constriction is -0.6). */
+  Tract.velumTarget=b[p+VT_SPK_VEL]+(b[q+VT_SPK_VEL]-b[p+VT_SPK_VEL])*u;
+  spkPuck();
+}
+function spkPuck(){
+  /* Keep the pitch-strip marker tracking the speech — inverse of the mapping in
+     Glottis.handleTouches, so the diagram stays honest about what it is doing. */
+  var tn=Math.acos(clamp(1-Glottis.UITenseness,-1,1))/(Math.PI*0.5);
+  Glottis.y=(1-tn)*(Glottis.keyboardHeight-28)+Glottis.keyboardTop+10;
+  /* pitchToX, not freqToX: freqToX spans VT_OTO_SEMIS (24) but the plain strip
+     spans this.semitones (20), so with OTOTUNE off the puck sat up to 78px left
+     of the pitch it was reporting. Harmless while it was the only marker;
+     visibly wrong now that the base-pitch ghost sits on the strip's own scale. */
+  Glottis.x=Glottis.pitchToX(Glottis.UIFrequency);
+}
 
 var vtBackPending=false;
 function vtRedrawBack(){
@@ -4210,13 +4555,57 @@ return{
   redrawBack:function(){vtScheduleBack();},
   getAlwaysVoice:function(){return alwaysVoice;},getAutoWobble:function(){return autoWobble;},
   getOtotune:function(){return ototune;},
-  getFree:function(){return free;}
+  getFree:function(){return free;},
+  /* ── SPEAK ── the only way in for the sequencer above this IIFE. */
+  spkBegin:function(buf,n){
+    if(!buf||n<2)return false;
+    spkBuf=buf;spkN=n;spkStep=1;spkT0=Glottis.totalTime;
+    spkAttach();Glottis.isTouched=false;
+    /* Jump to the opening pitch rather than gliding up from whatever was last
+       played — smoothFrequency only moves 10% per block. */
+    Glottis.smoothFrequency=buf[VT_SPK_STRIDE+VT_SPK_FRQ];
+    spkOn=true;return true;
+  },
+  spkEnd:function(){if(spkOn)spkReset();},
+  spkActive:function(){return spkOn;},
+  /* The compiler above this IIFE writes the buffer the tick reads, so the two
+     must agree on layout exactly. Publishing it here keeps one source of truth
+     rather than two constants that can silently drift apart. */
+  spkDims:function(){
+    /* The compiler lives outside this closure and used to write the buffer by
+       LITERAL offset while the tick read it by named constant — a layout change
+       would have desynced them silently, with no error and no clue. Publishing
+       the whole column map removes that class of bug entirely. */
+    var zs=[];for(var i=0;i<VT_SPK_ZONES.length;i++){var Z=VT_SPK_ZONES[i];
+      zs.push({name:Z.name,i:Z.i,d:Z.d,park:Z.park});}
+    return{stride:VT_SPK_STRIDE,park:VT_SPK_PARK_D,rest:[VT_SPK_REST_TI,VT_SPK_REST_TD],
+           col:{t:VT_SPK_T,int:VT_SPK_INT,ten:VT_SPK_TEN,lou:VT_SPK_LOU,frq:VT_SPK_FRQ,
+                ti:VT_SPK_TI,td:VT_SPK_TD,vel:VT_SPK_VEL,steady:VT_SPK_STEADY,
+                fricm:VT_SPK_FRICM},
+           zones:zs};
+  },
+  /* Speaking pitch comes from the pitch strip, so the control that already sets
+     the voice's pitch by hand sets it for speech too. */
+  getPitch:function(){return Glottis.basePitch;},
+  spkTime:function(){return spkOn?Glottis.totalTime-spkT0:-1;},
+  spkOnEnd:function(fn){spkEndCb=fn;}
 };
 })();
 
 function vtInit(){
   var c=getAC();vtMGn=c.createGain();vtMGn.gain.value=v2g(vtVol);vtMGn.connect(appMaster);
-  vtSigGn=c.createGain();vtSigGn.gain.value=1;vtSigGn.connect(vtMGn);
+  vtSigGn=c.createGain();vtSigGn.gain.value=1;
+  /* Presence boost, engaged only while speaking. Speakers making themselves
+     understood push energy around 3kHz, where the ear is most sensitive; the
+     tract's own output up there is thin. The node stays permanently in the
+     chain because a peaking biquad at 0dB is transparent: with A=1 the cookbook
+     coefficients give b≡a, so the difference equation reduces to y=x. Measured,
+     residual float cancellation leaves |y-x| < 1.4e-15 — about -300dB, i.e.
+     inaudible but NOT literally bit-identical. Disconnecting instead of
+     bypassing would click, which is worse. */
+  vtPrsF=c.createBiquadFilter();vtPrsF.type='peaking';
+  vtPrsF.frequency.value=VT_SPK_PRS_HZ;vtPrsF.Q.value=VT_SPK_PRS_Q;vtPrsF.gain.value=0;
+  vtSigGn.connect(vtPrsF);vtPrsF.connect(vtMGn);
   VT.init(document.getElementById('vtCanvasWrap'),c,vtSigGn);
 }
 function vtMount(){if(!vtInitialized)return;vtMounted=true;VT.mount();appAutoRecalc();}
@@ -4225,11 +4614,959 @@ function vtToggleAlwaysVoice(){var on=!VT.getAlwaysVoice();VT.setAlwaysVoice(on)
 function vtToggleAutoWobble(){var on=!VT.getAutoWobble();VT.setAutoWobble(on);document.getElementById('vtAutoWobbleBtn').classList.toggle('on',on);}
 function vtToggleOtotune(){var on=!VT.getOtotune();VT.setOtotune(on);document.getElementById('vtOtotuneBtn').classList.toggle('on',on);}
 function vtToggleFree(){var on=!VT.getFree();VT.setFree(on);document.getElementById('vtFreeBtn').classList.toggle('on',on);}
+/* ═══════ VOICE SPEAK ═══════ */
+/* ── phoneme → articulation table ───────────────────────────────────────────
+   From the reference implementation of Camara et al. (2026), "An Acoustic
+   Landmark Database of the English Lexicon via Articulatory Synthesis", which
+   synthesised 200,000+ English words through Pink Trombone and measured the
+   result with STOI. MIT licence, (c) 2026 Mateo Camara.
+     v      voiced
+     c[]    one entry per articulatory sub-target (diphthong glide, stop
+            closure then release, affricate); t/f/b are [index,diameter] for
+            tongue / front constriction / back constriction; d is the move
+            time and h the hold, both in seconds
+     alt    reuse the named phoneme's geometry, with this entry's voicing
+     nasal  keep airflow through the closure (only /ng/)
+   A negative diameter marks a nasal: handleTouches turns it into a full oral
+   closure and the compiler opens the velum to match.
+   Measured against Peterson & Barney male means, the vowels land within
+   67Hz on F1 and 146Hz on F2 -- inside normal speaker-to-speaker variation --
+   so the targets transfer to this port unchanged. */
+var VT_SPK_PHONEMES={
+  b:{"v":1,"c":[{"lip":[41.108,0.05],"d":0.03,"h":0.015},{"lip":[41.108,1.2],"d":0.01,"h":0.041}]},
+  d:{"v":1,"c":[{"tip":[35.854,0.088],"d":0.05,"h":0.01},{"tip":[35.854,0.62],"d":0.01,"h":0.1}]},
+  f:{"v":0,"ten":0.049,"lou":0.23,"hold":0.001,"c":[{"lip":[39.57,0.509],"d":0.026}]},
+  g:{"v":1,"c":[{"t":[14.825,2.794],"bod":[22.009,0.1],"d":0.04,"h":0.015},{"t":[14.825,2.794],"bod":[22.009,1],"d":0.01,"h":0.03}]},
+  h:{"v":0,"c":[{"thr":[8,0.55]}]},
+  'dʒ':{"v":1,"keepT":1,"c":[{"t":[42.2,2.831],"lip":[41,1.3],"tip":[31.489,0.518]}]},
+  k:{"v":0,"alt":"g","c":[{"t":[14.825,2.794],"bod":[22.009,0.1],"d":0.005,"h":0.01},{"t":[14.825,2.794],"bod":[22.009,1],"d":0.005,"h":0.01}]},
+  l:{"v":1,"c":[{"t":[12.36,2.251],"tip":[37.938,0.75],"bod":[21,1.6]}]},
+  m:{"v":1,"ten":0.691,"lou":0.912,"hold":0.015,"c":[{"t":[12.21,2.879],"lip":[41.09,-1.142]}]},
+  n:{"v":1,"ten":0.691,"lou":0.912,"hold":0.106,"c":[{"t":[11,1.8],"tip":[35.88,-1.215],"d":0.053}]},
+  p:{"v":0,"alt":"b"},
+  r:{"ten":0.691,"lou":0.912,"c":[{"t":[16.8,1.6],"tip":[28.31,0.7],"thr":[7,0.65]}]},
+  s:{"v":0,"ten":0.049,"lou":0.04,"hold":0.001,"c":[{"t":[26.1,3.578],"tip":[35.67,0.58],"d":0.1}]},
+  t:{"v":0,"alt":"d"},
+  v:{"v":1,"hold":0.075,"alt":"f"},
+  w:{"v":1,"c":[{"t":[12.515,1.74],"lip":[41.215,0.858],"bod":[22,1]}]},
+  z:{"v":1,"ten":0.5,"lou":0.66,"hold":0.001,"c":[{"t":[37.8,3.578],"tip":[35.67,0.4],"d":0.016}]},
+  'ʒ':{"v":1,"c":[{"t":[38.116,4.172],"lip":[41,1.3],"tip":[31.583,0.594]}]},
+  'tʃ':{"v":0,"ten":0.02,"lou":0.02,"hold":0.01,"c":[{"t":[21.06,2.722],"lip":[41,1.3],"tip":[31.48,0.4],"d":0.01}]},
+  'ʃ':{"v":0,"lou":0.04,"hold":0.001,"alt":"ʒ"},
+  'θ':{"v":0,"c":[{"t":[27.661,2.689],"tip":[38.218,0.499]}]},
+  'ð':{"v":1,"alt":"θ"},
+  'ŋ':{"v":1,"ten":0.691,"lou":0.912,"hold":0.01,"osub":0.01,"nasal":1,"c":[{"t":[22.661,1.503],"bod":[22.111,-0.6],"d":0.05,"h":0.04},{"t":[22.661,1.503],"bod":[22.111,0.675]}]},
+  j:{"c":[{"t":[29.35,2.377]}]},
+  'æ':{"c":[{"t":[14.007,2.887],"d":0.12}]},
+  'eɪ':{"c":[{"t":[26.89,3.053],"d":0.12},{"t":[31.231,2.109],"d":0.12}]},
+  'ɛ':{"c":[{"t":[23.299,3.969],"d":0.12}]},
+  i:{"c":[{"t":[33.49,2.09],"d":0.12}]},
+  'ɪ':{"c":[{"t":[27.177,2.578],"d":0.12}]},
+  'aɪ':{"c":[{"t":[11.638,2.386],"d":0.12},{"t":[27.904,1.934],"d":0.12}]},
+  /* Repaired, like /ɔ/ before it. The table gave /ɒ/ (swan) t:[1.552,1.552] —
+     a tongue index below bladeStart, where setRestDiameter's cosine puts the
+     hump outside the region it shapes — and no lip rounding, though /ɒ/ is a
+     rounded vowel. Measured 630/2902, i.e. no real F2; this target gives
+     514/962 against a reference near 600/900. */
+  'ɒ':{"c":[{"t":[11,2.2],"lip":[40,1.15],"d":0.12}]},
+  'oʊ':{"c":[{"t":[10.081,2.354],"lip":[39.375,2.021],"d":0.12},{"t":[10.081,2.354],"lip":[39.375,0.818],"d":0.12}]},
+  'ʊ':{"c":[{"t":[19.631,2.487],"lip":[40.496,1.108],"d":0.12}]},
+  'ʌ':{"c":[{"t":[17.742,2.517],"d":0.12}]},
+  u:{"c":[{"t":[20.894,2.804],"lip":[39.592,0.775],"d":0.12}]},
+  'ɔɪ':{"c":[{"t":[15.181,2.168],"d":0.12},{"t":[34.008,1.923],"d":0.12}]},
+  'aʊ':{"c":[{"t":[13.432,2.858],"lip":[41.253,2.138],"d":0.12},{"t":[11,1.621],"lip":[41.253,1.01],"d":0.12}]},
+  'ə':{"c":[{"t":[20.785,2.818],"d":0.12}]},
+  'eəʳ':{"c":[{"t":[25.951,2.728],"tip":[30.627,2.764],"d":0.12},{"t":[18.08,2.48],"tip":[30.627,0.819],"d":0.12}]},
+  'ɑ:':{"c":[{"t":[10.557,2.314],"tip":[29.417,2.847],"d":0.12},{"t":[10.557,2.314],"tip":[30.796,0.968],"d":0.12}]},
+  'ɜ:ʳ':{"c":[{"t":[10.412,2.438],"tip":[31.352,1.065],"d":0.12}]},
+  'ɔ':{"c":[{"t":[12,2.1],"lip":[39.5,1.05],"d":0.12}]},
+  'ɪəʳ':{"c":[{"t":[35.939,1.348],"tip":[31.536,2.801],"d":0.12},{"t":[12.262,2.407],"tip":[32.213,0.844],"d":0.12}]},
+  'ʊəʳ':{"c":[{"t":[10.541,2.058],"lip":[41.007,0.869],"d":0.12},{"t":[14.252,2.831],"tip":[30.038,0.914],"d":0.12}]},
+};
+
+/* ── NRL letter-to-sound rules ───────────────────────────────────────────────
+   Elovitz, Johnson, McHugh & Shore (1976), NRL Report 7948. Public domain.
+   329 context rules of the form LEFT[MATCH]RIGHT=/PHONEMES/. Used ONLY for
+   words the dictionary does not carry — names, typos, invented words — so it
+   never has to beat the ~90% of English it gets right on its own. */
+var VT_NRL_SRC='[0]=/Z IH R OW/|[1]=/W AH N/|[2]=/T UW/|[3]=/TH R IY/|[4]=/F OW R/|[5]=/F AY V/|[6]=/S IH K S/|[7]=/S EH V AX N/|[8]=/EY T/|[9]=/N AY N/|[ ]\'=/ /|[ - ]=/ /|[ ]=/< >/|[-]=/<->/|. [\' S]=/Z/|#:.E [\' S]=/Z/|# [\' S]=/Z/|[\' ]=/ /|[,]=/<,>/|[.]=/<.>/|[?]=/<?>/|[A] =/AX/| [ARE] =/AA R/| [AR]O=/AX R/|[AR]#=/EH R/| ^[AS]#=/EY S/|[A]WA=/AX/|[AW]=/AO/| :[ANY]=/EH N IY/|[A]^+#=/EY/|#:[ALLY]=/AX L IY/| [AL]#=/AX L/|[AGAIN]=/AX G EH N/|#:[AG]E=/IH JH/|[A]^+:#=/AE/| :[A]^+ =/EY/|[A]^%=/EY/| [ARR]=/AX R/|[ARR]=/AE R/| :[AR] =/AA R/|[AR] =/ER/|[AR]=/AA R/|[AIR]=/EH R/|[AI]=/EY/|[AY]=/EY/|[AU]=/AO/|#:[AL] =/AX L/|#:[ALS] =/AX L Z/|[ALK]=/AO K/|[AL]^=/AO L/| :[ABLE]=/EY B AX L/|[ABLE]=/AX B AX L/|[ANG]+=/EY N JH/|[A]=/AE/| [BE]^#=/B IH/|[BEING]=/B IY IH NX/| [BOTH] =/B OW TH/| [BUS]#=/B IH Z/|[BUIL]=/B IH L/|[B]=/B/| [CH]^=/K/|^E[CH]=/K/|[CH]=/CH/| S[CI]#=/S AY/|[CI]A=/SH/|[CI]O=/SH/|[CI]EN=/SH/|[C]+=/S/|[CK]=/K/|[COM]%=/K AH M/|[C]=/K/|#:[DED] =/D IH D/|.E[D] =/D/|#^:E[D] =/T/| [DE]^#=/D IH/| [DO] =/D UW/| [DOES]=/D AH Z/| [DOING]=/D UW IH NX/| [DOW]=/D AW/|[DU]A=/JH UW/|[D]=/D/|#:[E] =/ /|\' ^:[E] =/ /| :[E] =/IY/|#[ED] =/D/|#:[E]D =/ /|[EV]ER=/EH V/|[E]^%=/IY/|[ERI]#=/IY R IY/|[ERI]=/EH R IH/|#:[ER]#=/ER/|[ER]#=/EH R/|[ER]=/ER/| [EVEN]=/IY V EH N/|#:[E]W=/ /|@[EW]=/UW/|[EW]=/Y UW/|[E]O=/IY/|#:&[ES] =/IH Z/|#:[E]S =/ /|#:[ELY] =/L IY/|#:[EMENT]=/M EH N T/|[EFUL]=/F UH L/|[EE]=/IY/|[EARN]=/ER N/| [EAR]^=/ER/|[EAD]=/EH D/|#:[EA] =/IY AX/|[EA]SU=/EH/|[EA]=/IY/|[EIGH]=/EY/|[EI]=/IY/| [EYE]=/AY/|[EY]=/IY/|[EU]=/Y UW/|[E]=/EH/|[FUL]=/F UH L/|[F]=/F/|[GIV]=/G IH V/| [G]I^=/G/|[GE]T=/G EH/|SU[GGES]=/G JH EH S/|[GG]=/G/| B#[G]=/G/|[G]+=/JH/|[GREAT]=/G R EY T/|#[GH]=/ /|[G]=/G/| [HAV]=/HH AE V/| [HERE]=/HH IY R/| [HOUR]=/AW ER/|[HOW]=/HH AW/|[H]#=/HH/|[H]=/ /| [IN]=/IH N/| [I] =/AY/|[IN]D=/AY N/|[IER]=/IY ER/|#:R[IED] =/IY D/|[IED] =/AY D/|[IEN]=/IY EH N/|[IE]T=/AY EH/| :[I]%=/AY/|[I]%=/IY/|[IE]=/IY/|[I]^+:#=/IH/|[IR]#=/AY R/|[IZ]%=/AY Z/|[IS]%=/AY Z/|[I]D%=/AY/|+^[I]^+=/IH/|[I]T%=/AY/|#^:[I]^+=/IH/|[I]^+=/AY/|[IR]=/ER/|[IGH]=/AY/|[ILD]=/AY L D/|[IGN] =/AY N/|[IGN]^=/AY N/|[IGN]%=/AY N/|[IQUE]=/IY K/|[I]=/IH/|[J]=/JH/| [K]N=/ /|[K]=/K/|[LO]C#=/L OW/|L[L]=/ /|#^:[L]%=/AX L/|[LEAD]=/L IY D/|[L]=/L/|[MOV]=/M UW V/|[M]=/M/|E[NG]+=/N JH/|[NG]R=/NX G/|[NG]#=/NX G/|[NGL]%=/NX G AX L/|[NG]=/NX/|[NK]=/NX K/| [NOW] =/N AW/|[N]=/N/|[OF] =/AX V/|[OROUGH]=/ER OW/|#:[OR] =/ER/|#:[ORS] =/ER Z/|[OR]=/AO R/| [ONE]=/W AH N/|[OW]=/OW/| [OVER]=/OW V ER/|[OV]=/AH V/|[O]^%=/OW/|[O]^EN=/OW/|[O]^I#=/OW/|[OL]D=/OW L/|[OUGHT]=/AO T/|[OUGH]=/AH F/| [OU]=/AW/|H[OU]S#=/AW/|[OUS]=/AX S/|[OUR]=/AO R/|[OULD]=/UH D/|^[OU]^L=/AH/|[OUP]=/UW P/|[OU]=/AW/|[OY]=/OY/|[OING]=/OW IH NX/|[OI]=/OY/|[OOR]=/AO R/|[OOK]=/UH K/|[OOD]=/UH D/|[OO]=/UW/|[O]E=/OW/|[O] =/OW/|[OA]=/OW/| [ONLY]=/OW N L IY/| [ONCE]=/W AH N S/|[ON \' T]=/OW N T/|C[O]N=/AA/|[O]NG=/AO/| ^:[O]N=/AH/|I[ON]=/AX N/|#:[ON] =/AX N/|#^[ON]=/AX N/|[O]ST =/OW/|[OF]^=/AO F/|[OTHER]=/AH DH ER/|[OSS] =/AO S/|#^:[OM]=/AH M/|[O]=/AA/|[PH]=/F/|[PEOP]=/P IY P/|[POW]=/P AW/|[PUT] =/P UH T/|[P]=/P/|[QUAR]=/K W AO R/|[QU]=/K W/|[Q]=/K/| [RE]^#=/R IY/|[R]=/R/|[SH]=/SH/|#[SION]=/ZH AX N/|[SOME]=/S AH M/|#[SUR]#=/ZH ER/|[SUR]#=/SH ER/|#[SU]#=/ZH UW/|#[SSU]#=/SH UW/|#[SED] =/Z D/|#[S]#=/Z/|[SAID]=/S EH D/|^[SION]=/SH AX N/|[S]S=/ /|.[S] =/Z/|#:.E[S] =/Z/|#^:##[S] =/Z/|#^:#[S] =/S/|U[S] =/S/| :#[S] =/Z/| [SCH]=/S K/|[S]C+=/ /|#[SM]=/Z M/|#[SN] \'=/Z AX N/|[S]=/S/| [THE] =/DH AX/|[TO] =/T UW/|[THAT] =/DH AE T/| [THIS] =/DH IH S/| [THEY]=/DH EY/| [THERE]=/DH EH R/|[THER]=/DH ER/|[THEIR]=/DH EH R/| [THAN] =/DH AE N/| [THEM] =/DH EH M/|[THESE] =/DH IY Z/| [THEN]=/DH EH N/|[THROUGH]=/TH R UW/|[THOSE]=/DH OW Z/|[THOUGH] =/DH OW/| [THUS]=/DH AH S/|[TH]=/TH/|#:[TED] =/T IH D/|S[TI]#N=/CH/|[TI]O=/SH/|[TI]A=/SH/|[TIEN]=/SH AX N/|[TUR]#=/CH ER/|[TU]A=/CH UW/| [TWO]=/T UW/|[T]=/T/| [UN]I=/Y UW N/| [UN]=/AH N/| [UPON]=/AX P AO N/|@[UR]#=/UH R/|[UR]#=/Y UH R/|[UR]=/ER/|[U]^ =/AH/|[U]^^=/AH/|[UY]=/AY/| G[U]#=/ /|G[U]%=/ /|G[U]#=/W/|#N[U]=/Y UW/|@[U]=/UW/|[U]=/Y UW/|[VIEW]=/V Y UW/|[V]=/V/| [WERE]=/W ER/|[WA]S=/W AA/|[WA]T=/W AA/|[WHERE]=/WH EH R/|[WHAT]=/WH AA T/|[WHOL]=/HH OW L/|[WHO]=/HH UW/|[WH]=/WH/|[WAR]=/W AO R/|[WOR]^=/W ER/|[WR]=/R/|[W]=/W/|[X]=/K S/|[YOUNG]=/Y AH NX/| [YOU]=/Y UW/| [YES]=/Y EH S/| [Y]=/Y/|#^:[Y] =/IY/|#^:[Y]I=/IY/| :[Y] =/AY/| :[Y]#=/AY/| :[Y]^+:#=/IH/| :[Y]^#=/AY/|[Y]=/IH/|[Z]=/Z/';
+/* Context classes, expanded into regex fragments exactly as published. */
+var VT_NRL_CLS={'#':'[AEIOUY]+','.':'[BDVGJLMNRWZ]','%':'(?:ER|E|ES|ED|ING|ELY)',
+  '&':'(?:S|C|G|Z|X|J|CH|SH)','@':'(?:T|S|R|D|L|Z|N|J|TH|CH|SH)',
+  '^':'[BCDFGHJKLMNPQRSTVWXZ]','+':'[EIY]',':':'[BCDFGHJKLMNPQRSTVWXZ]*'};
+/* NRL emits the Votrax symbol set; fold it onto the phoneme table's IPA keys.
+   WH has no separate entry in the table, so it falls in with W. */
+var VT_NRL_IPA={AA:'\u0251:',AE:'\u00e6',AH:'\u028c',AO:'\u0254',AW:'a\u028a',AX:'\u0259',
+  AY:'a\u026a',EH:'\u025b',ER:'\u025c:\u02b3',EY:'e\u026a',IH:'\u026a',IY:'i',OW:'o\u028a',
+  OY:'\u0254\u026a',UH:'\u028a',UW:'u',B:'b',CH:'t\u0283',D:'d',DH:'\u00f0',F:'f',G:'g',
+  HH:'h',JH:'d\u0292',K:'k',L:'l',M:'m',N:'n',NX:'\u014b',P:'p',R:'r',S:'s',SH:'\u0283',
+  T:'t',TH:'\u03b8',V:'v',W:'w',WH:'w',Y:'j',Z:'z',ZH:'\u0292'};
+var vtNrlRules=null;
+function vtNrlBuild(){
+  vtNrlRules=[];
+  function esc(t){return t.replace(/[.*+?^${}()|[\]\\]/g,'\\$&');}
+  function cls(t){var o='';for(var i=0;i<t.length;i++){var c=t.charAt(i);
+    o+=VT_NRL_CLS[c]!==undefined?VT_NRL_CLS[c]:esc(c);}return o;}
+  var lines=VT_NRL_SRC.split('|');
+  for(var i=0;i<lines.length;i++){
+    var m=/^(.*?)\[([^\]]+)\](.*?)=(.+)$/.exec(lines[i]);
+    if(!m)continue;
+    /* Left context anchors to the end of what has been consumed, right context
+       to the start of what remains — the published algorithm, unchanged. */
+    vtNrlRules.push({l:new RegExp(cls(m[1])+'$'),r:new RegExp('^'+esc(m[2])+cls(m[3])),
+                     n:m[2].length,p:m[4].replace(/\//g,'').trim()});
+  }
+}
+function vtSpkNrl(word){
+  if(!vtNrlRules)vtNrlBuild();
+  /* Padded with spaces because the rules spell "word edge" as a literal space. */
+  var s=' '+word.toUpperCase().replace(/[^A-Z']+/g,' ')+' ',out=[],i=1;
+  while(i<s.length){
+    var done=s.slice(0,i),rest=s.slice(i),hit=null;
+    for(var k=0;k<vtNrlRules.length;k++){var R=vtNrlRules[k];
+      if(R.l.test(done)&&R.r.test(rest)){hit=R;break;}}
+    if(!hit){i++;continue;}
+    var ps=hit.p.split(/\s+/);
+    for(var j=0;j<ps.length;j++){var ip=VT_NRL_IPA[ps[j]];if(ip)out.push(ip);}
+    i+=hit.n;
+  }
+  return out;
+}
+
+/* ── text → phonemes ────────────────────────────────────────────────────────
+   Dictionary first (20k words, frequency-ranked CMUdict mapped onto the phoneme
+   table's inventory), NRL rules for everything else. */
+var VT_SPK_DICT=null,VT_SPK_DECODE=null,VT_SPK_DICTSTATE='none';
+
+/* The asset is front-coded: each line starts with a letter giving how many
+   characters it shares with the previous word. Decoding is one pass. */
+function vtSpkDictDecode(text){
+  var lines=text.split('\n'),map={},prev='',dec=null;
+  for(var i=0;i<lines.length;i++){
+    var ln=lines[i];if(!ln)continue;
+    if(ln.charAt(0)==='#'){dec=ln.slice(4).split(' ');continue;}
+    var sp=ln.indexOf(' ');if(sp<0)continue;
+    var n=ln.charCodeAt(0)-97,w=prev.slice(0,n)+ln.slice(1,sp);
+    map[w]=ln.slice(sp+1);prev=w;
+  }
+  VT_SPK_DECODE=dec;return map;
+}
+function vtSpkDictLoad(){
+  if(VT_SPK_DICTSTATE==='ready')return Promise.resolve(VT_SPK_DICT);
+  if(VT_SPK_DICTSTATE==='loading')return VT_SPK_DICTP;
+  VT_SPK_DICTSTATE='loading';
+  VT_SPK_DICTP=fetch('vtdict.txt').then(function(r){return r.text();}).then(function(t){
+    VT_SPK_DICT=vtSpkDictDecode(t);VT_SPK_DICTSTATE='ready';return VT_SPK_DICT;
+  }).catch(function(){
+    /* A missing dictionary is not fatal — the rules cover every word, just less
+       accurately — so fall through rather than refusing to speak. */
+    VT_SPK_DICT={};VT_SPK_DICTSTATE='ready';return VT_SPK_DICT;
+  });
+  return VT_SPK_DICTP;
+}
+var VT_SPK_DICTP=null;
+
+/* One entry decodes to {ph:[...], stress:[0|1,...]}. */
+function vtSpkDictGet(word){
+  if(!VT_SPK_DICT)return null;
+  var code=VT_SPK_DICT[word];if(code===undefined)return null;
+  var ph=[],st=[];
+  for(var i=0;i<code.length;i++){
+    var c=code.charAt(i);
+    if(c==='!'){if(st.length)st[st.length-1]=1;continue;}
+    ph.push(VT_SPK_DECODE[c.charCodeAt(0)-35]);st.push(0);
+  }
+  return{ph:ph,stress:st};
+}
+
+/* Function words carry no accent and are spoken short — the cheapest
+   naturalness win available in English. */
+var VT_SPK_FUNC=(' a an the and or but if of to in on at by for with from as is '+
+  'are was were be been am do does did has have had will would can could shall '+
+  'should may might must not no nor so than that this these those there here it '+
+  'its he she they we you i him her them us my your his our their me who whom '+
+  'which what when where why how all any some each into over under up out off '+
+  'about again then once more most such only own same too very just now').trim().split(/\s+/);
+
+var VT_SPK_VOWELS={'æ':1,'eɪ':1,'ɛ':1,'i':1,'ɪ':1,'aɪ':1,'ɒ':1,'oʊ':1,'ʊ':1,'ʌ':1,
+  'u':1,'ɔɪ':1,'aʊ':1,'ə':1,'eəʳ':1,'ɑ:':1,'ɜ:ʳ':1,'ɔ':1,'ɪəʳ':1,'ʊəʳ':1};
+
+/* NRL gives no stress, so place it: one syllable is stressed if the word is not
+   a function word; two put it on the first unless a common unstressed prefix
+   says otherwise; longer words fall back to the antepenult, overridden by the
+   suffixes that always pull stress onto the syllable before them. */
+var VT_SPK_PREFIX=['a','be','de','re','in','un','ex','pre','con','com','em','en','per','pro'];
+var VT_SPK_SUFFIX=['tion','sion','ity','ic','ical','ially','ially','ial','ious','eous'];
+function vtSpkStress(word,ph){
+  var vi=[];for(var i=0;i<ph.length;i++)if(VT_SPK_VOWELS[ph[i]])vi.push(i);
+  var st=[];for(i=0;i<ph.length;i++)st.push(0);
+  if(!vi.length)return st;
+  if(VT_SPK_FUNC.indexOf(word)>=0)return st;
+  var n=vi.length,pick=0;
+  if(n===1)pick=0;
+  else if(n===2){
+    pick=0;
+    for(i=0;i<VT_SPK_PREFIX.length;i++)if(word.indexOf(VT_SPK_PREFIX[i])===0){pick=1;break;}
+  }else{
+    pick=n-3;
+    for(i=0;i<VT_SPK_SUFFIX.length;i++){
+      var sfx=VT_SPK_SUFFIX[i];
+      if(word.length>sfx.length&&word.slice(-sfx.length)===sfx){pick=Math.max(0,n-2);break;}
+    }
+  }
+  st[vi[pick]]=1;return st;
+}
+
+var VT_SPK_NUM=['zero','one','two','three','four','five','six','seven','eight','nine','ten',
+  'eleven','twelve','thirteen','fourteen','fifteen','sixteen','seventeen','eighteen','nineteen'];
+var VT_SPK_TENS=['','','twenty','thirty','forty','fifty','sixty','seventy','eighty','ninety'];
+function vtSpkNum2Words(n){
+  n=Math.floor(Math.abs(n));
+  if(n<20)return[VT_SPK_NUM[n]];
+  if(n<100){var o=[VT_SPK_TENS[Math.floor(n/10)]];if(n%10)o.push(VT_SPK_NUM[n%10]);return o;}
+  if(n<1000){var o=[VT_SPK_NUM[Math.floor(n/100)],'hundred'];if(n%100)o=o.concat(vtSpkNum2Words(n%100));return o;}
+  if(n<1000000){var o=vtSpkNum2Words(Math.floor(n/1000)).concat(['thousand']);
+    if(n%1000)o=o.concat(vtSpkNum2Words(n%1000));return o;}
+  /* Anything larger is read digit by digit; a poetry instrument does not need
+     to say "four hundred and seventy-three million". */
+  var o=[],s=String(n);for(var i=0;i<s.length;i++)o.push(VT_SPK_NUM[+s.charAt(i)]);return o;
+}
+
+/* ── elongation ──────────────────────────────────────────────────────────────
+   "aaaaaa" should hold one /a/ rather than restart six of them, and "hhhhhhhh"
+   should be a long breath rather than silence. A run of three or more identical
+   letters means "hold this sound": each letter past the second buys
+   VT_SPK_HOLD_PER seconds of steady hold.
+
+   The run collapses to TWO letters for lookup, never one. One walks straight
+   into the dictionary — "aaa" is "triple A", and so are hmmm/ieee/oooh — and
+   worse into the NRL letter-name rules, where "h" reads as "aitch" and "m" as
+   "em". Two letters dodges both: "aa", "hh", "mm" are none of those. */
+var VT_SPK_HOLD_PER=0.100,VT_SPK_HOLD_MAX=2.0;
+/* Letters that are their own phoneme. Needed because NRL's [H]=/ / emits
+   nothing for an H with no following vowel, so "hhhhhhhh" produces an empty
+   phoneme list and the token is dropped outright — the word vanishes with no
+   sound and no error. */
+var VT_SPK_LETTER={h:'h',m:'m',n:'n',s:'s',z:'z',f:'f',v:'v',l:'l',r:'r',w:'w',
+                   b:'b',d:'d',g:'g',k:'k',p:'p',t:'t',j:'d\u0292',y:'j'};
+
+function vtSpkElong(w){
+  var m=w.match(/(.)\1{2,}/g);
+  if(!m)return null;
+  var longest=0;
+  for(var i=0;i<m.length;i++)if(m[i].length>longest)longest=m[i].length;
+  return{hold:Math.min(VT_SPK_HOLD_MAX,(longest-2)*VT_SPK_HOLD_PER),
+         canon:w.replace(/(.)\1{2,}/g,'$1$1')};
+}
+/* Collapse adjacent identical phonemes, and drop the schwa NRL appends to every
+   word-final A — that trailing "…uh" is a large part of why a held "aaaa"
+   currently comes out as "aaaeaeaaeoo". */
+function vtSpkHoldClean(g){
+  var ph=[],st=[],i;
+  for(i=0;i<g.ph.length;i++){
+    if(ph.length&&ph[ph.length-1]===g.ph[i]){if(g.stress[i])st[st.length-1]=1;continue;}
+    ph.push(g.ph[i]);st.push(g.stress[i]||0);
+  }
+  if(ph.length>1&&ph[ph.length-1]==='\u0259'&&VT_SPK_VOWELS[ph[ph.length-2]]){ph.pop();st.pop();}
+  return{ph:ph,stress:st};
+}
+function vtSpkLetterPh(w){
+  var ph=[],prev='',i;
+  for(i=0;i<w.length;i++){var c=w.charAt(i);if(c===prev)continue;prev=c;
+    var q=VT_SPK_LETTER[c];if(q)ph.push(q);}
+  return{ph:ph,stress:ph.map(function(){return 0;})};
+}
+
+function vtSpkG2P(word){
+  var d=vtSpkDictGet(word);
+  if(d)return d;
+  var ph=vtSpkNrl(word);
+  return{ph:ph,stress:vtSpkStress(word,ph)};
+}
+
+/* Split into sentences of tokens. Punctuation survives as pause markers rather
+   than being dropped, because it is most of what prosody has to work with. */
+function vtSpkNormText(text){
+  var sentences=[],cur=[];
+  /* Text beginning with / is raw IPA — an escape hatch for debugging, and
+     genuinely useful for writing pronunciation into a score. */
+  if(/^\s*\//.test(text)){
+    var raw=text.replace(/^\s*\//,'').trim().split(/\s+/).filter(Boolean);
+    return[[{w:'',ph:raw,stress:raw.map(function(){return 0;}),fn:false}]];
+  }
+  /* Case is NOT folded here any more: an all-caps word is a shout. The token
+     is lowercased individually for lookup, so G2P, the dictionary, VT_SPK_FUNC
+     and vtSpkStress all still see exactly what they saw before. */
+  var t=text.replace(/[‘’ʼ]/g,"'").replace(/[“”]/g,'');
+  var re=/([A-Za-z']+)|(\d+)|([,;:])|([.!?\n])|([-\u2013\u2014])|(\S)/g,m;
+  while((m=re.exec(t))!==null){
+    if(m[1]){
+      var raw=m[1].replace(/^'+|'+$/g,'');if(!raw)continue;
+      var w=raw.toLowerCase();
+      /* Shout on two or more letters, all upper case. That excludes an ordinary
+         sentence-initial capital ("The"), the pronoun "I", and "I'm" — and does
+         fire on LEAVE, DON'T and USA. Acronyms are a knowing false positive:
+         any length rule that spared USA would also spare NO and STOP, which are
+         exactly the words someone types in caps on purpose. */
+      var sh=raw.length>=2&&raw===raw.toUpperCase()&&/[A-Z]/.test(raw);
+      /* A run of 3+ identical letters is a held sound: look up the collapsed
+         form, clean the result, and fall back to the letters themselves if the
+         rules produced nothing at all. */
+      var el=vtSpkElong(w),hold=0,g;
+      if(el){
+        hold=el.hold;
+        g=vtSpkHoldClean(vtSpkG2P(el.canon));
+        if(!g.ph.length)g=vtSpkLetterPh(el.canon);
+      }else g=vtSpkG2P(w);
+      if(g.ph.length)cur.push({w:w,ph:g.ph,stress:g.stress,
+        fn:VT_SPK_FUNC.indexOf(w)>=0,shout:sh,hold:hold});
+    }else if(m[2]){
+      var ws=vtSpkNum2Words(+m[2]);
+      for(var i=0;i<ws.length;i++){var gg=vtSpkG2P(ws[i]);
+        if(gg.ph.length)cur.push({w:ws[i],ph:gg.ph,stress:gg.stress,fn:false});}
+    }else if(m[5]){
+      continue;   /* a dash separates words rather than vanishing */
+    }else if(m[3]){
+      if(cur.length)cur.push({brk:'comma'});
+    }else if(m[4]){
+      if(cur.length){cur.push({brk:'end',q:m[4]==='?'});sentences.push(cur);cur=[];}
+    }
+  }
+  if(cur.length){cur.push({brk:'end',q:false});sentences.push(cur);}
+  return sentences;
+}
+
+/* ── gesture compiler ───────────────────────────────────────────────────────
+   Tokens → keyframes → flat Float64Array program. The keyframe half is a port
+   of generateKeyframes from the reference (MIT, © 2026 Mateo Cámara); the
+   column-fill and prosody halves are ours. */
+var VT_SPK_MIN_STEP=0.012;   /* one audio block is 11.6ms; a shorter step is stepped straight over */
+/* Any zone showing a negative diameter is the table's nasal marker. */
+function vtSpkVelum(zc){for(var q=0;q<zc.length;q++)if(zc[q][1]<0)return 0.4;return 0.01;}
+var VT_SPK_TPHON=0.1,VT_SPK_TSUB=0.01,VT_SPK_HOLDC=0.05,VT_SPK_RELEASE=0.1;
+var VT_SPK_WORDGAP=0.09,VT_SPK_COMMA=0.28,VT_SPK_SENTGAP=0.55;
+/* Terminal relax: how long the end-of-phrase move may stay audible, how far
+   the pitch may fall from wherever it already is, and how far toward the rest
+   pose the articulators travel while it is still audible. These gaps are the
+   time BETWEEN phrases, and everything used to interpolate across the whole of
+   it — 550ms of pitch gliding to an absolute -5 semitones with all four zones
+   sweeping to park, 280ms at every comma. The gap durations are unchanged, so
+   phrase pacing is identical; only the audible move at the head of it shrinks. */
+var VT_SPK_END_MS=0.040,VT_SPK_END_ST=1.2,VT_SPK_END_Z=0.25;
+
+function vtSpkVoiceness(v){var t=1-Math.cos(v*Math.PI*0.5);return{ten:t,lou:Math.pow(t,0.25)};}
+function vtSpkInfo(ph){var p=VT_SPK_PHONEMES[ph];if(!p)return null;
+  /* `alt` means "same geometry as its twin, different voicing" — so geometry
+     and timing come across, but ten/lou must NOT. They are the voicing, and
+     inheriting them made /v/ (v:1, alt:'f') speak as a voiceless /f/, because
+     /f/ carries an explicit ten 0.049 / lou 0.23. */
+  if(!p.alt)return p;var b=VT_SPK_PHONEMES[p.alt],o={};
+  for(var k in b)o[k]=b[k];
+  if(p.ten===undefined)delete o.ten;
+  if(p.lou===undefined)delete o.lou;
+  for(k in p)o[k]=p[k];return o;}
+
+/* ── phoneme classes ────────────────────────────────────────────────────────
+   VT_SPK_VOWELS is the authority for vowel-ness, not ('v' in p): the reference
+   table has `r` and `j` with their voiced key commented out, so the old test
+   classed both as vowels and gave them vowel timing. */
+var VT_SPK_SIB={s:1,z:1,'ʃ':1,'ʒ':1};
+var VT_SPK_FRICS={f:1,v:1,'θ':1,'ð':1,h:1};
+var VT_SPK_AFFR={'tʃ':1,'dʒ':1};
+var VT_SPK_NASAL={m:1,n:1,'ŋ':1};
+var VT_SPK_LIQ={l:1,r:1};
+var VT_SPK_GLIDE={w:1,j:1};
+var VT_SPK_STOP={b:1,d:1,g:1,p:1,t:1,k:1};
+var VT_SPK_VSTOP={b:1,d:1,g:1};
+function vtSpkClass(ph){
+  if(VT_SPK_VOWELS[ph])return 'vowel';
+  if(VT_SPK_STOP[ph])return 'stop';
+  if(VT_SPK_SIB[ph])return 'sib';
+  if(VT_SPK_AFFR[ph])return 'affr';
+  if(VT_SPK_FRICS[ph])return 'fric';
+  if(VT_SPK_NASAL[ph])return 'nasal';
+  if(VT_SPK_LIQ[ph])return 'liquid';
+  if(VT_SPK_GLIDE[ph])return 'glide';
+  return 'fric';
+}
+
+/* ── duration model ─────────────────────────────────────────────────────────
+   [move, hold] in seconds at rate 1.0. These REPLACE the reference table's
+   d/h values rather than clamping toward them: those were measured for
+   acoustic-landmark placement, not synthesis, and scattered from 24ms (/z/,
+   /tʃ/ — inaudible) to 195ms with no linguistic logic. Every value here is
+   above the 12ms block floor, so VT_SPK_MIN_STEP goes back to being a safety
+   net instead of the thing that defined /k/.
+   The 55ms stop closure is also mechanical: reshapeTract needs roughly that
+   long for the realized diameter to reach 0 and fire the release transient. */
+var VT_SPK_DUR={
+  stopClose:[0.020,0.055],
+  stopCloseC:[0.015,0.030], /* coda, or before another stop: much shorter */
+  stopRelV :[0.012,0.013],   /* voiced: short-lag VOT */
+  stopRelU :[0.012,0.013],   /* voiceless: aspiration follows as its own step */
+  aspir    :[0.012,0.025],   /* long-lag VOT — breath, no voicing */
+  sib      :[0.022,0.040],  /* was 25/60 — the longest fricative class */
+  fric     :[0.025,0.045],
+  affr     :[0.020,0.085],
+  nasal    :[0.040,0.045],
+  liquid   :[0.045,0.030],
+  glide    :[0.050,0.020],
+  vowel    :[0.070,0.015],
+  vowelS   :[0.110,0.045],
+  diph     :[0.060,0.015],
+  diphS    :[0.090,0.030]
+};
+/* Class gate for two UNRELATED decisions in the compiler — the vowel-space
+   expansion and the VOWLOU trim, both testing `fric===0`. It is NOT the
+   turbulence control and never reaches the buffer; that is VT_SPK_FRICM.
+   Keep it strictly 0/1 or those two behaviours change silently. */
+var VT_SPK_FRICAMT={sib:1,fric:1,affr:1,vowel:0,nasal:0,liquid:0,glide:0,stop:0};
+/* Per-keyframe turbulence gain (the VT_SPK_FRICM column). A voiced fricative
+   genuinely makes less frication than its voiceless twin — vibrating folds cut
+   the pressure drop across the constriction. Everything not listed gets 0,
+   which is what silences /ŋ/'s 0.675 release and /r/'s 0.65 pharyngeal
+   constriction: both sit inside the 0.30-0.70 turbulence window and were
+   hissing, /r/ the louder of the two at 40% gain. Their geometry is left alone
+   so no formant target moves — measured, /r/'s F3 is 1770Hz for every throat
+   diameter from 0.65 to 0.90, so the noise was never doing any work. */
+var VT_SPK_FRICM_VOICED=0.7,VT_SPK_FRICM_BURST=0.25;
+/* Per-phoneme override of the class default. /f/ and /s/ have nearly identical
+   constriction gains (1.00 vs 0.96) but sound nothing alike in how much noise
+   they push: /f/ carries lou 0.23, so most of its output is voiced body and
+   only a little is turbulence, while /s/ sits at lou 0.04 and IS the noise.
+   Measured, a global cut takes /s/ down 6.7dB and /f/ only 0.3dB — which is
+   why "quieter fricatives" has to be per-phoneme or it takes /f theta/ below
+   where they belong long before /s/ arrives. Sibilant noise also sits high in
+   the spectrum where the ear is most sensitive, so it reads wider than its
+   energy. Floor is identity, not loudness: /s/ has no voicing to fall back on,
+   so below roughly 0.5 it stops being an /s/ rather than just getting softer. */
+var VT_SPK_FRICM_PH={s:0.72,'ʃ':0.72,z:0.50,'ʒ':0.50,'tʃ':0.78,'dʒ':0.52};
+
+/* ── clarity tuning ─────────────────────────────────────────────────────────
+   Grouped so they can be dialled by hand. Every one of these applies only
+   while speaking; hand-played VOICE is untouched.
+     VOICED/VOICELESS   glottal drive. 0.84 gives tenseness 0.751 -> Rd 0.75:
+                        a flatter spectral tilt than the 0.691 this began at,
+                        without going all the way to the Rd>=0.5 clamp at 0.8333.
+     VBAR_*             the voice bar through a voiced stop's occlusion.
+     ASP_*              the aspiration step after a voiceless stop release.
+     EXPAND             vowel-space expansion away from the schwa centroid.
+     SHOUT_*            per-word CAPS, from the measured Lombard profile. */
+var VT_SPK_VOICED=0.84,VT_SPK_VOICELESS=0.2;
+var VT_SPK_VBAR_INT=0.25,VT_SPK_VBAR_TEN=0.55,VT_SPK_VBAR_LOU=0.30;
+/* Aspiration must be UNVOICED. loudness scales the periodic glottal pulse, so
+   anything much above zero leaves an audible buzz under the breath — and makes
+   the voiced/voiceless boundary unmeasurable as well as unclear. int is the
+   level control for asp (loudness never touches it); 0.38 sits a little under
+   -15dB re the vowel, which is where real aspiration lives. */
+var VT_SPK_ASP_TEN=0.04,VT_SPK_ASP_LOU=0.05,VT_SPK_ASP_INT=0.38;
+var VT_SPK_VONSET=0.020;   /* how fast voicing arrives after aspiration */
+/* Same trick after a fricative. A vowel's move is 70-110ms, and after /s/ that
+   whole glide is audible as dead time between the hiss and the vowel — it is
+   the larger half of the "gap after S", bigger than the sibilant's own hold.
+   Real fricative-to-vowel transitions run ~30ms. Longer than VONSET because
+   this one is a genuine formant transition and not just voicing switching on;
+   collapsed all the way to 20ms it clicks. The remainder moves into the hold,
+   so the vowel arrives sooner and lasts longer rather than the word shortening. */
+var VT_SPK_FONSET=0.030;
+/* Klatt-style duration factors. Class targets alone reproduce phoneme identity
+   but not RHYTHM, and rhythm is most of what lets a listener find word
+   boundaries. Applied multiplicatively against a floor so nothing collapses:
+   dt = floor + (nominal-floor) * Πfactors. */
+var VT_SPK_D_FINAL=1.40;    /* phrase-final syllable — the pre-pause lengthening */
+var VT_SPK_D_NONFIN=0.85;   /* segment before the word's last syllable */
+var VT_SPK_D_POLY=0.85;     /* word has more than one syllable */
+var VT_SPK_D_UNSTR=0.80;    /* consonant in an unstressed syllable */
+var VT_SPK_D_FLOOR=0.55;    /* fraction of nominal that nothing shrinks below */
+/* Rate elasticity. Dividing every duration by `rate` makes VOT scale 1:1 with
+   the slider — at 1.8 a 75ms aspiration becomes 42ms and the voicing contrast
+   collapses. Real speakers compress consonants far less than vowels. */
+var VT_SPK_EL_VOW=1.00,VT_SPK_EL_CON=0.60,VT_SPK_EL_STP=0.30;
+var VT_SPK_EXPAND_I=1.06,VT_SPK_EXPAND_D=1.25;
+var VT_SPK_CENT_I=20.785,VT_SPK_CENT_D=2.818;
+var VT_SPK_TI_LO=11,VT_SPK_TI_HI=33.5,VT_SPK_TD_LO=1.2,VT_SPK_TD_HI=3.6;
+var VT_SPK_PRS_HZ=3000,VT_SPK_PRS_Q=1.0,VT_SPK_PRS_DB=2.0;
+var VT_SPK_VOWLOU=0.92;                      /* trim vowels so consonants sit closer */
+var VT_SPK_ANTIC=0.65;                       /* tongue bias toward the FOLLOWING target */
+/* /h/ is a voiceless copy of the vowel it introduces, so its constriction
+   follows that vowel's tongue across the throat band — front vowels give a
+   brighter breath, back vowels a darker one. That is both the phonetics and
+   what this tract measurably does: HF/LF runs 0.61 at index 4 up to 1.41 at 10.
+   Diameter is the intensity control, because the turbulence window closes at
+   0.70: 0.55 is full gain, 0.60 about 80%, 0.66 about a third. Intervocalic
+   /h/ is genuinely weak in English — often voiced [ɦ] — so softening it there
+   is a correction rather than a preference. */
+var VT_SPK_H_LO=5,VT_SPK_H_HI=11;
+var VT_SPK_H_D_STRONG=0.55,VT_SPK_H_D_MID=0.60,VT_SPK_H_D_WEAK=0.66;
+var VT_SPK_SHOUT_DUR=1.2,VT_SPK_SHOUT_ST=5,VT_SPK_SHOUT_ACC=1.4;
+/* SHOUT_TEN is small on purpose: tenseness is already 0.813 and the Rd knee is
+   at 0.8333, so there are only 0.02 units of headroom. A bigger number would
+   just clamp and imply a brightness change that cannot happen. The shout gets
+   its carrying power from F0, duration, loudness and F1 instead. */
+var VT_SPK_SHOUT_TEN=0.03,VT_SPK_SHOUT_TD=0.10,VT_SPK_SHOUT_LOU=1.0;
+var VT_SPK_TEN_MAX=0.8333;   /* the Rd knee: Rd=3(1-ten) clamps at 0.5 here, and
+                                above it only the breath floor moves — downward.
+                                Measured 2-4kHz tilt: ten .691 -19.6dB, .813
+                                -14.3dB, .95 -16.8dB. Raising this makes it duller. */
+
+/* One sentence of tokens → keyframes carrying a semitone offset for prosody. */
+/* Pitch has to land on something voiced and open to be heard. A word ending in
+   an obstruent has nowhere to put a fall: the move happens while the voice is
+   already dying, which reads as a glide down AFTER the word rather than on it.
+   Sonorants and vowels can carry it, so they keep it. */
+function vtSpkSonorant(ph){
+  return !!(VT_SPK_VOWELS[ph]||VT_SPK_NASAL[ph]||VT_SPK_LIQ[ph]||VT_SPK_GLIDE[ph]);
+}
+function vtSpkTokEndsSonorant(tok){
+  return !!(tok&&tok.ph&&tok.ph.length&&vtSpkSonorant(tok.ph[tok.ph.length-1]));
+}
+function vtSpkKeyframes(tokens){
+  var out=[],i,j,k;
+  var nTok=0;for(i=0;i<tokens.length;i++)if(!tokens[i].brk)nTok++;
+  var seen=0,nucleusDone=false,isQ=false;
+  for(i=tokens.length-1;i>=0;i--)if(tokens[i].brk==='end'){isQ=!!tokens[i].q;break;}
+
+  for(i=0;i<tokens.length;i++){
+    var tok=tokens[i];
+    if(tok.brk==='comma'){out.push({name:',',dt:VT_SPK_COMMA,int:0,sil:1,st:1.5});continue;}
+    if(tok.brk==='end'){
+          /* The question rise survives regardless — it is the only thing marking a
+             question — but the fall is dropped after an obstruent and the pitch
+             simply holds where the last voiced segment left it. */
+          var lw=null;for(k=i-1;k>=0;k--)if(!tokens[k].brk){lw=tokens[k];break;}
+          var prevSt=out.length?(out[out.length-1].st||0):0;
+          var endSt=isQ?7:(vtSpkTokEndsSonorant(lw)?prevSt-VT_SPK_END_ST:prevSt);
+          out.push({name:'.',dt:VT_SPK_SENTGAP,int:0,sil:1,st:endSt});continue;
+        }
+    seen++;
+    var pos=nTok>1?(seen-1)/(nTok-1):0;
+    var decl=-2.64*pos;                       /* -0.22 octaves across the sentence */
+    var isLastWord=(seen===nTok);
+    var rateScale=tok.fn?0.85:1;              /* function words are short and flat */
+    /* Syllable structure, computed once per word: which vowel each segment
+       belongs to, whether that syllable is stressed, and where the last
+       syllable starts. */
+    var vIdx=[];for(k=0;k<tok.ph.length;k++)if(VT_SPK_VOWELS[tok.ph[k]])vIdx.push(k);
+    var nSyl=vIdx.length,lastV=nSyl?vIdx[nSyl-1]:-1;
+    var isPoly=nSyl>1,isPhraseFinal=isLastWord;
+    /* CAPS: the measured Lombard profile — longer, louder, brighter, higher. */
+    var shout=!!tok.shout;
+    var durScale=rateScale*(shout?VT_SPK_SHOUT_DUR:1);
+    var accentDecay=0,aspirated=false,fricPrev=false;
+    /* An elongated token holds one sound. The extra time lands on the last
+       vowel — or the last phoneme if the word has none — and goes entirely
+       into that segment's HOLD, so the target is constant and the tract sits
+       still instead of re-attacking six times. */
+    var holdAt=tok.hold?(lastV>=0?lastV:tok.ph.length-1):-1;
+    /* A held phoneme with no tongue of its own (/h/) would be swept by the
+       anticipatory interpolation, turning a long breath into a swooping
+       filter. Pin it: the next tongue in the word, else a neutral one. */
+    var heldT=null;
+    if(holdAt>=0){
+      var hp0=vtSpkInfo(tok.ph[holdAt]);
+      if(hp0&&hp0.c&&!hp0.c[0].t){
+        for(k=holdAt+1;k<tok.ph.length;k++){var np=vtSpkInfo(tok.ph[k]);
+          if(np&&np.c&&np.c[0].t){heldT=np.c[0].t;break;}}
+        if(!heldT)heldT=[VT_SPK_CENT_I,VT_SPK_CENT_D];
+      }
+    }
+
+    for(j=0;j<tok.ph.length;j++){
+      var ph=tok.ph[j],p=vtSpkInfo(ph);
+      if(!p||!p.c)continue;
+      var cls=vtSpkClass(ph),isVow=(cls==='vowel'),isCons=!isVow;
+      /* Consonants with no `v` key (r, j) are voiced, not voiceless. */
+      var vness=isVow?VT_SPK_VOICED:(p.v===undefined?VT_SPK_VOICED:(p.v?VT_SPK_VOICED:VT_SPK_VOICELESS));
+      var vc=vtSpkVoiceness(vness);
+      /* On an elongated token the held segment takes the long duration class but
+         no accent. The stress rule is positional (antepenult), so on a run of six
+         vowels it put +4 semitones on the fourth one — and the bump moved as
+         letters were added. Flat is what a held sound wants. */
+      var stressed=holdAt>=0?(j===holdAt):(isVow&&tok.stress[j]);
+      if(stressed&&holdAt<0){
+        accentDecay=(isLastWord&&!nucleusDone)?4:3;
+        if(isLastWord)nucleusDone=true;
+      }
+      var semis=decl+(tok.fn?-1:0)+accentDecay*(shout?VT_SPK_SHOUT_ACC:1)+(shout?VT_SPK_SHOUT_ST:0);
+      accentDecay*=0.45;                      /* accent decays over the next two steps */
+      var fricAmt=VT_SPK_FRICAMT[cls];if(fricAmt===undefined)fricAmt=0;
+      var dm,dh;
+      /* Klatt factors for this segment. */
+      var fac=1;
+      if(isPoly)fac*=VT_SPK_D_POLY;
+      if(lastV>=0&&j<lastV)fac*=VT_SPK_D_NONFIN;
+      /* j===lastV, not j>=lastV: this is a phoneme index, not a syllable nucleus,
+         so the old test stretched every coda consonant by 1.40 as well — which is
+         the whole reason a word-final /k/ held a 89ms closure against 70ms for the
+         same stop word-initially. */
+      if(isPhraseFinal&&lastV>=0&&j===lastV)fac*=VT_SPK_D_FINAL;
+      if(isCons){
+        /* nearest following vowel decides the syllable's stress */
+        var sv=-1;for(k=j;k<tok.ph.length;k++)if(VT_SPK_VOWELS[tok.ph[k]]){sv=k;break;}
+        if(sv<0)for(k=j;k>=0;k--)if(VT_SPK_VOWELS[tok.ph[k]]){sv=k;break;}
+        if(sv>=0&&!tok.stress[sv])fac*=VT_SPK_D_UNSTR;
+      }
+      var el=isVow?VT_SPK_EL_VOW:(cls==='stop'?VT_SPK_EL_STP:VT_SPK_EL_CON);
+      /* A consonant made of several sub-targets (only /ŋ/) shares one segment's
+         worth of time between them rather than taking a full slot each. */
+      var sub=(!isVow&&cls!=='stop'&&p.c.length>1)?1/p.c.length:1;
+      /* What follows decides most of a stop's shape. English aspirates a
+         voiceless stop before a VOWEL and essentially nowhere else, and a stop
+         before another stop is unreleased — one closure, shift place, one burst. */
+      var nextPh=(j+1<tok.ph.length)?tok.ph[j+1]:null;
+      var nextStop=!!(nextPh&&VT_SPK_STOP[nextPh]);
+      var nextVow=!!(nextPh&&VT_SPK_VOWELS[nextPh]);
+      var isCoda=(lastV>=0&&j>lastV);
+      /* Emitting only the closure is done by shortening the LOOP, never by
+         touching p.c: `last` is measured against p.c.length, so this leaves the
+         aspiration block dormant while the closure keeps its silence. */
+      var nCi=(cls==='stop'&&nextStop)?1:p.c.length;
+
+      /* /h/ gets a per-token constriction rather than the table's fixed one. */
+      var hOver=null;
+      if(ph==='h'){
+        var nv=-1;for(k=j+1;k<tok.ph.length;k++)if(VT_SPK_VOWELS[tok.ph[k]]){nv=k;break;}
+        var vti=VT_SPK_CENT_I;
+        if(nv>=0){var vp=vtSpkInfo(tok.ph[nv]);if(vp&&vp.c&&vp.c[0].t)vti=vp.c[0].t[0];}
+        var hu=(vti-VT_SPK_TI_LO)/(VT_SPK_TI_HI-VT_SPK_TI_LO);
+        hu=hu<0?0:(hu>1?1:hu);
+        var prevV=j>0&&VT_SPK_VOWELS[tok.ph[j-1]];
+        hOver={thr:[VT_SPK_H_LO+hu*(VT_SPK_H_HI-VT_SPK_H_LO),
+                    j===0?VT_SPK_H_D_STRONG:(prevV&&nv===j+1?VT_SPK_H_D_WEAK:VT_SPK_H_D_MID)]};
+      }
+
+      for(var ci=0;ci<nCi;ci++){
+        var c=hOver||p.c[ci],last=ci===p.c.length-1,dur;
+        if(cls==='stop')dur=VT_SPK_DUR[ci===0?((isCoda||nextStop)?'stopCloseC':'stopClose')
+                                       :(VT_SPK_VSTOP[ph]?'stopRelV':'stopRelU')];
+        else if(isVow)dur=VT_SPK_DUR[p.c.length>1?(stressed?'diphS':'diph'):(stressed?'vowelS':'vowel')];
+        else dur=VT_SPK_DUR[cls]||VT_SPK_DUR.fric;
+        var dm=dur[0],dh=dur[1];
+        if(isVow&&ci===0&&aspirated){dh=dh+dm-VT_SPK_VONSET;dm=VT_SPK_VONSET;aspirated=false;}
+        else if(isVow&&ci===0&&fricPrev&&dm>VT_SPK_FONSET){dh=dh+dm-VT_SPK_FONSET;dm=VT_SPK_FONSET;}
+        if(ci===0)fricPrev=(cls==='sib'||cls==='fric'||cls==='affr');
+        var isHeld=(j===holdAt&&ci===nCi-1);
+        var fricM=0;
+        if(cls==='sib'||cls==='fric'||cls==='affr')fricM=(p.v===0)?1:VT_SPK_FRICM_VOICED;
+        else if(cls==='stop'&&ci>0)fricM=VT_SPK_FRICM_BURST;
+        if(VT_SPK_FRICM_PH[ph]!==undefined&&cls!=='stop')fricM=VT_SPK_FRICM_PH[ph];
+        var base={name:ph+(p.c.length>1?'('+ci+')':''),int:1,
+          ten:p.ten!==undefined?p.ten:vc.ten,lou:p.lou!==undefined?p.lou:vc.lou,
+          t:c.t||(isHeld?heldT:null),z:c,st:semis,fric:fricAmt,shout:shout,
+            steady:isHeld?1:0,fricm:fricM};
+        var move={},held={};
+        for(k in base){move[k]=base[k];held[k]=base[k];}
+        /* floor + (nominal - floor) * factors, so a heavily-reduced segment
+           still exists rather than vanishing into the 12ms block floor */
+        var fm=dm*VT_SPK_D_FLOOR,fh=dh*VT_SPK_D_FLOOR;
+        move.dt=(fm+(dm-fm)*fac)*sub*durScale;move.el=el;
+        held.dt=(fh+(dh-fh)*fac)*sub*durScale;held.el=el;
+        /* Absolute, not rate-scaled: "aaaa" adds the same held time whatever the
+           rate slider is doing. */
+        if(isHeld)held.dt+=tok.hold;
+        held.name=base.name+']';
+        out.push(move,held);
+        /* A stop is only a stop if its closure is distinct from the release.
+           Voiceless: silence. Voiced: a low-frequency voice bar, which is what
+           English voiced stops actually do and gives a second cue alongside
+           VOT. Word-initial stops keep voicing — nothing to close off yet —
+           and nasal stops need airflow through the nose throughout. */
+        if(ci===0&&isCons&&p.c.length>1&&!(i===0&&j===0)&&!p.nasal){
+          if(VT_SPK_VSTOP[ph]){
+            move.int=held.int=VT_SPK_VBAR_INT;
+            move.ten=held.ten=VT_SPK_VBAR_TEN;
+            move.lou=held.lou=VT_SPK_VBAR_LOU;
+          }else{move.int=0;held.int=0;}
+        }
+        if(ci===0&&p.nasal){move.int=1;held.int=1;}
+        /* Long-lag VOT: a voiceless stop releases into breath before the next
+           segment voices. Low tenseness with intensity up is aspiration —
+           asp = int*(1-sqrt(ten))*... — so this is loud breath, no voicing.
+           Without it /p b/, /t d/ and /k g/ carry no contrast at all. */
+        if(cls==='stop'&&last&&!VT_SPK_VSTOP[ph]&&p.c.length>1&&nextVow){
+          var asp={};for(k in base)asp[k]=base[k];
+          asp.name=base.name+'ʰ';
+          asp.dt=VT_SPK_DUR.aspir[1]*durScale;asp.el=VT_SPK_EL_STP;
+          asp.int=VT_SPK_ASP_INT;asp.ten=VT_SPK_ASP_TEN;asp.lou=VT_SPK_ASP_LOU;
+          out.push(asp);aspirated=true;
+        }
+      }
+    }
+    /* Same at a word boundary. The coast row carries intensity rather than
+           zeroing it, so its move is audible too — but only obstruent-final words
+           hold their pitch. Vowel- and sonorant-final words still relax to the
+           declination baseline, which is what keeps a sentence sounding like one. */
+        if(seen<nTok){
+          var lastSt=out.length?(out[out.length-1].st||0):0;
+          var gapSt=(!vtSpkTokEndsSonorant(tok)&&out.length)?lastSt:decl;
+          if(gapSt<lastSt-VT_SPK_END_ST)gapSt=lastSt-VT_SPK_END_ST;
+          out.push({name:' ',dt:VT_SPK_WORDGAP,coast:1,st:gapSt});
+        }
+  }
+  return out;
+}
+
+function vtSpkCompile(kfs,opts){
+  opts=opts||{};
+  /* Layout and rest pose come from the engine, so the compiler and the tick
+     that reads its output cannot drift apart. */
+  /* Layout, rest pose AND the column map all come from the engine, so the
+     compiler and the tick that reads its output cannot drift apart. */
+  var dims=VT.spkDims(),S=dims.stride,PARK=dims.park,RTI=dims.rest[0],RTD=dims.rest[1];
+  var COL=dims.col,ZN=dims.zones,NZ=ZN.length;
+  var rate=opts.rate||1,f0=opts.f0||118,i,zi;
+  function parked(){var a=[];for(var q=0;q<NZ;q++)a.push([null,PARK]);return a;}
+  function row(o){o.tset=o.tset||false;return o;}
+  var rows=[row({t:0,int:0,ten:0.6,lou:0.9,ti:RTI,td:RTD,z:parked(),vel:0.01,st:0,fric:0,steady:0,fricm:0,tset:true})];
+  var t=0,ten=0.6,lou=0.9,zc=parked();
+  for(i=0;i<kfs.length;i++){
+    var k=kfs[i];
+    t+=Math.max(VT_SPK_MIN_STEP,(k.dt||0)/Math.pow(rate,k.el===undefined?1:k.el));
+    if(k.coast){
+      /* Word gap: hold the pose. The velum must be recomputed, not pinned to
+         0.01 — a word ending in /m/ or /n/ carries a negative front diameter,
+         which handleTouches turns into a full oral closure, so pinning the
+         velum shut produced a silent occluded tract after every word-final
+         nasal. Intensity is carried rather than forced to 1 for the same
+         reason. */
+      var pr=rows[rows.length-1],zk=zc.slice();
+      rows.push(row({t:t,int:pr.int,ten:ten,lou:lou,ti:null,td:null,z:zk,
+                 vel:vtSpkVelum(zk),st:k.st||0,fric:pr.fric,steady:0,fricm:pr.fricm||0}));
+      continue;
+    }
+    if(k.sil){
+      var pz=rows[rows.length-1];
+      if(t-pz.t>VT_SPK_END_MS*1.5){
+        rows.push(row({t:pz.t+VT_SPK_END_MS,int:0,ten:ten,lou:lou,ti:null,td:null,
+                   z:zc.map(function(e){return[e[0],e[1]+(PARK-e[1])*VT_SPK_END_Z];}),
+                   vel:0.01,st:k.st||0,fric:0,steady:0,fricm:0}));
+      }
+      zc=zc.map(function(e){return[e[0],PARK];});
+      rows.push(row({t:t,int:0,ten:ten,lou:lou,ti:null,td:null,z:zc.slice(),
+                 vel:0.01,st:k.st||0,fric:0,steady:0,fricm:0}));
+      continue;
+    }
+    var ti=null,td=null,tset=false;
+    if(k.t){
+      ti=k.t[0];td=k.t[1];tset=true;
+      /* Clear speech expands the vowel space: push the tongue away from the
+         schwa centroid so the corners of the vowel triangle stay apart under
+         articulator lag. Consonants keep their exact targets. */
+      if(k.fric===0&&VT_SPK_VOWELS[(k.name||'').replace(/[\[\]()0-9ʰ\]]/g,'')]){
+        ti=VT_SPK_CENT_I+(ti-VT_SPK_CENT_I)*VT_SPK_EXPAND_I;
+        td=VT_SPK_CENT_D+(td-VT_SPK_CENT_D)*VT_SPK_EXPAND_D;
+      }
+      /* Jaw opening in shouted speech happens on open and mid vowels. Applying
+         it to /i u ɪ ʊ/ raises F1 but drags F2 the wrong way, blurring exactly
+         the vowels that need their F2. */
+      if(k.shout&&td>=2.4)td+=VT_SPK_SHOUT_TD;
+      ti=ti<VT_SPK_TI_LO?VT_SPK_TI_LO:(ti>VT_SPK_TI_HI?VT_SPK_TI_HI:ti);
+      td=td<VT_SPK_TD_LO?VT_SPK_TD_LO:(td>VT_SPK_TD_HI?VT_SPK_TD_HI:td);
+    }
+    ten=k.ten;lou=k.lou;
+    if(k.shout){ten+=VT_SPK_SHOUT_TEN*ten;lou=VT_SPK_SHOUT_LOU;}
+    else if(k.fric===0&&k.int===1)lou*=VT_SPK_VOWLOU;   /* raise consonants relative to vowels */
+    if(ten>VT_SPK_TEN_MAX)ten=VT_SPK_TEN_MAX;
+    if(lou>1)lou=1;
+    /* Each zone takes its own target for this segment, or parks. A zone that
+       parks keeps its index (filled in below) so it waits where it will next be
+       needed instead of travelling. */
+    zc=[];
+    for(zi=0;zi<NZ;zi++){var zv=k.z?k.z[ZN[zi].name]:null;zc.push(zv?[zv[0],zv[1]]:[null,PARK]);}
+    /* A negative diameter is the table's nasal marker: handleTouches turns it
+       into a full oral closure, and the velum must be opened explicitly because
+       its own heuristic needs < -0.8 and /ŋ/'s back constriction is only -0.6. */
+    rows.push(row({t:t,int:k.int,ten:ten,lou:lou,ti:ti,td:td,z:zc.slice(),
+               vel:vtSpkVelum(zc),st:k.st||0,name:k.name,fric:k.fric||0,
+               steady:k.steady||0,fricm:k.fricm||0,tset:tset}));
+  }
+  /* Same at the very end. The tongue carries rather than sweeping to RTI/RTD
+     while anything is still audible, and st holds where the last segment left
+     it instead of gliding back to 0 — the full park happens on the row after,
+     in silence, where it costs nothing. */
+  var lz=rows[rows.length-1];
+  rows.push(row({t:t+VT_SPK_END_MS/rate,int:0,ten:0.6,lou:0.9,ti:null,td:null,
+             z:zc.map(function(e){return[e[0],e[1]+(PARK-e[1])*VT_SPK_END_Z];}),
+             vel:0.01,st:lz.st||0,fric:0,steady:0,fricm:0}));
+  rows.push(row({t:t+VT_SPK_RELEASE/rate,int:0,ten:0.6,lou:0.9,ti:RTI,td:RTD,
+             z:parked(),vel:0.01,st:lz.st||0,fric:0,steady:0,fricm:0,tset:true}));
+
+  /* A parked constriction must WAIT where it will next be needed rather than
+     sweeping across the tract on its way in: carry each index backwards from
+     the next engaged frame, then forwards from the previous one. */
+  for(zi=0;zi<NZ;zi++){
+    var carry=null;
+    for(i=rows.length-1;i>=0;i--){if(rows[i].z[zi][0]!==null)carry=rows[i].z[zi][0];else rows[i].z[zi][0]=carry;}
+    carry=ZN[zi].park;
+    for(i=0;i<rows.length;i++){if(rows[i].z[zi][0]!==null)carry=rows[i].z[zi][0];else rows[i].z[zi][0]=carry;}
+  }
+
+  /* Anticipatory coarticulation. Seven phonemes (b d f h p t v) specify no
+     tongue at all, and simply holding the previous position through them blunts
+     exactly the formant transitions that carry consonant place. Instead
+     interpolate in time between the nearest specified targets either side,
+     biased toward the FOLLOWING one — so in "beat" the tongue is already most
+     of the way to /i/ during the /b/ closure, and /h/ takes the colour of the
+     vowel after it rather than the one before. */
+  var setIdx=[];
+  for(i=0;i<rows.length;i++)if(rows[i].tset)setIdx.push(i);
+  for(var si=0;si<setIdx.length-1;si++){
+    var a=setIdx[si],b2=setIdx[si+1];
+    if(b2-a<2)continue;
+    var ra=rows[a],rb=rows[b2],span=rb.t-ra.t;
+    for(i=a+1;i<b2;i++){
+      var u=span>0?(rows[i].t-ra.t)/span:1;
+      u=u+(1-u)*u*(2*VT_SPK_ANTIC-1);          /* bias toward the next target */
+      if(u<0)u=0;else if(u>1)u=1;
+      rows[i].ti=ra.ti+(rb.ti-ra.ti)*u;
+      rows[i].td=ra.td+(rb.td-ra.td)*u;
+    }
+  }
+  /* anything still unset (trailing rows) holds the last known pose */
+  var lti=RTI,ltd=RTD;
+  for(i=0;i<rows.length;i++){
+    if(rows[i].ti===null)rows[i].ti=lti;else lti=rows[i].ti;
+    if(rows[i].td===null)rows[i].td=ltd;else ltd=rows[i].td;
+  }
+
+  var buf=new Float64Array(rows.length*S);
+  for(i=0;i<rows.length;i++){
+    /* Written through the published column map, never literal offsets: the tick
+       reads by name, and a layout change that touched only one side used to be
+       an undetectable desync. */
+    var r=rows[i],o=i*S;
+    buf[o+COL.t]=r.t;buf[o+COL.int]=r.int;buf[o+COL.ten]=r.ten;buf[o+COL.lou]=r.lou;
+    buf[o+COL.frq]=f0*Math.pow(2,(r.st||0)/12);
+    buf[o+COL.ti]=r.ti;buf[o+COL.td]=r.td;buf[o+COL.vel]=r.vel;
+    buf[o+COL.steady]=r.steady||0;
+    buf[o+COL.fricm]=r.fricm===undefined?1:r.fricm;
+    for(zi=0;zi<NZ;zi++){buf[o+ZN[zi].i]=r.z[zi][0];buf[o+ZN[zi].d]=r.z[zi][1];}
+  }
+  return{buf:buf,n:rows.length,rows:rows,dur:rows[rows.length-1].t};
+}
+
+/* ── transport ──────────────────────────────────────────────────────────────
+   One sentence is the unit of both compilation and playback. Each sentence's
+   program ends with its own trailing silence, and the next sentence is compiled
+   during that gap, so nothing ever compiles while the tract is mid-word. */
+var vtSpkOn=false,vtSpkLoop=false,vtSpkPlaying=false;
+/* Rate 1.0 is now the tuned default: VT_SPK_DUR states timings in real
+   milliseconds, so rate is a plain multiplier rather than a divisor the table
+   was implicitly calibrated against. */
+var vtSpkRate=1.0,vtSpkQueue=[],vtSpkQi=0;
+
+function vtSpkSetRate(v){vtSpkRate=0.6+(v/100)*1.2;vtSpkUiSave();}
+function vtSpkRateSlider(r){return Math.round((r-0.6)/1.2*100);}
+
+function vtSpkToggle(){if(vtSpkPlaying)vtSpkStop();else vtSpkStart();}
+
+function vtSpkPresence(on){
+  if(!vtPrsF||!AC)return;
+  var g=vtPrsF.gain;
+  if(on){g.setTargetAtTime(VT_SPK_PRS_DB,AC.currentTime,0.02);return;}
+  /* setTargetAtTime is asymptotic and never actually lands on 0, which would
+     leave the filter a hair off identity forever. A linear ramp reaches its
+     endpoint exactly. */
+  g.cancelScheduledValues(AC.currentTime);
+  g.setValueAtTime(g.value,AC.currentTime);
+  g.linearRampToValueAtTime(0,AC.currentTime+0.03);
+}
+function vtSpkStart(){
+  if(!vtInitialized)return;
+  getAC();vtSpkPresence(true);
+  var el=document.getElementById('vtSpeakText');
+  var text=el?el.value:'';
+  if(!text.replace(/\s/g,''))return;
+  vtSpkPlaying=true;vtSpkSyncUI();
+  /* The dictionary is ~240KB and only fetched the first time anyone speaks, so
+     the button shows a loading state rather than appearing to do nothing. */
+  vtSpkDictLoad().then(function(){
+    if(!vtSpkPlaying)return;                  /* stopped while the fetch was in flight */
+    vtSpkQueue=vtSpkNormText(text);vtSpkQi=0;
+    if(!vtSpkQueue.length){vtSpkStop();return;}
+    VT.spkOnEnd(vtSpkAdvance);
+    vtSpkSpeakCurrent();
+    vtSpkSyncUI();
+  });
+}
+function vtSpkSpeakCurrent(){
+  var s=vtSpkQueue[vtSpkQi];
+  /* Pitch comes from the pitch strip, clamped to a plausible speaking range —
+     the tract can sing at 300Hz but nobody talks up there. */
+  var f0=Math.max(70,Math.min(260,VT.getPitch()));
+  var prog=vtSpkCompile(vtSpkKeyframes(s),{rate:vtSpkRate,f0:f0});
+  VT.spkBegin(prog.buf,prog.n);
+}
+function vtSpkAdvance(){
+  if(!vtSpkPlaying)return;
+  vtSpkQi++;
+  if(vtSpkQi>=vtSpkQueue.length){
+    if(!vtSpkLoop){vtSpkStop();return;}
+    vtSpkQi=0;
+  }
+  vtSpkSpeakCurrent();
+}
+function vtSpkStop(){
+  vtSpkPlaying=false;VT.spkOnEnd(null);VT.spkEnd();vtSpkPresence(false);vtSpkSyncUI();
+}
+function vtSpkToggleLoop(){
+  vtSpkLoop=!vtSpkLoop;
+  var b=document.getElementById('vtLoopBtn');if(b)b.classList.toggle('on',vtSpkLoop);
+  vtSpkUiSave();
+}
+
+/* While SPEAK owns the voice, the two controls the engine ignores are dimmed
+   and made unclickable — the nsVs* convention — so they cannot be flipped into
+   a state that silently does nothing. OTOTUNE and `free` stay live: they are
+   the point, and they retune the speech melody as it plays. */
+function vtSpkSyncUI(){
+  var b=document.getElementById('vtSpeakBtn');
+  if(b){b.textContent=vtSpkPlaying?(VT.spkActive()?'stop':'…'):'speak';
+        b.classList.toggle('on',vtSpkPlaying);}
+  var ids=['vtAlwaysVoiceBtn','vtAutoWobbleBtn'];
+  for(var i=0;i<ids.length;i++){var e=document.getElementById(ids[i]);
+    if(e)e.classList.toggle('ns-dim',vtSpkPlaying);}
+}
+function syncVoiceUI(){
+  var t=document.getElementById('vtSpeakText');if(t)t.value=vtSpkText||'';
+  var r=document.getElementById('vtSpeakRateR');if(r)r.value=vtSpkRateSlider(vtSpkRate);
+  var l=document.getElementById('vtLoopBtn');if(l)l.classList.toggle('on',vtSpkLoop);
+  var v=document.getElementById('vtVolR');if(v)v.value=vtVol;
+  if(vtInitialized){
+    var m=[['vtOtotuneBtn',VT.getOtotune()],['vtFreeBtn',VT.getFree()],
+           ['vtAutoWobbleBtn',VT.getAutoWobble()],['vtAlwaysVoiceBtn',VT.getAlwaysVoice()]];
+    for(var i=0;i<m.length;i++){var e=document.getElementById(m[i][0]);
+      if(e)e.classList.toggle('on',!!m[i][1]);}
+  }
+  vtSpkSyncUI();
+}
+
+/* ── persistence ────────────────────────────────────────────────────────────
+   The posc_ idiom: one prefixed singleton, read-modify-write, written on every
+   keystroke. Nothing here is expensive enough to need debouncing. */
+var vtSpkText='';
+function vtSpkUiGet(){try{return JSON.parse(localStorage.getItem('pvt_ui'))||{};}catch(e){return{};}}
+function vtSpkUiSet(o){try{localStorage.setItem('pvt_ui',JSON.stringify(o));}catch(e){}}
+function vtSpkUiSave(){
+  var u=vtSpkUiGet(),t=document.getElementById('vtSpeakText');
+  if(t)vtSpkText=t.value;
+  u.text=vtSpkText;u.rate=vtSpkRate;u.loop=vtSpkLoop?1:0;
+  vtSpkUiSet(u);
+}
+function vtSpkUiLoad(){
+  var u=vtSpkUiGet();
+  if(typeof u.text==='string')vtSpkText=u.text;
+  if(isFinite(u.rate))vtSpkRate=Math.max(0.6,Math.min(1.8,+u.rate));
+  vtSpkLoop=!!u.loop;
+}
+
+
 /* ═══════ INIT ═══════ */
 syncRsW();
 initSwpTypeSel('rsPitchTypeSel','linear',function(t){rsPitchType=t;});
 initSwpTypeSel('rsVolTypeSel','linear',function(t){rsVolType=t;});
 nsVsRefreshFader();nsVsSyncDim();nsSpdRefresh();nsVolRefresh();initNsVolRange();
+vtSpkUiLoad();syncVoiceUI();
 initSwpTypes('swpFqTypes','linear',t=>{swpFqType=t;});
 rsVolRenderDir();rsPitchRenderDir();
 nsVsRenderDir();
@@ -4263,6 +5600,9 @@ document.addEventListener('visibilitychange',function(){
   if(multiSweepActive){multiSweepLastFrame=performance.now();if(multiSweepRAF)cancelAnimationFrame(multiSweepRAF);multiSweepRAF=requestAnimationFrame(multiSweepTick);}
   if(muVolActive){muVolLastFrame=performance.now();if(muVolRAF)cancelAnimationFrame(muVolRAF);muVolRAF=requestAnimationFrame(muVolTick);}
   if(vtMounted&&vtRAF){cancelAnimationFrame(vtRAF);vtRAF=requestAnimationFrame(vtRedraw);}
+  /* SPEAK needs no restamping — it runs on Glottis.totalTime, the audio clock,
+     so it cannot drift. But resuming mid-word minutes later is just confusing. */
+  if(vtSpkPlaying&&gone>2000)vtSpkStop();
 });
 
 // ═══ LANDING OVERLAY ═══
