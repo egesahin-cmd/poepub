@@ -148,8 +148,9 @@ input[type=range]::-moz-range-thumb{width:20px;height:20px;border-radius:50%;bac
 #mathsSettings .vedit{font-size:12px!important;width:46px!important;padding:1px 3px;color:#111!important}
 .ms-toggle-row{display:flex;justify-content:space-between;align-items:center;width:100%;max-width:360px;padding:2px 0}
 .ms-tlabel{font-size:8.4px;color:#222;letter-spacing:1px}
-.ms-toggle{width:34px;height:18px;padding:0;font-size:8px;font-weight:600;letter-spacing:1px;border-radius:1px;cursor:pointer;background:#f8f4eb;color:#000;border:1px solid #000;font-family:inherit;line-height:16px;text-align:center;flex-shrink:0}
-.ms-toggle.on{background:#000;color:#fff}
+/* same scheme as the on/off chips: black with beige text off, beige with black text on */
+.ms-toggle{width:34px;height:18px;padding:0;font-size:8px;font-weight:600;letter-spacing:1px;border-radius:1px;cursor:pointer;background:#222;color:#ede7d4;border:1px solid #222;font-family:inherit;line-height:16px;text-align:center;flex-shrink:0}
+.ms-toggle.on{background:#ede7d4;color:#111}
 #msMasterWrap .ms-label{display:inline}
 /* label was inline (baseline-aligned) and the unit floated (line-box-top aligned), which left
    the unit ~9px high; one flex row centres them against each other regardless of font metrics */
@@ -501,6 +502,42 @@ input[type=range]::-moz-range-thumb{width:20px;height:20px;border-radius:50%;bac
 #nsVsPanel .af-swp-lbl,#nsVsPanel .lbl{color:#222;}
 #nsVsPanel .vnum{color:#111;}
 #nsVsPanel .vunit{color:#777;}
+/* ═══ RATIO FILTER (nsRf) — 32-band harmonic filterbank, MATHS-derived ═══ */
+/* Capped to the TOP of NOISE, above the centred logo. The bar's top 20px is the EQ display; directly
+   under it sit the on/off chip, the drawer grip and the octave selector, then the sliders when open.
+   The bar sizes itself from that content (padding-top holds the strip zone open), so there is nothing
+   to measure and no resize hook to register. #nsRfStrips is inset:0, so the strips run full height
+   behind everything for free, and #nsStage (flex:1, min-height:0) yields the height as rows appear. */
+#nsRfPanel{width:100%;max-width:400px;margin:0 auto;flex:0 0 auto;padding:18px 12px 4px;display:flex;flex-direction:column;position:relative;z-index:6;background:transparent;}
+#nsRfBar{position:relative;width:100%;padding-top:20px;border-radius:2px;background:linear-gradient(#cbc4b0,#ece6d5);box-shadow:inset 0 1px 3px rgba(0,0,0,.4);overflow:hidden;}
+#nsRfPanel.rf-open #nsRfBar{box-shadow:inset 0 1px 3px rgba(0,0,0,.4),0 4px 14px rgba(0,0,0,.12);}
+#nsRfStrips{position:absolute;inset:0;pointer-events:none;transition:opacity .2s;}
+#nsRfPanel:not(.rf-on) #nsRfStrips{opacity:.42;}
+/* In LOG frequency a bandpass's -3dB width is exactly 1/Q nepers regardless of f0, so every strip
+   is the same thickness and the bar literally reads as the Q. Width is a % with a px floor, which
+   means resize needs no JS at all. */
+.nsrf-strip{position:absolute;top:0;bottom:0;background:#222;transform:translateX(-50%);}
+.nsrf-strip.nsrf-mute{background:#8a8478;opacity:.3;}
+.nsrf-strip.nsrf-out{background:#8a8478;opacity:.22;}
+/* The exposed 20px strip zone also works the drawer. It has to be its own layer rather than a handler
+   on #nsRfBar, or every slider click inside #nsRfBody would bubble up and close the panel. */
+#nsRfHit{position:absolute;top:0;left:0;right:0;height:20px;z-index:3;cursor:pointer;}
+#nsRfBody{position:relative;z-index:2;display:flex;flex-direction:column;gap:6px;padding:6px 10px 10px;box-sizing:border-box;}
+/* the chip + grip stay visible closed; only the octave box and the sliders are drawer contents */
+#nsRfHdr{display:flex;align-items:center;gap:6px;width:100%;height:22px;}
+#nsRfLabelBtn{margin-left:0;}
+#nsRfOctNum{margin-left:auto;cursor:pointer;}
+#nsRfPanel:not(.rf-open) #nsRfOctNum{display:none;}
+#nsRfPanel:not(.rf-open) .nsrf-row{display:none;}
+.nsrf-row{display:flex;align-items:center;gap:6px;width:100%;height:22px;background:rgba(248,244,235,.82);border-radius:2px;padding:0 5px;box-sizing:border-box;}
+.nsrf-row .nsrf-lbl{flex:0 0 44px;font-size:8.4px;color:#222;letter-spacing:1px;line-height:1;}
+.nsrf-row .nsrf-ctl{flex:1 1 auto;position:relative;height:20px;min-width:0;}
+.nsrf-row .pulse-num{flex:0 0 auto;height:16px;padding:0 5px;}
+.nsrf-row .pulse-num .pnum-v{font-size:10px;}
+.nsrf-row input[type=range]{position:absolute;top:50%;left:0;width:100%;height:3px;border-radius:2px;background:#ccc;transform:translateY(-50%);box-shadow:none;}
+.nsrf-row input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:16px;height:16px;border-radius:50%;background:#333;border:2px solid #ede7d4;box-shadow:none;}
+.nsrf-row input[type=range]::-moz-range-thumb{width:16px;height:16px;border-radius:50%;background:#333;border:2px solid #ede7d4;}
+#nsRfBandsCtl .dual-thumb{width:16px;height:16px;border-width:2px;}   /* NSRF_PAD must stay half of this */
 /* ═══ MATHS volume-sweep LFO (muVs) — collapsible strip above the volume slider ═══ */
 /* the whole LFO is one frame when open (settings-panel width), covering the advanced row + strip down to the fader */
 #muVsPanel{position:relative;width:calc(100% + 35px);max-width:395px;display:flex;flex-direction:column;gap:9px}
@@ -535,6 +572,9 @@ input[type=range]::-moz-range-thumb{width:20px;height:20px;border-radius:50%;bac
 /* Shared by the MATHS and NOISE pulse switches. OFF is a quiet grey label at the same weight and
    colour the rest of the small print uses (.ms-unit is #777 at this very size); turning it ON is what
    makes it bold, so the weight change reads as the state change and not just the inverted chip. */
+/* on/off chips: BEIGE when off, BLACK when on. #nsVolRangeBtn shares the class and wants exactly
+   this too, so it needs no exemption rules — keep it that way. (.ms-toggle is the inverse on
+   purpose: black off, beige on.) */
 .pulse-lbl{display:inline-flex;align-items:center;height:20px;margin-left:-7px;padding:0 6px;font-family:inherit;font-size:8.4px;font-weight:500;letter-spacing:1px;color:#777;background:#ede7d4;border:1px solid rgba(0,0,0,.14);border-radius:2px;cursor:pointer;line-height:1;white-space:nowrap}
 .pulse-lbl.on{background:#222;color:#ede7d4;border-color:#222;font-weight:700}
 /* panel caret: points UP while the panel is closed (it opens upward), flips DOWN once open */
@@ -838,6 +878,24 @@ input[type=range]::-moz-range-thumb{width:20px;height:20px;border-radius:50%;bac
   <div id="nsBg"></div>
   <img id="nsBird" src="white-circle.png" alt="">
   <div id="nsPlayBtn" onclick="toggleNoise()"></div>
+  <div id="nsRfPanel">
+    <div id="nsRfBar">
+      <div id="nsRfStrips"></div>
+      <div id="nsRfBody">
+        <div id="nsRfHdr">
+          <button class="pulse-lbl" id="nsRfLabelBtn" onclick="nsRfToggle()" role="switch" aria-checked="false" aria-label="ratio filter on/off">ratio filter</button>
+          <button class="pulse-grip" id="nsRfPanelBtn" onclick="nsRfTogglePanel()" aria-expanded="false" aria-label="ratio filter settings"><span class="mvs-grip"><i></i><i></i></span></button>
+          <span class="pulse-num" id="nsRfOctNum" onclick="nsRfCycleOct()" aria-label="bank octave"><span class="pnum-v" id="nsRfOctV">0</span><span class="pnum-u">oct</span></span>
+        </div>
+        <div class="nsrf-row"><span class="nsrf-lbl">Q</span><div class="nsrf-ctl"><input type="range" id="nsRfQR" min="0" max="10000" value="4690" oninput="nsRfSetQ(+this.value)"></div><span class="pulse-num"><span class="pnum-v" id="nsRfQV">12</span></span></div>
+        <div class="nsrf-row"><span class="nsrf-lbl">BANDS</span><div class="nsrf-ctl" id="nsRfBandsCtl" style="touch-action:none"></div><span class="pulse-num"><span class="pnum-v" id="nsRfBandsV">1-32</span></span></div>
+        <div class="nsrf-row"><span class="nsrf-lbl">MIX</span><div class="nsrf-ctl"><input type="range" id="nsRfMixR" min="0" max="100" value="100" oninput="nsRfSetMix(+this.value)"></div><span class="pulse-num"><span class="pnum-v" id="nsRfMixV">100</span><span class="pnum-u">%</span></span></div>
+        <div class="nsrf-row"><span class="nsrf-lbl">TILT</span><div class="nsrf-ctl"><input type="range" id="nsRfTiltR" min="-100" max="100" value="40" oninput="nsRfSetTilt(+this.value)"></div><span class="pulse-num"><span class="pnum-v" id="nsRfTiltV">0.40</span></span></div>
+        <div class="nsrf-row"><span class="nsrf-lbl">SPREAD</span><div class="nsrf-ctl"><input type="range" id="nsRfSprR" min="-100" max="100" value="0" oninput="nsRfSetSpread(+this.value)"></div><span class="pulse-num"><span class="pnum-v" id="nsRfSprV">0.00</span></span></div>
+      </div>
+      <div id="nsRfHit" onclick="nsRfTogglePanel()" aria-label="open ratio filter"></div>
+    </div>
+  </div>
   <div id="nsStage"></div>
   <div id="nsControls">
     <div style="display:flex;flex-direction:column;align-items:center;gap:4px">
@@ -1175,7 +1233,9 @@ function tapNum(id,min,max,cb,isInt,dec){
   inp.style.width=Math.max(60,old.length*16)+'px';
   el.replaceWith(inp);inp.focus();inp.select();
   var _origStyle=el.getAttribute('style')||'';
-  function done(){let v=parseFloat(inp.value);if(isNaN(v))v=parseFloat(old);v=Math.max(min,Math.min(max,v));if(isInt)v=Math.round(v);else v=Math.round(v*Math.pow(10,dec))/Math.pow(10,dec);const sp=document.createElement('span');sp.className=el.className;sp.id=id;if(_origStyle)sp.setAttribute('style',_origStyle);sp.textContent=isInt?v:v.toFixed(dec);sp.onclick=()=>tapNum(id,min,max,cb,isInt,dec);inp.replaceWith(sp);cb(v);}
+  // Enter calls done() while the input still has focus, and replaceWith on a focused node makes
+  // Chrome fire blur -> done() a second time on a now-detached input (NotFoundError). Guard re-entry.
+  function done(){if(done.d)return;done.d=true;let v=parseFloat(inp.value);if(isNaN(v))v=parseFloat(old);v=Math.max(min,Math.min(max,v));if(isInt)v=Math.round(v);else v=Math.round(v*Math.pow(10,dec))/Math.pow(10,dec);const sp=document.createElement('span');sp.className=el.className;sp.id=id;if(_origStyle)sp.setAttribute('style',_origStyle);sp.textContent=isInt?v:v.toFixed(dec);sp.onclick=()=>tapNum(id,min,max,cb,isInt,dec);inp.replaceWith(sp);cb(v);}
   inp.onkeydown=e=>{if(e.key==='Enter')done();if(e.key==='Escape'){inp.value=old;done();}};inp.onblur=done;
 }
 function togSection(id){const b=document.getElementById(id);const o=b.classList.toggle('open');document.getElementById(id+'Arrow').textContent=o?'▲':'▼';}
@@ -1830,10 +1890,24 @@ function toggleNoise(){
     nMGain.connect(nsTremGain);nsTremGain.connect(appMaster);
     nsTremSrc.start();
     if(nsVsOn)tremEngage(nsTremGain,nsTremDepth,true,true);
+    /* RATIO FILTERING bank — built once here so it survives stop→play, and never disconnected:
+       off is dry=1 / wet=0 ramped, because disconnect/reconnect clicks while 32 idle biquads cost
+       nothing. Must come after nMGain exists. */
+    nsRfIn=c.createGain();nsRfDry=c.createGain();nsRfWet=c.createGain();
+    nsRfDry.gain.value=1;nsRfWet.gain.value=0;
+    nsRfIn.connect(nsRfDry);nsRfDry.connect(nMGain);nsRfWet.connect(nMGain);
+    nsRfFilters=[];nsRfGains=[];
+    for(var rfI=0;rfI<NSRF_N;rfI++){
+      var rfF=c.createBiquadFilter();rfF.type='bandpass';rfF.frequency.value=nsRfFreq[rfI];rfF.Q.value=nsRfQ;
+      var rfG=c.createGain();rfG.gain.value=0;
+      nsRfIn.connect(rfF);rfF.connect(rfG);rfG.connect(nsRfWet);
+      nsRfFilters.push(rfF);nsRfGains.push(rfG);
+    }
+    nsRfApply();
   }
   nMGain.gain.setTargetAtTime(v2g(nVol)*nMixPost,c.currentTime,.02);
   const buf=mkNB(c);
-  nNodes=BANDS.map((fc,i)=>{const s=c.createBufferSource();s.buffer=buf;s.loop=true;const f=c.createBiquadFilter();f.type='bandpass';f.frequency.value=fc;f.Q.value=fc<100?.5:1.2;const g=c.createGain();g.gain.value=v2g(nSl[i]);s.connect(f);f.connect(g);g.connect(nMGain);s.start();return{src:s,gain:g};});
+  nNodes=BANDS.map((fc,i)=>{const s=c.createBufferSource();s.buffer=buf;s.loop=true;const f=c.createBiquadFilter();f.type='bandpass';f.frequency.value=fc;f.Q.value=fc<100?.5:1.2;const g=c.createGain();g.gain.value=v2g(nSl[i]);s.connect(f);f.connect(g);g.connect(nsRfIn||nMGain);s.start();return{src:s,gain:g};});
   nOn=true;setPB('n',true);showNsBirdFlash();appAutoRecalc();
   if(nsTremGain&&AC)tremEngage(nsTremGain,nsTremDepth,nsVsOn,true);nsVsStart();nsTransResume();
 }
@@ -1932,7 +2006,11 @@ function nsVsSyncDim(){
 function nsVsTogglePanel(){
   var p=document.getElementById('nsVsPanel');if(!p)return;
   var open=p.classList.toggle('vs-open');
-  if(open)nsVsMeasure();
+  if(open){
+    var rp=document.getElementById('nsRfPanel');    // ...and the same the other way round
+    if(rp&&rp.classList.contains('rf-open'))nsRfTogglePanel();
+    nsVsMeasure();
+  }
   var b=document.getElementById('nsVsPanelBtn');if(b){b.classList.toggle('open',open);b.setAttribute('aria-expanded',open?'true':'false');}
 }
 // The floated body is out of flow, so the frame behind it has to be told how tall it is.
@@ -2046,6 +2124,211 @@ var NS_DIR_ORDER=['fwd','rev','pp'];
 function nsVsDirIcon(d){var a='width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"';var m={fwd:'<line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/>',rev:'<line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/>',pp:'<polyline points="17 2 21 6 17 10"/><line x1="3" y1="6" x2="21" y2="6"/><polyline points="7 14 3 18 7 22"/><line x1="21" y1="18" x2="3" y2="18"/>'};return'<svg '+a+'>'+(m[d]||'')+'</svg>';}
 function nsVsRenderDir(){var b=document.getElementById('nsVsDirCycle');if(b)b.innerHTML=nsVsDirIcon(nsVsDir);}
 function nsVsCycleDir(){var i=NS_DIR_ORDER.indexOf(nsVsDir);nsVsDir=NS_DIR_ORDER[(i+1)%NS_DIR_ORDER.length];nsVsRenderDir();}
+/* ═══════ RATIO FILTERING (nsRf) — 32-band harmonic filterbank on the NOISE bus ═══════ */
+/* Trevor Treglia's Harmonium mechanism: a PARALLEL bank of resonant bandpasses, one per partial
+   of the selected MATHS list, summed — "creates tone by subtracting everything except the harmonic
+   series". Subtractive in construction, additive in result. Q is the whole character axis, not a
+   tone tweak: T60 ≈ 2.2·Q/f0, so at Q=200 the resonators ring for seconds and the noise is only an
+   exciter, while at Q=2 you just have coloured noise. Sits between the 10-band EQ sum and nMGain,
+   i.e. immediately before the volume control. */
+const NSRF_N=32,NSRF_FMIN=20,NSRF_FMAX=20000,NSRF_LN=Math.log(1000);   // NSRF_LN = ln(FMAX/FMIN)
+const NSRF_PAD=8;                       // half a #nsRfBandsCtl .dual-thumb; posFromX inverts it
+let nsRfEnabled=false,nsRfQ=12,nsRfLo=1,nsRfHi=32,nsRfMix=1,nsRfTilt=0.4,nsRfOct=0,nsRfSpread=0;
+let nsRfIn=null,nsRfDry=null,nsRfWet=null,nsRfFilters=[],nsRfGains=[];
+let nsRfFreq=new Array(NSRF_N).fill(1000),nsRfLive=new Array(NSRF_N).fill(false),
+    nsRfInRange=new Array(NSRF_N).fill(false),nsRfFund=null,nsRfPending=false;
+// exact inverse of the shared filterV2F(v)=20*Math.pow(1000,v/100), so this bar carries the same
+// log scale as every other filter control in the app
+function nsRfFrac(f){return Math.max(0,Math.min(1,Math.log(f/NSRF_FMIN)/NSRF_LN));}
+/* Called from recomputeHarmonicPools — the app's single ratio fan-out point — so it inherits all
+   seven triggers (list, fundamental, archive, bbFqRatio, both BIRDBOX drags, boot). fundOverride is
+   NOT optional: multiFundamental is not committed until the MATHS glide lands, so
+   multiSetFundamental passes the new value here explicitly and ignoring it lags one edit behind. */
+function nsRfBuild(fundOverride){
+  var fund=fundOverride!=null?fundOverride:multiFundamental;
+  nsRfFund=fund;
+  var ratios=(multiHarmonicIdx>=0&&HARMONIC_LISTS[multiHarmonicIdx])?HARMONIC_LISTS[multiHarmonicIdx].ratios:null;
+  var oct=Math.pow(2,nsRfOct),f1=ratios?fund*ratios[0]*oct:0,i;
+  for(i=0;i<NSRF_N;i++){
+    var f0=(ratios&&ratios[i]!=null)?fund*ratios[i]*oct:0;
+    // SPREAD = Harmonium's spectral displacement, as a log-space stretch about band 1: scale-free,
+    // pins band 1, pushes upper partials progressively off the exact ratio (bell/piano inharmonicity)
+    var f=(nsRfSpread&&f1>0&&f0>0)?f1*Math.pow(f0/f1,1+nsRfSpread):f0;
+    f=r2(f);
+    // Out of range CAPS the frequency but MUTES the band — half the lists explode (Factorials puts
+    // 27 of 32 past 20 kHz at fund 55) and 27 live resonators stacked on one frequency would both
+    // pile up coherently and wreck the makeup gain for the bands you can actually hear. No folding.
+    var ok=isFinite(f)&&f>=NSRF_FMIN&&f<=NSRF_FMAX;
+    nsRfInRange[i]=ok;
+    nsRfFreq[i]=isFinite(f)?Math.max(NSRF_FMIN,Math.min(NSRF_FMAX,f)):NSRF_FMAX;
+  }
+  nsRfMarkLive();nsRfSchedule();
+}
+function nsRfMarkLive(){for(var i=0;i<NSRF_N;i++)nsRfLive[i]=nsRfInRange[i]&&(i+1)>=nsRfLo&&(i+1)<=nsRfHi;}
+/* Two of the seven triggers fire on EVERY pointermove of a BIRDBOX slider. 32 AudioParam writes plus
+   32 DOM writes at pointer rate starves the audio thread (see the note above vtScheduleBack), so
+   coalesce both halves to one pass per frame. 16 ms of latency on a filter retune is imperceptible. */
+function nsRfSchedule(){
+  if(nsRfPending)return;
+  nsRfPending=true;
+  requestAnimationFrame(function(){nsRfPending=false;nsRfApply();});
+}
+function nsRfApply(){nsRfAudio();nsRfDraw();}
+/* The bands are all fed the SAME signal, so wherever their skirts overlap they sum COHERENTLY,
+   and the textbook incoherent estimate (Σ ENBW) runs up to 12 dB hot at low Q. So: take the exact
+   incoherent power, then correct it by the ratio of the true complex sum |Σ g·H|² to Σ g²|H|²
+   measured on one coarse log grid. Sampling error cancels between numerator and denominator, so a
+   192-point grid stays right even at Q=200, where a whole resonance falls inside a single cell.
+   Transcendentals are hoisted per band, leaving ~120k flops — once per frame at worst. */
+function nsRfBankGain(g,f,Q,sr){
+  var K=192,lo=5,hi=sr/2,lnr=Math.log(hi/lo),n=f.length,i,j,k;
+  var pInc=0;
+  for(i=0;i<n;i++)if(g[i]>0)pInc+=g[i]*g[i]*(Math.PI/2)*f[i]/Q;   // ENBW of a unit-peak bandpass
+  pInc/=(sr/2);
+  if(!(pInc>0))return 0;
+  var al=new Array(n),c0=new Array(n);
+  for(j=0;j<n;j++){var w0=2*Math.PI*Math.min(f[j],hi*0.999)/sr;al[j]=Math.sin(w0)/(2*Q);c0[j]=Math.cos(w0);}
+  var num=0,den=0,prev=lo;
+  for(k=0;k<K;k++){
+    var fm=lo*Math.exp(lnr*(k+0.5)/K),fe=lo*Math.exp(lnr*(k+1)/K),df=fe-prev;prev=fe;
+    var w=2*Math.PI*fm/sr,cw=Math.cos(w),sw=Math.sin(w),c2=Math.cos(2*w),s2=Math.sin(2*w);
+    var re=0,im=0,ss=0;
+    for(j=0;j<n;j++){
+      if(!(g[j]>0))continue;
+      var a=al[j];
+      var Nr=a*(1-c2),Ni=a*s2;
+      var Dr=(1+a)-2*c0[j]*cw+(1-a)*c2,Di=2*c0[j]*sw-(1-a)*s2;
+      var dd=Dr*Dr+Di*Di;if(dd<=0)continue;
+      var Hr=(Nr*Dr+Ni*Di)/dd,Hi=(Ni*Dr-Nr*Di)/dd;
+      re+=g[j]*Hr;im+=g[j]*Hi;ss+=g[j]*g[j]*(Hr*Hr+Hi*Hi);
+    }
+    num+=(re*re+im*im)*df;den+=ss*df;
+  }
+  return Math.sqrt(pInc*(den>0?num/den:1));
+}
+function nsRfAudio(){
+  if(!nsRfFilters.length||!AC)return;      // boot runs recomputeHarmonicPools before any AudioContext
+  var t=AC.currentTime,i;
+  // TILT slopes by band INDEX, not ratio value — (1/ratio)^tilt would be 0 for Factorials and kill
+  // the whole bank. It needs no normalisation of its own: the makeup below reads the actual gains.
+  var g=new Array(NSRF_N);
+  for(i=0;i<NSRF_N;i++)g[i]=nsRfLive[i]?Math.pow(i+1,-nsRfTilt):0;
+  for(i=0;i<NSRF_N;i++){
+    nsRfFilters[i].frequency.setTargetAtTime(nsRfFreq[i],t,.03);
+    nsRfFilters[i].Q.setTargetAtTime(nsRfQ,t,.03);
+    nsRfGains[i].gain.setTargetAtTime(g[i],t,.03);
+  }
+  // ONE makeup covers Q, TILT and the band window together, because nsRfBankGain measures the bank's
+  // real RMS gain for white input. Against offline renders this holds the output within ~1 dB of dry
+  // across Q=1..200 and TILT=-1..+1, and within 3 dB across every list — where the old incoherent
+  // sqrt(Q/n) estimate was up to 12 dB hot. Still capped: the real input is the roll-shaped EQ
+  // output, not white, and appLimiter is the backstop.
+  var bg=nsRfBankGain(g,nsRfFreq,nsRfQ,AC.sampleRate);
+  var makeup=bg>0?Math.min(1/bg,24):0;
+  // equal-power crossfade — dry and wet are largely uncorrelated, so a linear fade would dip ~3 dB
+  nsRfWet.gain.setTargetAtTime(nsRfEnabled?makeup*Math.sqrt(nsRfMix):0,t,.03);
+  nsRfDry.gain.setTargetAtTime(nsRfEnabled?Math.sqrt(1-nsRfMix):1,t,.03);
+}
+function nsRfDraw(){
+  var host=document.getElementById('nsRfStrips');if(!host||!host.children.length)return;
+  var w='max(1.5px,'+(100/(nsRfQ*NSRF_LN)).toFixed(4)+'%)';
+  // past the 1.5px floor the strips stop thinning, so alpha carries the rest of the range: low Q is
+  // a faint wide wash that builds up where bands overlap, high Q a crisp black hairline
+  var a=Math.min(1,0.35+0.65*Math.log(Math.max(1,nsRfQ))/Math.log(200));
+  for(var i=0;i<NSRF_N;i++){
+    var el=host.children[i];
+    el.style.left=(nsRfFrac(nsRfFreq[i])*100).toFixed(3)+'%';
+    el.style.width=w;
+    // out-of-range strips clamp to the bar edge; being separate alpha-composited divs, a big pile-up
+    // stacks into a solid block and a small one stays faint — the pile-up reads as information free
+    el.className='nsrf-strip'+(!nsRfInRange[i]?' nsrf-out':(!nsRfLive[i]?' nsrf-mute':''));
+    el.style.opacity=(nsRfInRange[i]&&nsRfLive[i])?a:'';
+  }
+}
+function nsRfToggle(){
+  nsRfEnabled=!nsRfEnabled;
+  nsRfSyncOn();
+  nsRfSchedule();
+}
+// white chip / beige text when off, beige chip / black text when on — the PULSE chip, inverted
+function nsRfSyncOn(){
+  var p=document.getElementById('nsRfPanel');if(p)p.classList.toggle('rf-on',nsRfEnabled);
+  var b=document.getElementById('nsRfLabelBtn');
+  if(b){b.classList.toggle('on',nsRfEnabled);b.setAttribute('aria-checked',nsRfEnabled?'true':'false');}
+}
+/* Showing the slider rows simply makes the bar taller — it is sized by its own content, so there is
+   nothing to measure and no resize hook. #nsStage (flex:1, min-height:0) yields the height, so every
+   control below stays exactly put. */
+function nsRfTogglePanel(){
+  var p=document.getElementById('nsRfPanel');if(!p)return;
+  var open=p.classList.toggle('rf-open');
+  var vp=document.getElementById('nsVsPanel');       // RF grows down, PULSE grows up — they collide
+  if(open&&vp&&vp.classList.contains('vs-open'))nsVsTogglePanel();
+  var b=document.getElementById('nsRfPanelBtn');if(b){b.classList.toggle('open',open);b.setAttribute('aria-expanded',open?'true':'false');}
+  nsRfSyncBands();nsRfDraw();
+}
+function nsRfSetQ(pos){nsRfQ=expS(pos,1,200);nsRfSyncQ();nsRfSchedule();}
+function nsRfSyncQ(){var e=document.getElementById('nsRfQV');if(e)e.textContent=nsRfQ>=10?Math.round(nsRfQ):nsRfQ.toFixed(1);}
+function nsRfSetMix(v){nsRfMix=Math.max(0,Math.min(100,v))/100;var e=document.getElementById('nsRfMixV');if(e)e.textContent=Math.round(nsRfMix*100);nsRfSchedule();}
+function nsRfSetTilt(v){nsRfTilt=Math.max(-100,Math.min(100,v))/100;var e=document.getElementById('nsRfTiltV');if(e)e.textContent=nsRfTilt.toFixed(2);nsRfSchedule();}
+// SPREAD and OCTAVE move the FREQUENCIES, so they rebuild rather than just re-apply
+function nsRfSetSpread(v){nsRfSpread=Math.max(-100,Math.min(100,v))/500;var e=document.getElementById('nsRfSprV');if(e)e.textContent=nsRfSpread.toFixed(2);nsRfBuild(nsRfFund);}
+function nsRfCycleOct(){nsRfSetOct(nsRfOct>=4?-4:nsRfOct+1);}
+function nsRfSetOct(v){nsRfOct=Math.max(-4,Math.min(4,Math.round(v)));nsRfSyncOct();nsRfBuild(nsRfFund);}
+function nsRfSyncOct(){var e=document.getElementById('nsRfOctV');if(e)e.textContent=(nsRfOct>0?'+':'')+nsRfOct;}
+/* BANDS window: 1-based inclusive over the SOURCE list order (band n is ratio n), the same
+   convention as bbRangeSlice — but its own state, or dragging the BIRDBOX range would retune us. */
+function nsRfBandsLeft(v){return 'calc('+NSRF_PAD+'px + (100% - '+(NSRF_PAD*2)+'px) * '+((v-1)/(NSRF_N-1))+')';}
+function nsRfSyncBands(){
+  var tL=document.getElementById('nsRfBL'),tR=document.getElementById('nsRfBR'),fill=document.getElementById('nsRfBFill');
+  if(!tL)return;
+  tL.style.left=nsRfBandsLeft(nsRfLo);tR.style.left=nsRfBandsLeft(nsRfHi);
+  fill.style.left=nsRfBandsLeft(nsRfLo);
+  fill.style.width='calc((100% - '+(NSRF_PAD*2)+'px) * '+((nsRfHi-nsRfLo)/(NSRF_N-1))+')';
+  var v=document.getElementById('nsRfBandsV');if(v)v.textContent=nsRfLo+'-'+nsRfHi;
+}
+function initNsRfBands(){
+  var wrap=document.getElementById('nsRfBandsCtl');if(!wrap)return;
+  var track=document.createElement('div');track.className='dual-track';
+  var fill=document.createElement('div');fill.className='dual-fill';fill.id='nsRfBFill';
+  var tL=document.createElement('div');tL.className='dual-thumb';tL.id='nsRfBL';
+  var tR=document.createElement('div');tR.className='dual-thumb';tR.id='nsRfBR';
+  wrap.appendChild(track);wrap.appendChild(fill);wrap.appendChild(tL);wrap.appendChild(tR);
+  nsRfSyncBands();
+  var dragging=null;
+  function posFromX(cx){var r=wrap.getBoundingClientRect(),w=r.width-NSRF_PAD*2;if(w<=0)return 1;
+    return Math.max(1,Math.min(NSRF_N,Math.round(1+(cx-r.left-NSRF_PAD)/w*(NSRF_N-1))));}   // inverse of nsRfBandsLeft()
+  function update(pos){
+    if(dragging==='L')nsRfLo=Math.min(pos,nsRfHi);
+    else if(dragging==='R')nsRfHi=Math.max(pos,nsRfLo);
+    else return;
+    nsRfSyncBands();nsRfMarkLive();nsRfSchedule();
+  }
+  tL.addEventListener('mousedown',function(e){e.preventDefault();dragging='L';});
+  tR.addEventListener('mousedown',function(e){e.preventDefault();dragging='R';});
+  document.addEventListener('mousemove',function(e){if(dragging)update(posFromX(e.clientX));});
+  document.addEventListener('mouseup',function(){dragging=null;});
+  tL.addEventListener('touchstart',function(e){e.preventDefault();dragging='L';},{passive:false});
+  tR.addEventListener('touchstart',function(e){e.preventDefault();dragging='R';},{passive:false});
+  wrap.addEventListener('touchmove',function(e){if(!dragging)return;e.preventDefault();update(posFromX(e.touches[0].clientX));},{passive:false});
+  wrap.addEventListener('touchend',function(){dragging=null;},{passive:true});
+}
+function initNsRf(){
+  var host=document.getElementById('nsRfStrips');
+  if(host&&!host.children.length)for(var i=0;i<NSRF_N;i++){var d=document.createElement('div');d.className='nsrf-strip';host.appendChild(d);}
+  initNsRfBands();nsRfSyncUI();
+}
+function nsRfSyncUI(){
+  nsRfSyncOn();
+  var q=document.getElementById('nsRfQR');if(q)q.value=expSI(nsRfQ,1,200);
+  var m=document.getElementById('nsRfMixR');if(m)m.value=Math.round(nsRfMix*100);
+  var t=document.getElementById('nsRfTiltR');if(t)t.value=Math.round(nsRfTilt*100);
+  var s=document.getElementById('nsRfSprR');if(s)s.value=Math.round(nsRfSpread*500);
+  var mv=document.getElementById('nsRfMixV');if(mv)mv.textContent=Math.round(nsRfMix*100);
+  var tv=document.getElementById('nsRfTiltV');if(tv)tv.textContent=nsRfTilt.toFixed(2);
+  var sv=document.getElementById('nsRfSprV');if(sv)sv.textContent=nsRfSpread.toFixed(2);
+  nsRfSyncQ();nsRfSyncOct();nsRfSyncBands();nsRfBuild(nsRfFund);
+}
 /* ═══════ MULTI ═══════ */
 let multiMGain=null,multiMVol=100,multiWv=0; // default waveform: sine
 let multiAutoGn=null,multiAutoOn=true;
@@ -2350,7 +2633,7 @@ function muVsToggleAuto(){
   muVsUpdModes();
   if(muVsAuto)muVsAutoStart=performance.now();
 }
-function muVsUpdModes(){var f=document.getElementById('muVsFaderWrap');if(f)f.classList.toggle('ns-dim',muVsAuto);var d=document.getElementById('muVsDurWrap');if(d)d.classList.toggle('ns-dim',!muVsAuto);var g=document.getElementById('muVsDirCycle');if(g)g.classList.toggle('ns-dim',!muVsAuto);}
+function muVsUpdModes(){var moot=muVsAuto||!muVsOn;var f=document.getElementById('muVsFaderWrap');if(f)f.classList.toggle('ns-dim',moot);var n=document.getElementById('muVsFaderNum');if(n)n.classList.toggle('ns-dim',moot);var d=document.getElementById('muVsDurWrap');if(d)d.classList.toggle('ns-dim',!muVsAuto);var g=document.getElementById('muVsDirCycle');if(g)g.classList.toggle('ns-dim',!muVsAuto);}
 function muVsFaderToPeriod(f){var A=muVsA,B=muVsB;return A>0?A*Math.pow(B/Math.max(A,1e-9),f):A+(B-A)*f;}
 function muVsBase(){return 0.1*Math.pow(10000,muVsFader);} // per-osc x: 0.1..1000 s (log)
 function muVsRefreshFader(){var vs=document.getElementById('muVsFaderNumV'),us=document.getElementById('muVsFaderNumU');if(!vs)return;if(muVsPerOsc){var b=muVsBase();vs.textContent=(b<100?+b.toFixed(1):Math.round(b));us.textContent='s';}else{vs.textContent=Math.round(muVsFaderToPeriod(muVsFader)*1000);us.textContent='ms';}}
@@ -2454,7 +2737,10 @@ function muVsTogglePerOsc(){
 }
 function muVsPerOscUpd(){
   var ab=document.getElementById('muVsABrow'),fw=document.getElementById('muVsFaderWrap');
-  if(muVsPerOsc){if(ab)ab.classList.add('ns-dim');if(fw)fw.classList.remove('ns-dim');}
+  var fn=document.getElementById('muVsFaderNum');
+  if(muVsPerOsc){if(ab)ab.classList.add('ns-dim');
+    if(fw)fw.classList.toggle('ns-dim',!muVsOn);      // per-osc frees the fader from AUTO, not from OFF
+    if(fn)fn.classList.toggle('ns-dim',!muVsOn);}
   else{if(ab)ab.classList.remove('ns-dim');muVsUpdModes();}
 }
 function setMcFreq(el,f){
@@ -2782,7 +3068,7 @@ function foldIntoRange(f,lo,hi){
 }
 function recomputeHarmonicPools(fundOverride){
   if(multiHarmonicIdx<0){
-    bbFreqPool=BB_FREQS.slice();bbDurPool=BB_DURS.slice();rsFreqPoolA=RS_FREQS_A.slice();rsFreqPoolB=RS_FREQS_B.slice();vtOtoBuild(fundOverride);return;
+    bbFreqPool=BB_FREQS.slice();bbDurPool=BB_DURS.slice();rsFreqPoolA=RS_FREQS_A.slice();rsFreqPoolB=RS_FREQS_B.slice();vtOtoBuild(fundOverride);nsRfBuild(fundOverride);return;
   }
   var ratios=HARMONIC_LISTS[multiHarmonicIdx].ratios;
   var fund=fundOverride!=null?fundOverride:multiFundamental;
@@ -2806,7 +3092,7 @@ function recomputeHarmonicPools(fundOverride){
   var rsBArr=Object.keys(rsBSet).map(Number).sort(function(a,b){return a-b;});
   rsFreqPoolA=rsAArr.length>=4?rsAArr:RS_FREQS_A.slice();
   rsFreqPoolB=rsBArr.length>=4?rsBArr:RS_FREQS_B.slice();
-  vtOtoBuild(fundOverride);
+  vtOtoBuild(fundOverride);nsRfBuild(fundOverride);
 }
 
 /* ═══════ CALL ═══════ */
@@ -2899,6 +3185,7 @@ function captureState(){
     rvon:rsVolSweepOn?1:0,rvd:rsVolDur,rvt:TYPE_ENC[rsVolType]||'l',rvr:rsVolDir,
     sw:swpWv,sm:swpMVol,si:swpFqMin,sx:swpFqMax,sd:swpFqDur,st:TYPE_ENC[swpFqType]||'l',sr:DIR_ENC[swpFqDir]||'f',
     ns:nSl.slice(),nv:nVol,np:nAPre,nse:nsVsOn?1:0,nsau:nsVsAuto?1:0,nspa:nsVsA,nspb:nsVsB,nsf:nsVsFader,nsvd:nsVsDur,nsvr:DIR_ENC[nsVsDir]||'fwd',nsvatk:nsVsAtk,nsvdec:nsVsDec,nsvlo:nsVolLo,nsvhi:nsVolHi,
+    nrf:nsRfEnabled?1:0,nrfq:nsRfQ,nrflo:nsRfLo,nrfhi:nsRfHi,nrfm:nsRfMix,nrft:nsRfTilt,nrfo:nsRfOct,nrfs:nsRfSpread,
     mv:multiMVol,mw:multiWv,md:multiDur,mvm:multiVolMin,mvx:multiVolMax,mvr:muVolDur,
     mvse:muVsOn?1:0,mvsau:muVsAuto?1:0,mvsa:muVsA,mvsb:muVsB,mvsf:muVsFader,mvsd:muVsDur,mvsr:DIR_ENC[muVsDir]||'fwd',mvsatk:muVsAtk,mvsdec:muVsDec,mvsp:muVsPerOsc?1:0,
     mhi:multiHarmonicIdx,mfu:multiFundamental,mor:multiOscRatios.slice(),mfl:multiFiltLo,mfh:multiFiltHi,bfr:bbFqRatio,
@@ -2930,6 +3217,9 @@ function restoreState(o){
   nsVsOn=!!o.nse;nsVsAuto=!!o.nsau;nsVsA=o.nspa!=null?+o.nspa:0.001;nsVsB=o.nspb!=null?+o.nspb:10;nsVsFader=o.nsf!=null?+o.nsf:0;nsVsDur=o.nsvd!=null?+o.nsvd:10;nsVsDir=DIR_DEC[o.nsvr]||'fwd';   // o.nsvt (pre-redesign sweep shape) is ignored — always linear now
   nsVsAtk=o.nsvatk!=null?+o.nsvatk:0.002;nsVsDec=o.nsvdec!=null?+o.nsvdec:0.15;   // pre-A/D archives fall back
   nsVolLo=o.nsvlo!=null?+o.nsvlo:66;nsVolHi=o.nsvhi!=null?+o.nsvhi:100;            // pre-range archives keep the old fixed band
+  nsRfEnabled=!!o.nrf;nsRfQ=o.nrfq!=null?+o.nrfq:12;nsRfLo=o.nrflo!=null?+o.nrflo:1;nsRfHi=o.nrfhi!=null?+o.nrfhi:32;   // pre-filterbank archives fall back to the defaults
+  nsRfMix=o.nrfm!=null?+o.nrfm:1;nsRfTilt=o.nrft!=null?+o.nrft:0.4;nsRfSpread=o.nrfs!=null?+o.nrfs:0;
+  nsRfOct=o.nrfo!=null?Math.max(-4,Math.min(4,Math.round(+o.nrfo))):0;   // clamp: the numbox era allowed +-10
   nTransActive=false;if(nTransRAF){cancelAnimationFrame(nTransRAF);nTransRAF=null;}nsVsStop();
   multiMVol=o.mv!=null?o.mv:80;multiFiltLo=o.mfl!=null?Math.max(0,Math.min(100,o.mfl)):0;multiFiltHi=o.mfh!=null?Math.max(multiFiltLo,Math.min(100,o.mfh)):100;bbFqRatio=o.bfr!=null?o.bfr:1;
   multiWv=o.mw||0;multiDur=o.md||1.5;
@@ -3001,7 +3291,7 @@ function syncNoiseUI(){
   var vsFd=document.getElementById('nsVsFaderR');if(vsFd)vsFd.value=sliderFlip(Math.round(nsVsFader*1000),1000);
   nsVsRefreshFader();
   if(nsVsEnv)nsVsEnv.refresh();
-  nsVolRangeSync();
+  nsVolRangeSync();nsRfSyncUI();
   nTransStartSl=nSl.slice();nTransStartVol=nVol;nsProgress=0;   // the loaded values are the new origin
   nsTransResume();                                              // ...and the roll carries on from them
   nsVsRenderDir();
@@ -5565,7 +5855,7 @@ function vtSpkUiLoad(){
 syncRsW();
 initSwpTypeSel('rsPitchTypeSel','linear',function(t){rsPitchType=t;});
 initSwpTypeSel('rsVolTypeSel','linear',function(t){rsVolType=t;});
-nsVsRefreshFader();nsVsSyncDim();nsSpdRefresh();nsVolRefresh();initNsVolRange();
+nsVsRefreshFader();nsVsSyncDim();nsSpdRefresh();nsVolRefresh();initNsVolRange();initNsRf();
 vtSpkUiLoad();syncVoiceUI();
 initSwpTypes('swpFqTypes','linear',t=>{swpFqType=t;});
 rsVolRenderDir();rsPitchRenderDir();
