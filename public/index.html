@@ -525,9 +525,19 @@ input[type=range]::-moz-range-thumb{width:20px;height:20px;border-radius:50%;bac
 #nsRfBody{position:relative;z-index:2;display:flex;flex-direction:column;gap:6px;padding:6px 10px 10px;box-sizing:border-box;}
 /* the chip + grip stay visible closed; only the octave box and the sliders are drawer contents */
 #nsRfHdr{display:flex;align-items:center;gap:6px;width:100%;height:22px;}
-#nsRfLabelBtn{margin-left:0;}
+/* the ratio filter key is WHITE rather than platform beige — beige text off, black on. These are id
+   rules, so they outrank .pkey / .pkey.on / .pkey:active and each state must be spelled out. Its
+   drawer grip goes white too, keeping the black open-state so the drawer still reads open vs closed. */
+/* The ratio filter key's FILL is painted by updateNsBackground (the module weave), so nothing here
+   may set background — an inline style would win regardless, and :active has to dim with a filter
+   rather than a background swap for the same reason. */
+#nsRfLabelBtn{margin-left:0;color:#fff;}
+#nsRfLabelBtn.on{color:#111;}
+#nsRfLabelBtn:active{filter:brightness(.92);}
+#nsRfPanelBtn .mvs-grip i{background:#fff;}
+#nsRfPanelBtn.open .mvs-grip i{background:#222;}
 #nsRfOctNum{margin-left:auto;cursor:pointer;}
-#nsRfPanel:not(.rf-open) #nsRfOctNum{display:none;}
+#nsRfPanel:not(.rf-open) #nsRfOctNum{display:none;}   /* only while the drawer is open */
 #nsRfPanel:not(.rf-open) .nsrf-row{display:none;}
 .nsrf-row{display:flex;align-items:center;gap:6px;width:100%;height:22px;background:rgba(248,244,235,.82);border-radius:2px;padding:0 5px;box-sizing:border-box;}
 .nsrf-row .nsrf-lbl{flex:0 0 44px;font-size:8.4px;color:#222;letter-spacing:1px;line-height:1;}
@@ -577,6 +587,30 @@ input[type=range]::-moz-range-thumb{width:20px;height:20px;border-radius:50%;bac
    purpose: black off, beige on.) */
 .pulse-lbl{display:inline-flex;align-items:center;height:20px;margin-left:-7px;padding:0 6px;font-family:inherit;font-size:8.4px;font-weight:500;letter-spacing:1px;color:#777;background:#ede7d4;border:1px solid rgba(0,0,0,.14);border-radius:2px;cursor:pointer;line-height:1;white-space:nowrap}
 .pulse-lbl.on{background:#222;color:#ede7d4;border-color:#222;font-weight:700}
+/* PANEL KEY — the three on/off buttons (MATHS pulse, NOISE pulse, ratio filter). It lifts them out
+   of the chip register and into the button register the rest of the app already uses:
+     - fill #f8f4eb, the "surface above the page" token every solid button uses. .pulse-lbl's #ede7d4
+       IS the page background (html,body), which is why the chip reads as a hole rather than an object
+       — and on the ratio filter bar it lands 1 RGB point off the groove's #ece6d5.
+     - an OPAQUE border. Load-bearing, not decoration: the NOISE pulse sits on a live grid that runs
+       to pure white at full volume, where a translucent hairline disappears.
+     - 1px radius, joining .ms-toggle / .ns-cell / .maths-roll / .msel-head. 2px belongs to the grooves.
+     - real press feedback; this was the only control of its kind with no :active and no transition.
+   The FILL NEVER CHANGES with state — depth carries it, text colour reinforces it. Height stays 20px
+   so the 22px #nsRfHdr row keeps 1px of slack for the pressed translateY. Must sit after .pulse-lbl
+   (same specificity, source order wins). #nsVolRangeBtn deliberately does NOT get this class. */
+.pkey{height:20px;padding:0 10px;border-radius:4px;font-size:9px;
+  background:#ede7d4;border:1px solid #333;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.35), 0 1px 2px rgba(0,0,0,.11);
+  color:#fff;text-shadow:none;
+  transition:box-shadow .12s, transform .12s, color .12s, background .12s}
+/* .pkey.on must re-declare background/border-color/font-weight — .pulse-lbl.on has equal
+   specificity and would otherwise leak its #222 fill and faux-bold straight back in. */
+.pkey.on{background:#ede7d4;border-color:#333;font-weight:500;text-shadow:none;color:#111;
+  box-shadow:inset 0 1px 2px rgba(0,0,0,.15);
+  transform:translateY(.5px)}
+.pkey:active{background:#dfdacc;      /* the fill IS the platform beige, so press steps darker */
+  box-shadow:inset 0 1px 2px rgba(0,0,0,.17);transform:translateY(.5px)}
 /* panel caret: points UP while the panel is closed (it opens upward), flips DOWN once open */
 /* pulse-panel grip: borderless drawer handle (same idiom as #scoreTab .st-g). Bars darken and
    tighten when the panel is open — the box is gone, so the hit area is wider than the mark. */
@@ -736,6 +770,7 @@ input[type=range]::-moz-range-thumb{width:20px;height:20px;border-radius:50%;bac
 #landingOverlay .lp-enter{font-family:'DM Mono',monospace;font-size:14px;font-weight:700;letter-spacing:3px;color:#ede7d4;background:#000;border:2px solid #000;border-radius:2px;padding:14px 40px;cursor:pointer;transition:all .12s}
 #landingOverlay .lp-enter:active{transform:scale(.95)}
 </style>
+<link rel="stylesheet" href="css/fx.css">
 </head>
 <body>
 <div id="landingOverlay">
@@ -883,7 +918,7 @@ input[type=range]::-moz-range-thumb{width:20px;height:20px;border-radius:50%;bac
       <div id="nsRfStrips"></div>
       <div id="nsRfBody">
         <div id="nsRfHdr">
-          <button class="pulse-lbl" id="nsRfLabelBtn" onclick="nsRfToggle()" role="switch" aria-checked="false" aria-label="ratio filter on/off">ratio filter</button>
+          <button class="pulse-lbl pkey" id="nsRfLabelBtn" onclick="nsRfToggle()" role="switch" aria-checked="false" aria-label="ratio filter on/off">ratio filter</button>
           <button class="pulse-grip" id="nsRfPanelBtn" onclick="nsRfTogglePanel()" aria-expanded="false" aria-label="ratio filter settings"><span class="mvs-grip"><i></i><i></i></span></button>
           <span class="pulse-num" id="nsRfOctNum" onclick="nsRfCycleOct()" aria-label="bank octave"><span class="pnum-v" id="nsRfOctV">0</span><span class="pnum-u">oct</span></span>
         </div>
@@ -927,7 +962,7 @@ input[type=range]::-moz-range-thumb{width:20px;height:20px;border-radius:50%;bac
     </div>
     <div id="nsVsStrip">
       <div id="nsVsStripTop">
-        <button class="pulse-lbl" id="nsVsLabelBtn" onclick="nsVsToggle()" role="switch" aria-checked="false" aria-label="pulse on/off">pulse</button>
+        <button class="pulse-lbl pkey" id="nsVsLabelBtn" onclick="nsVsToggle()" role="switch" aria-checked="false" aria-label="pulse on/off">pulse</button>
         <button class="pulse-grip" id="nsVsPanelBtn" onclick="nsVsTogglePanel()" aria-expanded="false" aria-label="pulse settings"><span class="mvs-grip"><i></i><i></i></span></button>
         <span class="pulse-num" id="nsVsFaderNum"><span class="pnum-v" id="nsVsFaderNumV">1</span><span class="pnum-u">ms</span></span>
       </div>
@@ -993,7 +1028,7 @@ input[type=range]::-moz-range-thumb{width:20px;height:20px;border-radius:50%;bac
       </div>
       <div id="muVsStrip">
         <div id="muVsStripTop">
-          <button class="pulse-lbl" id="muVsLabelBtn" onclick="muVsToggle()" role="switch" aria-checked="false" aria-label="pulse on/off">pulse</button>
+          <button class="pulse-lbl pkey" id="muVsLabelBtn" onclick="muVsToggle()" role="switch" aria-checked="false" aria-label="pulse on/off">pulse</button>
           <button class="pulse-grip" id="muVsPanelBtn" onclick="muVsTogglePanel()" aria-expanded="false" aria-label="pulse settings"><span class="mvs-grip"><i></i><i></i></span></button>
           <div id="muVsRight">
             <div id="muVsPerOscRow"><span class="ms-tlabel">Per Osc Ratio</span><button class="ms-toggle on" id="muVsPerOscBtn" onclick="muVsTogglePerOsc()">ON</button></div>
@@ -1546,10 +1581,11 @@ function initMixer(){
   var c=document.getElementById('mixerSliders');
   MIX_CH.forEach(function(ch,i){
     var col=document.createElement('div');col.className='mix-col'+(ch.master?' mix-master':'');
+    var fx=document.createElement('div');fx.className='mix-fx';fx.dataset.key=ch.key; /* filled by FX.mount(); empty on MASTER by design */
     var tk=document.createElement('div');tk.className='mix-track';tk.dataset.i=i;
     var th=document.createElement('div');th.className='mix-thumb';th.id='mxT'+i;
     tk.appendChild(th);
-    col.appendChild(tk);c.appendChild(col);
+    col.appendChild(fx);col.appendChild(tk);c.appendChild(col);
     mixTracks.push(tk);
     setMixV(i,ch.get());
     tk.addEventListener('touchstart',function(e){e.preventDefault();mixDrag=i;updMix(i,mixY(tk,e.touches[0].clientY));},{passive:false});
@@ -1734,7 +1770,7 @@ function toggleSweep(){
       _o.onended=function(){try{_o.disconnect();}catch(e){}try{if(_g)_g.disconnect();}catch(e){}if(swpSigGn===_g)swpSigGn=null;};
       try{_o.stop(_t+0.03);}catch(e){}}
     if(swpRAF)cancelAnimationFrame(swpRAF);swpPlaying=false;setPB('swp',false);updateBBBird();appAutoRecalc();return;}
-  if(!swpMGn){swpMGn=c.createGain();swpMGn.connect(appMaster);}
+  if(!swpMGn){swpMGn=c.createGain();fxTap('birdbox',swpMGn);}
   swpMGn.gain.setTargetAtTime(v2g(swpMVol),c.currentTime,.02);
   swpSigGn=c.createGain();swpSigGn.gain.value=1;
   swpSigGn.connect(bbFiltIn(c));
@@ -1887,7 +1923,7 @@ function toggleNoise(){
     nsTremDepth=c.createGain();nsTremDepth.gain.value=0;       // depth (silent when off)
     nsTremSrc=c.createBufferSource();nsTremSrc.buffer=nsVsEnvBuf();nsTremSrc.loop=true;nsTremSrc.loopStart=0;nsVsLoop(nsTremSrc,1);
     nsTremSrc.connect(nsTremDepth);nsTremDepth.connect(nsTremGain.gain);
-    nMGain.connect(nsTremGain);nsTremGain.connect(appMaster);
+    nMGain.connect(nsTremGain);fxTap('noise',nsTremGain);
     nsTremSrc.start();
     if(nsVsOn)tremEngage(nsTremGain,nsTremDepth,true,true);
     /* RATIO FILTERING bank — built once here so it survives stop→play, and never disconnected:
@@ -1970,6 +2006,7 @@ function nsTransTick(){
   nTransRAF=requestAnimationFrame(nsTransTick);
 }
 var nsBgEl=null,nsBgGradEl=null;
+let nsRfKeyEl=null;
 function updateNsBackground(){
   if(!nsBgEl)nsBgEl=document.getElementById('nsBg');
   if(!nsBgEl)return;
@@ -1977,8 +2014,16 @@ function updateNsBackground(){
   var o0=1-nSl[0]/200,o1=1-nSl[1]/200,o2=1-nSl[2]/200,o3=1-nSl[3]/200;
   var lum=Math.round(50+50*Math.max(0,(nVol-66)/34));
   var w='hsl(0,0%,'+lum+'%)';
-  nsBgGradEl.style.background='repeating-linear-gradient(90deg,'+w+',rgba(237,231,212,'+o0+') 2px,'+w+' 2px,rgba(237,231,212,'+o1+') 5px),repeating-linear-gradient(180deg,'+w+',rgba(237,231,212,'+o2+') 2px,'+w+' 2px,rgba(237,231,212,'+o3+') 4px)';
+  var grad='repeating-linear-gradient(90deg,'+w+',rgba(237,231,212,'+o0+') 2px,'+w+' 2px,rgba(237,231,212,'+o1+') 5px),repeating-linear-gradient(180deg,'+w+',rgba(237,231,212,'+o2+') 2px,'+w+' 2px,rgba(237,231,212,'+o3+') 4px)';
+  nsBgGradEl.style.background=grad;
   nsBgGradEl.style.backgroundBlendMode='screen';
+  // The ratio filter key wears the same weave — same two gradients over the same black, same screen
+  // blend — so it reads as a window onto the module rather than a painted chip. Deliberately NOT
+  // phase-aligned to #nsBg: this runs from nsTransTick 15-30x/sec, and a getBoundingClientRect here
+  // would force a layout read that often. The key sits inside #nsRfBar's beige groove, not against
+  // #nsBg, so there is no adjacent weave to line up with and the offset is invisible anyway.
+  if(!nsRfKeyEl)nsRfKeyEl=document.getElementById('nsRfLabelBtn');
+  if(nsRfKeyEl){nsRfKeyEl.style.backgroundColor='#000';nsRfKeyEl.style.backgroundImage=grad;nsRfKeyEl.style.backgroundBlendMode='screen';}
 }
 function showNsBirdFlash(){
   var bird=document.getElementById('nsBird');
@@ -2406,7 +2451,7 @@ function multiToggle(){
   if(!multiMGain){multiMGain=c.createGain();multiAutoGn=c.createGain();multiAutoGn.gain.value=1.0;multiHP=c.createBiquadFilter();multiHP.type='highpass';multiHP.Q.value=0.707;multiHP.frequency.value=filterV2F(multiFiltLo);
     multiLP=c.createBiquadFilter();multiLP.type='lowpass';multiLP.Q.value=0.707;multiLP.frequency.value=filterV2F(multiFiltHi);
     muTremGain=c.createGain();muTremGain.gain.value=1;muTremDepth=c.createGain();muTremDepth.gain.value=0;muTremSrc=c.createBufferSource();muTremSrc.buffer=muVsEnvBuf();muTremSrc.loop=true;muTremSrc.loopStart=0;muVsLoop(muTremSrc,1);muTremSrc.connect(muTremDepth);muTremDepth.connect(muTremGain.gain);muTremSrc.start();
-    multiMGain.connect(muTremGain);muTremGain.connect(multiAutoGn);multiAutoGn.connect(multiHP);multiHP.connect(multiLP);multiLP.connect(appMaster);}
+    multiMGain.connect(muTremGain);muTremGain.connect(multiAutoGn);multiAutoGn.connect(multiHP);multiHP.connect(multiLP);fxTap('multi',multiLP);}
   multiMGain.gain.setTargetAtTime(v2g(multiMVol),c.currentTime,.02);
   multiOscs.forEach(function(o,idx){
     if(multiHarmonicIdx>=0&&multiOscRatios.length===8){
@@ -4883,7 +4928,7 @@ return{
 })();
 
 function vtInit(){
-  var c=getAC();vtMGn=c.createGain();vtMGn.gain.value=v2g(vtVol);vtMGn.connect(appMaster);
+  var c=getAC();vtMGn=c.createGain();vtMGn.gain.value=v2g(vtVol);fxTap('voice',vtMGn);
   vtSigGn=c.createGain();vtSigGn.gain.value=1;
   /* Presence boost, engaged only while speaking. Speakers making themselves
      understood push energy around 3kHz, where the ear is most sensitive; the
@@ -5908,5 +5953,7 @@ switchTab('birdbox');
   var app=document.getElementById('appQR');if(app)new QRCode(app,qrOpts);
 })();
 </script>
+<script src="js/fx-core.js"></script>
+<script src="js/fx-drive.js"></script>
 </body>
 </html>
