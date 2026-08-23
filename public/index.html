@@ -524,25 +524,30 @@ input[type=range]::-moz-range-thumb{width:20px;height:20px;border-radius:50%;bac
 #nsRfHit{position:absolute;top:0;left:0;right:0;height:20px;z-index:3;cursor:pointer;}
 #nsRfBody{position:relative;z-index:2;display:flex;flex-direction:column;gap:6px;padding:6px 10px 10px;box-sizing:border-box;}
 /* the chip + grip stay visible closed; only the octave box and the sliders are drawer contents */
-#nsRfHdr{display:flex;align-items:center;gap:6px;width:100%;height:22px;}
+#nsRfHdr{height:22px;}   /* empty spacer — reserves the row so the sliders never move */
 /* the ratio filter key is WHITE rather than platform beige — beige text off, black on. These are id
    rules, so they outrank .pkey / .pkey.on / .pkey:active and each state must be spelled out. Its
    drawer grip goes white too, keeping the black open-state so the drawer still reads open vs closed. */
 /* The ratio filter key's FILL is painted by updateNsBackground (the module weave), so nothing here
    may set background — an inline style would win regardless, and :active has to dim with a filter
    rather than a background swap for the same reason. */
-#nsRfLabelBtn{margin-left:0;color:#fff;}
+#nsRfLabelBtn{margin-left:0;color:#fff;position:absolute;left:10px;top:29px;margin-top:-9px;z-index:4;}
+#nsRfLabelBtn.on,#nsRfLabelBtn:active{transform:none;}   /* no vertical travel: it is centred here */
 #nsRfLabelBtn.on{color:#111;}
 #nsRfLabelBtn:active{filter:brightness(.92);}
 #nsRfPanelBtn .mvs-grip i{background:#fff;}
 #nsRfPanelBtn.open .mvs-grip i{background:#222;}
-#nsRfOctNum{margin-left:auto;cursor:pointer;}
+#nsRfPanelBtn{position:absolute;right:10px;top:29px;margin-top:-9px;z-index:4;}
+/* right edge lands on the slider column's right edge, i.e. where the Q thumb stops */
+#nsRfOctNum{position:absolute;right:49px;top:35px;z-index:5;cursor:pointer;
+  height:16px;min-width:36px;padding:0 5px;justify-content:center;}
+#nsRfOctNum .pnum-v{font-size:10px;}
 #nsRfPanel:not(.rf-open) #nsRfOctNum{display:none;}   /* only while the drawer is open */
 #nsRfPanel:not(.rf-open) .nsrf-row{display:none;}
-.nsrf-row{display:flex;align-items:center;gap:6px;width:100%;height:22px;background:rgba(248,244,235,.82);border-radius:2px;padding:0 5px;box-sizing:border-box;}
+.nsrf-row{display:flex;align-items:center;gap:6px;width:100%;height:22px;background:rgba(248,244,235,.6);border-radius:2px;padding:0 5px;box-sizing:border-box;}
 .nsrf-row .nsrf-lbl{flex:0 0 44px;font-size:8.4px;color:#222;letter-spacing:1px;line-height:1;}
 .nsrf-row .nsrf-ctl{flex:1 1 auto;position:relative;height:20px;min-width:0;}
-.nsrf-row .pulse-num{flex:0 0 auto;height:16px;padding:0 5px;}
+.nsrf-row .pulse-num{flex:0 0 auto;height:16px;padding:0 5px;min-width:36px;justify-content:center;}
 .nsrf-row .pulse-num .pnum-v{font-size:10px;}
 .nsrf-row input[type=range]{position:absolute;top:50%;left:0;width:100%;height:3px;border-radius:2px;background:#ccc;transform:translateY(-50%);box-shadow:none;}
 .nsrf-row input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:16px;height:16px;border-radius:50%;background:#333;border:2px solid #ede7d4;box-shadow:none;}
@@ -917,17 +922,16 @@ input[type=range]::-moz-range-thumb{width:20px;height:20px;border-radius:50%;bac
     <div id="nsRfBar">
       <div id="nsRfStrips"></div>
       <div id="nsRfBody">
-        <div id="nsRfHdr">
-          <button class="pulse-lbl pkey" id="nsRfLabelBtn" onclick="nsRfToggle()" role="switch" aria-checked="false" aria-label="ratio filter on/off">ratio filter</button>
-          <button class="pulse-grip" id="nsRfPanelBtn" onclick="nsRfTogglePanel()" aria-expanded="false" aria-label="ratio filter settings"><span class="mvs-grip"><i></i><i></i></span></button>
-          <span class="pulse-num" id="nsRfOctNum" onclick="nsRfCycleOct()" aria-label="bank octave"><span class="pnum-v" id="nsRfOctV">0</span><span class="pnum-u">oct</span></span>
-        </div>
+        <div id="nsRfHdr"></div>
         <div class="nsrf-row"><span class="nsrf-lbl">Q</span><div class="nsrf-ctl"><input type="range" id="nsRfQR" min="0" max="10000" value="4690" oninput="nsRfSetQ(+this.value)"></div><span class="pulse-num"><span class="pnum-v" id="nsRfQV">12</span></span></div>
         <div class="nsrf-row"><span class="nsrf-lbl">BANDS</span><div class="nsrf-ctl" id="nsRfBandsCtl" style="touch-action:none"></div><span class="pulse-num"><span class="pnum-v" id="nsRfBandsV">1-32</span></span></div>
         <div class="nsrf-row"><span class="nsrf-lbl">MIX</span><div class="nsrf-ctl"><input type="range" id="nsRfMixR" min="0" max="100" value="100" oninput="nsRfSetMix(+this.value)"></div><span class="pulse-num"><span class="pnum-v" id="nsRfMixV">100</span><span class="pnum-u">%</span></span></div>
         <div class="nsrf-row"><span class="nsrf-lbl">TILT</span><div class="nsrf-ctl"><input type="range" id="nsRfTiltR" min="-100" max="100" value="40" oninput="nsRfSetTilt(+this.value)"></div><span class="pulse-num"><span class="pnum-v" id="nsRfTiltV">0.40</span></span></div>
         <div class="nsrf-row"><span class="nsrf-lbl">SPREAD</span><div class="nsrf-ctl"><input type="range" id="nsRfSprR" min="-100" max="100" value="0" oninput="nsRfSetSpread(+this.value)"></div><span class="pulse-num"><span class="pnum-v" id="nsRfSprV">0.00</span></span></div>
       </div>
+      <button class="pulse-lbl pkey" id="nsRfLabelBtn" onclick="nsRfToggle()" role="switch" aria-checked="false" aria-label="ratio filter on/off">ratio filter</button>
+      <span class="pulse-num" id="nsRfOctNum" onclick="nsRfCycleOct()" aria-label="bank octave"><span class="pnum-v" id="nsRfOctV">0</span><span class="pnum-u">oct</span></span>
+      <button class="pulse-grip" id="nsRfPanelBtn" onclick="nsRfTogglePanel()" aria-expanded="false" aria-label="ratio filter settings"><span class="mvs-grip"><i></i><i></i></span></button>
       <div id="nsRfHit" onclick="nsRfTogglePanel()" aria-label="open ratio filter"></div>
     </div>
   </div>
@@ -5955,5 +5959,7 @@ switchTab('birdbox');
 </script>
 <script src="js/fx-core.js"></script>
 <script src="js/fx-drive.js"></script>
+<script src="js/fx-comp.js"></script>
+<script src="js/fx-verb.js"></script>
 </body>
 </html>
