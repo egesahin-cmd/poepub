@@ -1,0 +1,138 @@
+/* ═══ MATHS — FM OPERATOR GRID ═══════════════════════════════════════════════════════════════════
+   The 4x4 canvas that took over #muStage from the artwork. Loaded after the inline <style>, so
+   unqualified rules here already outrank it; #modMulti-scoped selectors also beat the mobile block.
+
+   Pads are placed ABSOLUTELY from --c/--r rather than flowing in a CSS grid, for three reasons:
+   position is DATA (it decides the routing), a drag has to animate it, and hit-testing wants one
+   rect for the whole canvas instead of sixteen.
+
+   The gutter is a TRANSPARENT BORDER, not a `gap`. With a real gap the grid's aspect ratio is
+   H = (W - 3g)/a + 3g, which `aspect-ratio` cannot express, so the pad box and the grid box could
+   never agree. At zero gap the identity is exact, the hit region is the full 25% cell (no dead
+   strips between pads) and the touch target grows 6px in each axis — which matters at ~55px pads. */
+
+/* Canvas and strip are one block: the wrap's gap IS the canvas->strip distance, and #muStage's
+   padding-top is the ctrlrow->canvas distance. Both read --fm-pad, so they cannot drift apart. */
+/* Three colours, three jobs, so nothing has to be decoded twice:
+     green  = signal routing (links, in/out ports, the drag you are performing)
+     yellow = "you are editing THIS operator" (selection, and the controls it rebinds)
+     red    = sound on / removing                                                      */
+#modMulti{--fm-route:#2d6a4e;--fm-sel:#c9a227;--fm-sel-bg:#f6efdb;--fm-add:#4e9e78;--fm-del:#c4483c}
+#modMulti #muCanvasWrap{
+  display:flex;flex-direction:column;align-items:center;gap:var(--fm-pad);
+  width:100%;max-width:360px;min-height:0;max-height:100%;
+}
+#modMulti #mathsGrid{
+  position:relative;display:block;gap:0;
+  width:100%;flex:0 1 auto;min-height:0;box-sizing:border-box;
+  /* Square, not the old --mu-cell-ar 3/2: that token described one CELL in a 4x2 flow and no
+     longer sets anything, and a 4x4 routing matrix reads better with square pads. The canvas is
+     the main object in the module now, so it takes the stage rather than floating in it.
+     #muStage is overflow:hidden, so max-height is what makes a short viewport SQUASH the rows
+     instead of amputating the fourth one — the artwork only survived there on its own
+     max-height:100%. */
+  aspect-ratio:var(--fm-grid-ar,1);
+  max-height:100%;
+}
+#modMulti #muStripRow{flex:0 0 auto}
+
+#modMulti .maths-cell{
+  position:absolute;
+  left:calc(var(--c,0) * 25%);top:calc(var(--r,0) * 25%);
+  width:25%;height:25%;
+  border:3px solid transparent;background-clip:padding-box;
+  background-color:#f8f4eb;
+  /* the volume sweeper animates every op continuously; the deleted .mc-vbar fills were the only
+     view of it, so the readout moves into the pad's own background as one custom property */
+  background-image:linear-gradient(to top,rgba(0,0,0,.07) var(--v,0%),rgba(0,0,0,0) 0);
+  box-shadow:inset 0 0 0 1px #ccc;border-radius:1px;
+  aspect-ratio:auto;padding:5px 6px;box-sizing:border-box;
+  display:flex;flex-direction:column;justify-content:flex-end;
+  overflow:hidden;min-width:0;cursor:pointer;
+  touch-action:none;-webkit-touch-callout:none;
+  transition:left .16s,top .16s,opacity .15s,background-color .15s,box-shadow .12s;
+}
+/* the ratio strip used to stop 2px short of the volume bar that no longer exists */
+#modMulti .maths-cell .mc-rclick{right:0}
+#modMulti .maths-cell .mc-freq{padding-right:0}
+
+/* A modulator is never heard directly — it only puts sidebands on what it feeds. Marking the
+   modulators rather than the carriers keeps the default layout (all carriers) completely quiet. */
+#modMulti .maths-cell.fm-mod{background-color:#e9eee8}
+#modMulti .maths-cell.fm-mod .mc-freq{color:#7d9a88}
+#modMulti .maths-cell.fm-mod .mc-rclick{background:linear-gradient(rgba(45,106,78,.05),rgba(45,106,78,.05))}
+
+/* .fm-press builds through the long press, so the on/off switch is legible before it fires */
+#modMulti .maths-cell.fm-press{box-shadow:inset 0 0 0 1px var(--fm-sel)}
+#modMulti .maths-cell.fm-sel{box-shadow:inset 0 0 0 2px var(--fm-sel);background-color:var(--fm-sel-bg)}
+#modMulti .maths-cell.fm-drag{transition:none;z-index:20;box-shadow:inset 0 0 0 1px var(--fm-route),0 4px 12px rgba(0,0,0,.18)}
+#modMulti .maths-cell.fm-drop{box-shadow:inset 0 0 0 2px rgba(45,106,78,.45)}   /* var() cannot carry the alpha here */
+
+/* IN on the left edge, OUT on the right, lit only while that edge is live. Deliberately two marks
+   and not four: 64 nubs at ~4px on beige-on-beige reads as noise, and a nub beside a drawn link
+   says nothing the link has not already said. Direction is never ambiguous — it is always right
+   and down — so the links themselves need no arrowheads. */
+#modMulti .mc-in,#modMulti .mc-out{
+  position:absolute;top:50%;width:5px;height:5px;margin-top:-3px;
+  border-radius:50%;background:transparent;z-index:6;transition:background .15s;pointer-events:none;
+}
+#modMulti .mc-in{left:1px}
+#modMulti .mc-out{right:1px}
+#modMulti .maths-cell.fm-in .mc-in,#modMulti .maths-cell.fm-out .mc-out{background:var(--fm-route)}
+
+/* Links are plain divs in a sibling layer, positioned from col/row PERCENTAGES. .maths-cell is
+   overflow:hidden with an opaque background, so drawing them inside a pad would clip and cover
+   them; and measuring rects is impossible at boot, when no .mod is .active yet. */
+#modMulti #mathsLinks{position:absolute;inset:0;z-index:2;pointer-events:none}
+#modMulti #mathsLinks .fml{position:absolute;background:var(--fm-route);border-radius:1px}
+#modMulti #mathsLinks .fml-h{width:10px;height:2px;margin-left:-5px;margin-top:-1px}
+#modMulti #mathsLinks .fml-v{width:2px;height:10px;margin-left:-1px;margin-top:-5px}
+
+/* ── action strip ─────────────────────────────────────────────────────────────────────────────
+   It lives inside #muStage now, so it inherits the stage's --mu-side inset and its stacking
+   position; only the row itself needs laying out. */
+#muStripRow{display:flex;align-items:stretch;gap:6px;width:100%;pointer-events:auto}
+/* No hard-coded 26px anywhere: DM Mono arrives over the network, so the roll button's height moves
+   on font swap. align-items:stretch plus aspect-ratio:1 makes the square square by construction. */
+#muStripPlus{
+  flex:0 0 auto;aspect-ratio:1;padding:0;
+  font-family:inherit;font-size:14px;font-weight:500;line-height:1;
+  border:1px solid #555;border-radius:1px;background:#333;cursor:pointer;
+  /* the box stays black in both modes — only the glyph changes, so add and remove read as the same
+     control in two states rather than as two different buttons */
+  color:var(--fm-add);font-size:17px;font-weight:700;
+}
+#muStripPlus:active{background:#1d1d1d}
+#muStripPlus.minus{color:var(--fm-del)}
+#muStripPlus[aria-disabled="true"]{opacity:.35}
+#modMulti .fm-roll{flex:0 0 auto;width:33%;box-sizing:border-box;text-align:center;pointer-events:auto}
+
+/* SOUND is the transport. Red is the ONLY colour in the module's strip, so "is it making sound"
+   is answerable at a glance and never competes with the green the routing uses. OFF stays in the
+   strip's own black/grey register so it reads as inert rather than as a second state to decode. */
+#mathsPowerBtn{
+  flex:0 0 auto;margin-left:auto;padding:6px 10px;
+  background:#333;border:1px solid #555;color:#8a8478;
+  transition:background .15s,border-color .15s,color .15s;
+}
+#mathsPowerBtn.on{background:#9c342a;border-color:#9c342a;color:#fff;font-weight:600}
+#mathsPowerBtn:active{background:#f8f4eb;color:#555;border-color:#ccc}
+
+/* ── SELECTED: the footer fader and the wave dropdown are that operator's, and say so ───────── */
+#modMulti .msel.fm-sel .msel-head{border-color:var(--fm-sel);color:#8a6f14}
+#modMulti .maths-slider-wrap.fm-sel .ms-label,
+#modMulti .maths-slider-wrap.fm-sel .ms-unit{color:#8a6f14}
+#modMulti .maths-slider-wrap.fm-sel .ms-val{color:#8a6f14}
+#modMulti .maths-slider-wrap.fm-sel input[type=range]::-webkit-slider-thumb{background:var(--fm-sel)}
+#modMulti .maths-slider-wrap.fm-sel input[type=range]::-moz-range-thumb{background:var(--fm-sel)}
+
+/* Repeated here rather than relying on the inline block: those rules are earlier in source order,
+   so an unqualified rule of ours would win where it should not. --mu-cell-ar described a CELL and
+   no longer sets one; --fm-grid-ar describes the whole canvas. */
+@media (max-height:520px){
+  #modMulti #mathsGrid{--fm-grid-ar:1.7}
+}
+@media (hover:none) and (pointer:coarse){
+  #modMulti #mathsGrid{max-width:none}
+  #modMulti .maths-cell{padding:4px 5px}
+}

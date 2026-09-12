@@ -124,11 +124,15 @@ input[type=range]::-moz-range-thumb{width:20px;height:20px;border-radius:50%;bac
 #muBg{position:absolute;inset:0;z-index:0;background:repeating-linear-gradient(-180deg,white,gray 1px,#ede7d4 1px,gray 2px)}
 /* MATHS is a flex column: rigid header, elastic stage, rigid footer. Nothing is pinned by px offsets,
    so a short viewport shrinks the stage instead of stacking the clusters on top of each other. */
+/* one side inset for all three regions. #muStage was never in the mobile block, so hard-coding
+   12.5%/4% per region would leave the canvas misaligned against the ctrl row and the faders. */
+:root{--mu-side:12.5%;--fm-pad:var(--mu-gap)}
 #muCol{height:100%;display:flex;flex-direction:column;overflow-y:auto;overscroll-behavior:contain}
-#muContent{position:relative;z-index:5;flex:0 0 auto;overflow:visible;display:flex;flex-direction:column;align-items:center;gap:var(--mu-gap);padding:var(--mu-pad-top) 12.5% 0;pointer-events:none}
-#muStage{position:relative;z-index:2;flex:1 1 0;min-height:48px;width:100%;display:flex;align-items:center;justify-content:center;overflow:hidden}
-/* the image IS the play/stop target — no wrapper, so the hit box can never drift off the artwork */
-.maths-img{max-width:45%;max-height:100%;width:auto;height:auto;object-fit:contain;pointer-events:auto;cursor:pointer}
+#muContent{position:relative;z-index:5;flex:0 0 auto;overflow:visible;display:flex;flex-direction:column;align-items:center;gap:var(--mu-gap);padding:var(--mu-pad-top) var(--mu-side) 0;pointer-events:none}
+/* the canvas and its action strip travel together at the TOP of the stage, so the slack lands
+   below them rather than splitting either side of a centred canvas. --fm-pad is the single token
+   for both gaps, which is what keeps ctrlrow->canvas equal to canvas->strip. */
+#muStage{position:relative;z-index:2;flex:1 1 0;min-height:140px;width:100%;display:flex;flex-direction:column;align-items:center;justify-content:flex-start;overflow:hidden;padding:var(--fm-pad) var(--mu-side) 0;box-sizing:border-box}
 .maths-ctrlrow{display:flex;gap:6px;width:100%;max-width:360px;align-items:center;pointer-events:auto}
 .maths-grid{pointer-events:auto}
 #multiHarmonicSel{margin-left:auto}
@@ -181,10 +185,6 @@ input[type=range]::-moz-range-thumb{width:20px;height:20px;border-radius:50%;bac
 /* per-panel ratio dropdown trigger (top 1/3, faded ~5% lighter) */
 .maths-cell .mc-rclick{position:absolute;top:0;left:0;right:2px;height:33.333%;background:linear-gradient(rgba(0,0,0,.03),rgba(0,0,0,.03));display:flex;align-items:center;padding:0 6px;box-sizing:border-box;cursor:pointer;z-index:4}
 .maths-cell .mc-rclick .mc-ratio{font-size:9px;font-weight:600;color:#111;letter-spacing:.5px}
-/* vertical volume bar (visual) + invisible drag hit zone */
-.maths-cell .mc-vbar{position:absolute;top:0;right:0;bottom:0;width:2px;background:transparent;z-index:3;pointer-events:none}
-.maths-cell .mc-vbar-fill{position:absolute;left:0;right:0;bottom:0;background:#000;pointer-events:none}
-.maths-cell .mc-vbar-hit{position:absolute;top:33.333%;right:0;bottom:0;width:14px;cursor:ns-resize;touch-action:none;z-index:4}
 /* portaled mini ratio dropdown */
 #mathsGrid{position:relative}
 #mathsMenuLayer{position:fixed;inset:0;pointer-events:none;z-index:1000}
@@ -193,7 +193,7 @@ input[type=range]::-moz-range-thumb{width:20px;height:20px;border-radius:50%;bac
 #mathsMenuLayer .mr-opt{flex:0 0 auto;padding:6px 6px;font-size:9px;line-height:1.2;letter-spacing:.5px;color:#555;cursor:pointer;transition:150ms;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;border-radius:1px}
 #mathsMenuLayer .mr-opt:hover{background:#ede7d4}
 #mathsMenuLayer .mr-opt.active{color:#000;font-weight:600}
-.maths-sliders{position:relative;z-index:6;flex:0 0 auto;display:flex;flex-direction:column;align-items:center;gap:var(--mu-foot-gap);padding:0 12.5% var(--mu-foot-pad);pointer-events:auto}
+.maths-sliders{position:relative;z-index:6;flex:0 0 auto;display:flex;flex-direction:column;align-items:center;gap:var(--mu-foot-gap);padding:0 var(--mu-side) var(--mu-foot-pad);pointer-events:auto}
 .msel{cursor:pointer;position:relative;color:#555;font-family:inherit}
 .msel .msel-head{padding:6px 10px;border-radius:1px;border:1px solid #ccc;position:relative;z-index:10;font-size:9px;letter-spacing:1px;display:flex;align-items:center;justify-content:space-between;gap:4px;white-space:nowrap;overflow:hidden;background:#f8f4eb}
 .msel .msel-arrow{height:10px;width:16px;fill:#999;transition:300ms;flex-shrink:0;transform:rotate(-90deg)}
@@ -683,12 +683,9 @@ input[type=range]::-moz-range-thumb{width:20px;height:20px;border-radius:50%;bac
 @media (hover:none) and (pointer:coarse){
   /* MATHS — mobile-only layout. Horizontal widening only; vertical density comes from the
      --mu-* tokens, and the flex column keeps the clusters apart on its own. */
-  /* Upper grid: shifted left (was 42px 12.5% 0) */
-  #muContent{padding-left:4%;padding-right:4%}
-  /* SVG: 10% smaller (45 → 40.5) */
-  #modMulti .maths-img{max-width:40.5%}
-  /* Sliders: extend symmetric to align with new grid left edge */
-  #modMulti .maths-sliders{padding-left:4%;padding-right:4%;gap:0}
+  /* one token widens the ctrl row, the canvas and the faders together */
+  #modMulti{--mu-side:4%}
+  #modMulti .maths-sliders{gap:0}
   #modMulti .maths-slider-wrap .ms-label{margin-bottom:-1px;line-height:1.1}
   /* Settings redesign: tighter control row + full-width overlay */
   #modMulti .maths-ctrlrow{gap:4px}
@@ -776,6 +773,7 @@ input[type=range]::-moz-range-thumb{width:20px;height:20px;border-radius:50%;bac
 #landingOverlay .lp-enter:active{transform:scale(.95)}
 </style>
 <link rel="stylesheet" href="css/fx.css">
+<link rel="stylesheet" href="css/maths-fm.css">
 </head>
 <body>
 <div id="landingOverlay">
@@ -1007,11 +1005,17 @@ input[type=range]::-moz-range-thumb{width:20px;height:20px;border-radius:50%;bac
         <div class="msel-opts" id="mselHarmOpts"></div>
       </div>
     </div>
-    <div class="maths-grid" id="mathsGrid"></div>
-    <button class="maths-roll maths-roll-wide" onclick="multiRoll()">ROLL</button>
   </div>
   <div id="muStage">
-    <img id="mathsImg" class="maths-img" src="sihirsharmoniclines.png" alt="" onclick="multiToggle()">
+    <div id="muCanvasWrap">
+    <div class="maths-grid" id="mathsGrid"><div id="mathsLinks"></div></div>
+    <div id="muStripRow">
+    <button id="muStripPlus" onclick="mathsPlusMinus()" aria-label="add operator">+</button>
+    <button class="maths-roll fm-roll" id="muRollFq" onclick="multiRoll()">ROLL FQ</button>
+    <button class="maths-roll fm-roll" id="muRollPos" onclick="mathsRollPos()">ROLL POS</button>
+    <button id="mathsPowerBtn" class="maths-roll" role="switch" aria-checked="false" aria-label="sound on/off" onclick="multiToggle()">SOUND</button>
+    </div>
+    </div>
   </div>
   <div class="maths-sliders">
     <div id="muVsPanel">
@@ -1051,8 +1055,8 @@ input[type=range]::-moz-range-thumb{width:20px;height:20px;border-radius:50%;bac
       <span class="ms-val" id="msFiltHiVal">20.0k</span>
     </div>
     <div class="maths-slider-wrap" id="msVolumeWrap">
-      <span class="ms-unit">%</span><span class="ms-label">volume</span>
-      <input type="range" id="multiMVolR" min="0" max="100" value="100" oninput="multiSetMasterVol(+this.value)">
+      <span class="ms-unit" id="msVolumeUnit">%</span><span class="ms-label" id="msVolumeLabel">volume</span>
+      <input type="range" id="multiMVolR" min="0" max="100" value="100" oninput="mathsVolInput(+this.value)">
       <span class="ms-val" id="msVolumeVal">100</span>
     </div>
   </div>
@@ -1075,6 +1079,12 @@ input[type=range]::-moz-range-thumb{width:20px;height:20px;border-radius:50%;bac
       <span class="ms-val" id="msVolMinVal">65</span>
       <span class="ms-val" id="msVolMaxVal">100</span>
     </div>
+    <div class="maths-slider-wrap" id="msFmDepthWrap">
+      <span class="ms-unit">%</span><span class="ms-label">fm depth</span>
+      <input type="range" id="multiFmDepthR" min="0" max="100" value="50" oninput="mathsSetFmDepth(+this.value)">
+      <span class="ms-val" id="msFmDepthVal">50</span>
+    </div>
+    <div class="ms-toggle-row"><span class="ms-tlabel">Volume Sweep &mdash; Carriers Only</span><button class="ms-toggle" id="mVolCarBtn" onclick="mathsToggleVolScope()">OFF</button></div>
     <div class="ms-toggle-row"><span class="ms-tlabel">Multi-AutoGain</span><button class="ms-toggle on" id="mAutoBtn" onclick="toggleMultiAuto()">ON</button></div>
     <div class="ms-toggle-row"><span class="ms-tlabel"><span style="color:#111">MATHS</span> to <span style="color:#2d6a4e">BIRDBOX</span> Duration</span><button class="ms-toggle" id="mathsRatioBtn" onclick="toggleBbDurMode()">OFF</button></div>
     <div class="ms-toggle-row"><span class="ms-tlabel"><span style="color:#111">MATHS</span> to <span style="color:#2d6a4e">BIRDBOX</span> Frequency Ratio</span><span class="ms-fxwrap"><span class="ms-fx">×</span><span class="ms-num" id="bbFqRatioV" onclick="tapNum('bbFqRatioV',0.1,16,function(v){bbFqRatio=v;recomputeHarmonicPools();},false,2)">1.00</span></span></div>
@@ -1320,6 +1330,7 @@ function switchTab(t){
   if(t==='scores'&&!scoresInit){scoresInit=true;renderScores();}
   if(t==='voice'&&!vtInitialized){vtInitialized=true;vtInit();}
   if(vtInitialized){if(t==='voice')vtMount();else vtUnmount();}
+  if(t!=='multi'&&typeof mathsClearSel==='function')mathsClearSel();
 }
 function togglePlusMenu(e){e.stopPropagation();document.getElementById('plusMenu').classList.toggle('open');}
 function closePlusMenu(){document.getElementById('plusMenu').classList.remove('open');}
@@ -1517,7 +1528,7 @@ function renderScores(){
    carries its own VOLUME slider (#rsMVolR). */
 var MIX_CH=[
   {key:'voice',label:'VOICE',get:function(){return vtVol;},set:function(v){vtVol=v;document.getElementById('vtVolR').value=v;if(vtMGn&&AC)vtMGn.gain.setTargetAtTime(v2g(v),AC.currentTime,.02);}},
-  {key:'multi',label:'MATHS',get:function(){return multiMVol;},set:function(v){multiMVol=v;var el=document.getElementById('multiMVolR');if(el){el.value=v;updateSliderVal('msVolumeVal',el,v);}if(multiMGain&&AC)multiMGain.gain.setTargetAtTime(v2g(v),AC.currentTime,.02);}},
+  {key:'multi',label:'MATHS',get:function(){return multiMVol;},set:function(v){multiMVol=v;var el=document.getElementById('multiMVolR');if(el&&muSelIdx<0){el.value=v;updateSliderVal('msVolumeVal',el,v);}if(multiMGain&&AC)multiMGain.gain.setTargetAtTime(v2g(v),AC.currentTime,.02);}},
   {key:'birdbox',label:'BIRDBOX',get:function(){return swpMVol;},set:function(v){swpMVol=v;document.getElementById('swpMVolL').textContent='VOLUME \u2014 '+v+'%';document.getElementById('swpMVolR').value=v;if(swpMGn&&AC)swpMGn.gain.setTargetAtTime(v2g(v),AC.currentTime,.02);}},
   {key:'noise',label:'NOISE',get:function(){return Math.round(nMixPost*100);},set:function(v){nMixPost=v/100;if(nMGain&&AC)nMGain.gain.setTargetAtTime(v2g(nVol)*nMixPost,AC.currentTime,.02);nsVolRefresh();}},
   {key:'master',label:'MASTER',master:true,get:function(){return appMasterVol;},set:function(v){appMasterVol=v;if(appMaster&&AC)appMaster.gain.setTargetAtTime(v2g(v),AC.currentTime,.02);}}
@@ -1526,17 +1537,41 @@ var MIX_CH=[
 function multiCountActive(){
   if(!multiPlaying)return 0;
   var n=0;
-  for(var i=0;i<multiOscs.length;i++)if(!multiOscs[i].muted)n++;
+  // modulators are not heard directly, so they must not pull the autogain down
+  for(var i=0;i<multiOscs.length;i++)if(!multiOscs[i].muted&&multiOscs[i].isCarrier)n++;
   return n;
 }
+/* PEAK-SUM, not 1/sqrt(n). The RMS-style normalisation assumes uncorrelated sources, but every
+   MATHS oscillator is multiFundamental * ratio -- they are harmonically LOCKED, so their peaks
+   coincide once per fundamental period and the true peak is the SUM of the amplitudes, up to
+   sqrt(n) louder than 1/sqrt(n) predicts. Measured with 8 carriers at full level: the module hit
+   +7.1 dBFS, and the app limiter could only pull that back to +1.9 dBFS, so the destination hard
+   clipped -- which is why halving the master volume made it "almost gone".
+   Never boosts (sum<1 leaves the gain at 1), and the slow time constant keeps the sweeper from
+   turning this into an audible compressor. */
+/* The margin tracks FM DEPTH, because that is what causes the overshoot it exists to absorb:
+   multiHP/multiLP sit AFTER this gain, and a heavily FM'd carrier rings them ~20% past its own
+   amplitude, which no pre-filter gain can predict. Measured on the worst case (16 ops, one carrier,
+   every level at 100, depth 100): 0.95 and 0.85 both still clipped the destination, 0.75 was the
+   first value that cleared it. So: full loudness with no FM, 0.75 when depth is maxed.
+   appLimiter is threshold -1 / ratio 20 / knee 0 and its output ceiling is ~1.02 — driving it at
+   all lands slightly over full scale, so the point is to stay under it, not to lean on it. */
+var multiAutoLast=null;
+function multiHeadroom(){return 0.95-0.20*multiFmDepth01();}
 function multiAutoRecalc(){
   if(!multiAutoGn||!AC)return;
   var target=1.0;
   if(multiAutoOn){
-    var n=multiCountActive();
-    target=n>0?1/Math.sqrt(n):1.0;
+    var sum=0;
+    for(var i=0;i<multiOscs.length;i++){var o=multiOscs[i];if(!o.muted&&o.isCarrier)sum+=v2g(o.vol);}
+    // land just under full scale rather than exactly on it, so filter ringing and the FX return
+    // have somewhere to go instead of straight into the app limiter
+    var hr=multiHeadroom();
+    target=sum>hr?hr/sum:hr;
   }
-  multiAutoGn.gain.setTargetAtTime(target,AC.currentTime,.02);
+  if(multiAutoLast!=null&&Math.abs(target-multiAutoLast)<=Math.max(1e-4,multiAutoLast*0.01))return;
+  multiAutoLast=target;
+  multiAutoGn.gain.setTargetAtTime(target,AC.currentTime,.15);
 }
 function appCountActiveModules(){
   var n=0;
@@ -2409,15 +2444,24 @@ function bbPausePick(){
 let multiOscs=[];
 let multiPlaying=false,multiDur=5;
 let multiVolMin=65,multiVolMax=100;
-let multiSweepActive=false,multiSweepRAF=null,multiSweepLastFrame=0;
-let multiFreqFrom=[],multiFreqTo=[];
-let multiFreqTypes=[];
+let multiSweepActive=false,multiSweepLastFrame=0,multiSweepRAF=null;
+/* Per-op sweep and volume state lives ON the op object (o.fFrom/fTo/fType, o.vFrom/vTo/vProg/..),
+   never in parallel arrays. With 0..16 operators a splice desynchronises every parallel array at
+   once, and a misaligned sweep table sends each op toward its neighbour's target. */
+const MU_MAX_OPS=16;
+/* 8 cells is the maximum independent set of a 4x4 rook-adjacency grid, so the default layout has
+   ZERO routing edges and MATHS sounds exactly as it did before the grid existed. */
+const MU_CHECKER=[0,2,5,7,8,10,13,15];
+let multiOpSeq=0;              // monotonic id source: an array index is never an identity
+let multiRouteEpoch=0;         // bumped by every mutation; a stale async rewire bails on it
+let multiFmDepth=50;           // global FM DEPTH, 0..100
+let muSelIdx=-1;               // index of the SELECTED op (tap), or -1
 // MATHS 8-channel stochastic volume sweeper: each osc drifts toward its own random target on its own
 // clock, forever. Same shape as the noise 10-band sweeper (randomizeNoise/nsTransTick); it REPLACED
 // both the sine tremolo (multiLfo*) and the per-roll volume dice, so ROLL is frequency-only now.
 let muVolDur=5;                    // "volume sweep rate": CENTRE duration between targets, in seconds
-let muVolFrom=[],muVolTo=[],muVolProg=[],muVolLen=[],muVolJit=[],muVolType=[];
-let muVolActive=false,muVolRAF=null,muVolLastFrame=0;
+let muVolActive=false,muVolRAF=null,muVolLastFrame=0,muVolSeeded=false;
+let muVolCarriersOnly=false;       // on: modulators hold their index, only carriers breathe
 // MATHS volume-sweep LFO (muVs) — tremolo on multiMGain whose PERIOD is the swept quantity
 let muVsOn=false,muVsAuto=false,muVsA=0.001,muVsB=10,muVsFader=0.5;
 let muTremGain=null,muTremSrc=null,muTremDepth=null;
@@ -2428,54 +2472,199 @@ let muVsActive=false,muVsRAF=null;
 let multiHarmonicIdx=1;
 let multiFundamental=49.00,multiFundFrom=49.00,multiFundTo=49.00;
 let multiHarmonicSweep=false;
-let multiOscRatios=[];
+/* multiOscRatios is gone: the ratio lives on the op (o.ratio). recomputeHarmonicPools() reads the
+   full 32-entry HARMONIC_LISTS entry, never the op list, so nothing outside MATHS was using it. */
 var multiFrameCount=0;
 var multiIsMobile=window.matchMedia('(hover:none) and (pointer:coarse)').matches;
+function multiOpFreq(o){return Math.max(0.01,Math.min(1e8,r2(multiFundamental*(o.ratio||1))));}
+function multiRatios(){return multiOscs.map(function(o){return o.ratio;});}
+/* THE place an operator is built, so every field the rAF ticks read is guaranteed present. An op
+   that reaches muVolTick without vProg/vJit yields NaN -> setTargetAtTime THROWS -> and the throw
+   lands before the rAF re-arm, silently killing the volume sweeper for the rest of the session. */
+function multiMakeOp(ratio,cell,muted){
+  var o={id:++multiOpSeq,osc:null,gain:null,lfoGain:null,lfoDepth:null,lfoSrc:null,carGain:null,fmGain:null,
+    muted:!!muted,vol:75,ratio:ratio,p:cell,wv:-1,isCarrier:true,
+    freq:0,fFrom:0,fTo:0,fType:'linear',
+    vFrom:75,vTo:75,vProg:0,vLen:muVolDur,vJit:1,vType:'linear'};
+  o.freq=multiOpFreq(o);o.fFrom=o.freq;o.fTo=o.freq;
+  muVolPick(o);o.vProg=Math.random();o.vLen=muVolDur*o.vJit;
+  return o;
+}
+/* Dropping an op object does NOT free its nodes: o.gain->o.lfoGain->multiMGain stays connected and
+   o.lfoSrc is a loop:true BufferSource that was started and never stopped, so every preset load used
+   to orphan a whole silent chain into multiMGain. Under FM the same pattern also RETAINS dead
+   oscillators, because fmGain holds a live connection into their frequency param. */
+function multiDisposeOp(o){
+  if(!o)return;
+  try{if(o.lfoSrc){o.lfoSrc.stop();o.lfoSrc.disconnect();}}catch(e){}
+  [o.lfoDepth,o.lfoGain,o.carGain,o.fmGain,o.gain,o.osc].forEach(function(n){try{if(n)n.disconnect();}catch(e){}});
+  o.lfoSrc=o.lfoDepth=o.lfoGain=o.carGain=o.fmGain=o.gain=o.osc=null;
+  o.fmTo=null;
+}
+/* Built once and never torn down. Stop just ramps o.gain to 0 (exactly what mute already does), so
+   the oscillator keeps running: recreating it would leave fmGain retaining every dead oscillator it
+   had been wired to, and it is also the source of the phase-0 restart click. */
+function multiEnsureOpNodes(o,c){
+  if(o.gain)return;
+  o.gain=c.createGain();o.gain.gain.value=0;
+  o.lfoGain=c.createGain();o.lfoGain.gain.value=1;
+  o.carGain=c.createGain();o.carGain.gain.value=1;
+  o.fmGain=c.createGain();o.fmGain.gain.value=0;
+  o.gain.connect(o.lfoGain);o.lfoGain.connect(o.carGain);o.carGain.connect(multiMGain);o.lfoGain.connect(o.fmGain);
+  o.lfoDepth=c.createGain();o.lfoDepth.gain.value=0;
+  o.lfoSrc=c.createBufferSource();o.lfoSrc.buffer=muVsEnvBuf();o.lfoSrc.loop=true;o.lfoSrc.loopStart=0;muVsLoop(o.lfoSrc,1);
+  o.lfoSrc.connect(o.lfoDepth);o.lfoDepth.connect(o.lfoGain.gain);o.lfoSrc.start();
+  o.osc=c.createOscillator();o.osc.type=WF[o.wv>=0?o.wv:multiWv];
+  o.osc.frequency.setValueAtTime(o.freq,c.currentTime);
+  o.osc.connect(o.gain);o.osc.start();
+  o.fmTo=[];
+}
+function mathsSetPowerUI(on){
+  var b=document.getElementById('mathsPowerBtn');
+  if(b){b.classList.toggle('on',on);b.setAttribute('aria-checked',on?'true':'false');}
+}
 function multiInit(){
   multiHarmonicIdx=1;
   var list=HARMONIC_LISTS[1].ratios;
-  multiOscRatios=[];
+  multiOscs.forEach(multiDisposeOp);
   multiOscs=[];
-  for(var i=0;i<8;i++){
-    multiOscRatios[i]=list[Math.floor(Math.random()*list.length)];
-    multiOscs.push({osc:null,gain:null,lfoGain:null,muted:i>=4,freq:Math.max(0.01,Math.min(1e8,r2(multiFundamental*multiOscRatios[i]))),vol:75});
-  }
+  for(var i=0;i<8;i++)multiOscs.push(multiMakeOp(list[Math.floor(Math.random()*list.length)],MU_CHECKER[i],i>=4));
+  multiRebuildRouting();
   renderMulti();
+}
+/* ══ FM ROUTING ═══════════════════════════════════════════════════════════════════════════════
+   Cell p on the 4x4 grid: col = p%4, row = (p/4)|0. An operator modulates the operator immediately
+   to its RIGHT and the one immediately BELOW, so every edge points +x or +y and the graph is a DAG
+   BY CONSTRUCTION -- there is no cycle to detect, ever, and a non-empty set always has a sink.
+   An op with no outgoing edge is a CARRIER (audible, "the output of that algorithm"); any other op
+   is a MODULATOR, heard only through the sidebands it puts on its targets. Diagonals do nothing,
+   and two groups that do not touch are simply two voices summing into multiMGain.
+   Pure JS and always safe to run: the grid is draggable long before AC exists. */
+function multiComputeEdges(){
+  var byCell={},n=0;
+  multiOscs.forEach(function(o){if(o.p>=0&&o.p<16)byCell[o.p]=o;});
+  multiOscs.forEach(function(o){
+    var col=o.p%4,row=(o.p/4)|0;
+    o.fmOut=[];
+    if(col<3&&byCell[o.p+1])o.fmOut.push(byCell[o.p+1]);
+    if(row<3&&byCell[o.p+4])o.fmOut.push(byCell[o.p+4]);
+    o.isCarrier=o.fmOut.length===0;
+    n+=o.fmOut.length;
+  });
+  return n;
+}
+const FM_MAX_INDEX=6;              // ~13 significant sidebands at full tilt
+function multiFmMaxDev(){return Math.min(5000,(AC?AC.sampleRate:48000)*0.10);}
+function multiFmDepth01(){return Math.pow(Math.max(0,Math.min(100,multiFmDepth))/100,1.7);}
+/* Per-op level IS the modulation index (DX7-style). The signal reaching fmGain is already scaled by
+   v2g(vol) and the pulse envelope, so fmGain carries only the deviation -- but v2g is a CUBE (an
+   amplitude law) while index maps roughly linearly to brightness, so the cube is divided back out
+   and index is made linear in level. The divisor is floored, which makes a near-silent modulator
+   contribute near-zero FM rather than dividing by ~0. */
+function multiApplyFmDepth(o,land){
+  if(!AC||!o.fmGain||o._fmBusy)return;
+  var v=0;
+  /* An op parked at the Nyquist rail (BELL / FACTORIALS clamp to 1e8) is a full-scale square at
+     Nyquist; as a modulator that is pure aliasing, so it simply does not modulate. */
+  if(!o.isCarrier&&!o.muted&&o.freq<=AC.sampleRate*0.45){
+    var lin=Math.max(0,Math.min(1,o.vol/100));
+    var idx=FM_MAX_INDEX*multiFmDepth01()*lin;
+    /* ANTI-ALIAS. FM sidebands reach fc + (I+1)*fm (Carson), and anything past Nyquist folds back
+       as inharmonic hash — which is exactly what a high-ratio modulator produces here, since the
+       harmonic lists reach x81 and put modulators at 3-4 kHz. Cap the index per target so the
+       top sideband stays inside 90% of Nyquist. Without this, index 6 on a 3969 Hz modulator
+       throws sidebands to 28 kHz on a 48 k context. */
+    var head=AC.sampleRate*0.45,lim=Infinity;
+    o.fmOut.forEach(function(t){lim=Math.min(lim,Math.max(0,(head-t.freq)/Math.max(o.freq,1)-1));});
+    if(lim<idx)idx=lim;
+    var dev=Math.min(multiFmMaxDev(),idx*o.freq);
+    v=dev/Math.max(v2g(25),v2g(o.vol));
+  }
+  if(!isFinite(v))v=0;
+  /* 16 ops x (frequency + depth) from multiSweepTick and (gain + depth) from muVolTick is ~3800
+     AudioParam writes a second, and this codebase already documents that starving the audio thread
+     that way is audible (see nsRf). Skip a write the param is effectively already heading to. */
+  if(!land&&o._fmLast!=null&&Math.abs(v-o._fmLast)<=Math.max(1e-4,Math.abs(o._fmLast)*0.01))return;
+  o._fmLast=v;
+  if(land)o.fmGain.gain.setValueAtTime(v,AC.currentTime);
+  else o.fmGain.gain.setTargetAtTime(v,AC.currentTime,.008);
+}
+function multiApplyFmDepthAll(){multiOscs.forEach(function(o){multiApplyFmDepth(o);});}
+/* Role changes are pure gain ramps on carGain/fmGain -- never disconnects, so they cannot click.
+   Only the EDGE SET needs connect/disconnect, and that is deferred behind a ramp that lands. */
+function multiRebuildRouting(){
+  multiComputeEdges();
+  if(!AC||!multiMGain)return;
+  var ep=++multiRouteEpoch,t=AC.currentTime;
+  multiOscs.forEach(function(o){
+    if(!o.carGain)return;
+    o.carGain.gain.setTargetAtTime(o.isCarrier?1:0,t,.02);
+    var want=o.fmOut.map(function(x){return x.id;}).join(',');
+    if(o._fmWired===want)multiApplyFmDepth(o);
+    else multiRewireOp(o,want,ep);
+  });
+  multiAutoRecalc();
+}
+/* setTargetAtTime is ASYMPTOTIC -- at tau=.02 it is still ~5% after 60ms, and 5% of a 5 kHz fmGain
+   is 250 Hz of residual deviation that would SNAP to zero at the disconnect: inaudible on a gain,
+   an obvious blip on a frequency param. Ramp with an automation that actually arrives, then cut.
+   Reconnect while the gain is still 0, because a connect into an AudioParam takes effect at the
+   next render quantum and adds the modulator's instantaneous sample -- harmless only at zero.
+   The epoch guard matters: inside this 40ms window the user can drag again, drop another op,
+   remove one or load a preset, and a stale callback would connect to a spliced-out target and
+   throw inside a setTimeout, leaving fmGain parked at 0 forever. */
+function multiRewireOp(o,want,ep){
+  var t=AC.currentTime,g=o.fmGain;
+  o._fmBusy=true;
+  g.gain.cancelScheduledValues(t);
+  g.gain.setValueAtTime(g.gain.value,t);
+  g.gain.linearRampToValueAtTime(0,t+0.03);
+  setTimeout(function(){
+    if(ep!==multiRouteEpoch)return;            // a newer rewire owns this op and will clear _fmBusy
+    if(!AC||!o.fmGain||multiOscs.indexOf(o)<0){o._fmBusy=false;return;}
+    (o.fmTo||[]).forEach(function(p){try{o.fmGain.disconnect(p);}catch(e){}});
+    o.fmTo=[];
+    o.fmOut.forEach(function(x){if(x.osc){try{o.fmGain.connect(x.osc.frequency);o.fmTo.push(x.osc.frequency);}catch(e){}}});
+    o._fmWired=want;o._fmBusy=false;
+    multiApplyFmDepth(o,true);
+  },40);
 }
 function multiToggle(){
   var c=getAC();
   if(multiPlaying){
-    multiOscs.forEach(function(o){if(o.osc){try{o.osc.stop();}catch(e){}o.osc=null;}});
+    multiPlaying=false;
+    multiRouteEpoch++;                         // kill any rewire still in flight
+    multiAutoLast=null;
+    multiOscs.forEach(function(o){o._gLast=null;if(o.gain)o.gain.gain.setTargetAtTime(0,c.currentTime,.02);});
     if(multiSweepRAF)cancelAnimationFrame(multiSweepRAF);
     multiSweepActive=false;multiSweepRAF=null;
     muVolStop();
     muVsStop(false);
-    multiPlaying=false;var _img=document.getElementById('mathsImg');if(_img){_img.style.transition='none';_img.style.filter='none';}renderMulti();multiAutoRecalc();appAutoRecalc();return;
+    mathsSetPowerUI(false);renderMulti();multiAutoRecalc();appAutoRecalc();return;
   }
   if(!multiMGain){multiMGain=c.createGain();multiAutoGn=c.createGain();multiAutoGn.gain.value=1.0;multiHP=c.createBiquadFilter();multiHP.type='highpass';multiHP.Q.value=0.707;multiHP.frequency.value=filterV2F(multiFiltLo);
     multiLP=c.createBiquadFilter();multiLP.type='lowpass';multiLP.Q.value=0.707;multiLP.frequency.value=filterV2F(multiFiltHi);
     muTremGain=c.createGain();muTremGain.gain.value=1;muTremDepth=c.createGain();muTremDepth.gain.value=0;muTremSrc=c.createBufferSource();muTremSrc.buffer=muVsEnvBuf();muTremSrc.loop=true;muTremSrc.loopStart=0;muVsLoop(muTremSrc,1);muTremSrc.connect(muTremDepth);muTremDepth.connect(muTremGain.gain);muTremSrc.start();
     multiMGain.connect(muTremGain);muTremGain.connect(multiAutoGn);multiAutoGn.connect(multiHP);multiHP.connect(multiLP);fxTap('multi',multiLP);}
   multiMGain.gain.setTargetAtTime(v2g(multiMVol),c.currentTime,.02);
-  multiOscs.forEach(function(o,idx){
-    if(multiHarmonicIdx>=0&&multiOscRatios.length===8){
-      o.freq=Math.max(0.01,Math.min(1e8,r2(multiFundamental*multiOscRatios[idx])));
-    }
-    if(!o.gain){o.gain=c.createGain();}
-    if(!o.lfoGain){o.lfoGain=c.createGain();o.lfoGain.gain.value=1;o.gain.connect(o.lfoGain);o.lfoGain.connect(multiMGain);
-      o.lfoDepth=c.createGain();o.lfoDepth.gain.value=0;o.lfoSrc=c.createBufferSource();o.lfoSrc.buffer=muVsEnvBuf();o.lfoSrc.loop=true;o.lfoSrc.loopStart=0;muVsLoop(o.lfoSrc,1);o.lfoSrc.connect(o.lfoDepth);o.lfoDepth.connect(o.lfoGain.gain);o.lfoSrc.start();}
-    o.gain.gain.setTargetAtTime(o.muted?0:v2g(o.vol),c.currentTime,.02);
-    o.osc=c.createOscillator();o.osc.type=WF[multiWv];
-    o.osc.frequency.setValueAtTime(o.freq,c.currentTime);
-    o.osc.connect(o.gain);o.osc.start();
+  multiOscs.forEach(function(o){
+    if(multiHarmonicIdx>=0)o.freq=multiOpFreq(o);
+    multiEnsureOpNodes(o,c);
+    if(o.osc)o.osc.frequency.setTargetAtTime(o.freq,c.currentTime,.008);
+    o._gLast=o.muted?0:v2g(o.vol);
+    o.gain.gain.setTargetAtTime(o._gLast,c.currentTime,.02);
   });
-  multiPlaying=true;var _img=document.getElementById('mathsImg');if(_img){_img.style.transition='none';_img.style.filter='brightness(5)';}renderMulti();multiAutoRecalc();appAutoRecalc();
+  multiPlaying=true;
+  multiRebuildRouting();                       // relinks every fmGain now that the oscs exist
+  mathsSetPowerUI(true);renderMulti();multiAutoRecalc();appAutoRecalc();
   muVsApplyTrem();muVsStart();
   muVolSeed();muVolStart();
 }
 function multiMuteToggle(idx){
-  var o=multiOscs[idx];o.muted=!o.muted;
-  if(o.gain&&AC)o.gain.gain.setTargetAtTime(o.muted?0:v2g(o.vol),AC.currentTime,.02);
+  var o=multiOscs[idx];if(!o)return;o.muted=!o.muted;
+  o._gLast=null;multiAutoLast=null;            // a discrete change must never be coalesced away
+  if(o.gain&&AC)o.gain.gain.setTargetAtTime(o.muted||!multiPlaying?0:v2g(o.vol),AC.currentTime,.02);
+  multiApplyFmDepth(o);                        // muting a MODULATOR kills its FM too, by design
   multiAutoRecalc();
   renderMulti();
 }
@@ -2484,7 +2673,8 @@ function multiSetWave(idx){
   var t=document.getElementById('mselWaveText');if(t)t.textContent=WN[multiWv];
   var opts=document.querySelectorAll('#mselWaveOpts .msel-opt');
   opts.forEach(function(o){o.classList.toggle('active',+o.dataset.val===multiWv);});
-  if(multiPlaying){multiOscs.forEach(function(o){if(o.osc)o.osc.type=WF[multiWv];});}
+  // only ops that follow the global wave; a per-op choice made while selected survives
+  multiOscs.forEach(function(o){if(o.osc&&o.wv<0)o.osc.type=WF[multiWv];});
 }
 function multiSetMasterVol(v){
   multiMVol=v;
@@ -2496,9 +2686,11 @@ function toggleMathsSettings(){
   mathsSettingsOn=!mathsSettingsOn;
   var p=document.getElementById('mathsSettings');
   if(p){
-    if(mathsSettingsOn){var g=document.getElementById('mathsGrid'),md=document.getElementById('modMulti'),sl=document.querySelector('#modMulti .maths-sliders');if(g&&md){var gr=g.getBoundingClientRect(),mr=md.getBoundingClientRect();p.style.top=(gr.top-mr.top-1)+'px';
+    /* anchored to the ctrl row, not the grid: the canvas now lives in the elastic stage and its
+       top moves with the viewport, which would open this panel mid-screen. */
+    if(mathsSettingsOn){var g=document.querySelector('#modMulti .maths-ctrlrow'),md=document.getElementById('modMulti'),sl=document.querySelector('#modMulti .maths-sliders');if(g&&md){var gr=g.getBoundingClientRect(),mr=md.getBoundingClientRect();p.style.top=(gr.bottom-mr.top+4)+'px';
       // cap the overlay at the footer instead of a hard-coded offset; it scrolls internally past that
-      if(sl)p.style.maxHeight=Math.max(120,sl.getBoundingClientRect().top-gr.top-8)+'px';}}
+      if(sl)p.style.maxHeight=Math.max(120,sl.getBoundingClientRect().top-gr.bottom-12)+'px';}}
     p.classList.toggle('open',mathsSettingsOn);
   }
   var b=document.getElementById('mathsSettingsBtn');if(b)b.classList.toggle('on',mathsSettingsOn);
@@ -2550,30 +2742,77 @@ function initMultiFiltRange(){
   wrap.addEventListener('touchmove',function(e){if(!dragging)return;e.preventDefault();update(posFromX(e.touches[0].clientX));},{passive:false});
   wrap.addEventListener('touchend',function(){dragging=null;},{passive:true});
 }
-function multiRoll(){
-  var targets;
-  if(multiHarmonicIdx>=0){
-    var list=HARMONIC_LISTS[multiHarmonicIdx].ratios;
-    multiOscRatios=[];
-    for(var r=0;r<8;r++)multiOscRatios[r]=list[Math.floor(Math.random()*list.length)];
-    targets=multiComputeHarmonicFreqs(multiFundamental,multiOscRatios);
-    renderMulti();
-  }else{
-    var pool=MULTI_FREQS.slice();
-    for(var i=pool.length-1;i>0;i--){var j=Math.floor(Math.random()*(i+1));var tmp=pool[i];pool[i]=pool[j];pool[j]=tmp;}
-    targets=pool.slice(0,8);
-  }
-  multiFreqFrom=[];multiFreqTo=[];multiFreqTypes=[];
-  for(var k=0;k<8;k++){
-    multiFreqFrom[k]=multiOscs[k].freq;
-    multiFreqTo[k]=targets[k];
-    multiFreqTypes[k]='linear';
-  }
-  multiHarmonicSweep=false;
+function multiStartFreqSweep(targets){
+  multiOscs.forEach(function(o,k){o.fFrom=o.freq;o.fTo=targets[k];o.fType='linear';});
   multiSweepLastFrame=performance.now();
   multiSweepActive=true;multiFrameCount=0;multiSweepTick._prog=0;
   if(multiSweepRAF)cancelAnimationFrame(multiSweepRAF);
   multiSweepRAF=requestAnimationFrame(multiSweepTick);
+}
+function multiCellAt(p){for(var i=0;i<multiOscs.length;i++)if(multiOscs[i].p===p)return multiOscs[i];return null;}
+function multiFirstFreeCell(){
+  // prefer a checkerboard cell, so "+" adds an independent voice rather than silently re-patching
+  for(var k=0;k<MU_CHECKER.length;k++)if(!multiCellAt(MU_CHECKER[k]))return MU_CHECKER[k];
+  for(var p=0;p<16;p++)if(!multiCellAt(p))return p;
+  return -1;
+}
+/* Nothing else enforces the invariant, and a hand-edited or partially-written archive can collide
+   two ops on one cell -- which silently drops an edge rather than erroring. */
+function multiFixCells(){
+  var used={};
+  multiOscs.forEach(function(o){
+    var p=o.p|0;
+    if(!(p>=0&&p<16)||used[p]){p=-1;for(var k=0;k<16;k++)if(!used[k]){p=k;break;}}
+    if(p<0)p=0;
+    o.p=p;used[p]=1;
+  });
+}
+/* multiMakeOp guarantees every field the rAF ticks read, and muVsApplyTrem is not optional: an op
+   created while per-osc PULSE is on keeps lfoGain wide open at 1 and drones straight through the
+   gaps that every other op is pulsing in. */
+function multiOpAdd(cell){
+  if(multiOscs.length>=MU_MAX_OPS)return null;
+  if(cell==null||cell<0||cell>15||multiCellAt(cell))cell=multiFirstFreeCell();
+  if(cell<0)return null;
+  var list=multiHarmonicIdx>=0?HARMONIC_LISTS[multiHarmonicIdx].ratios:null;
+  var op=multiMakeOp(list?list[Math.floor(Math.random()*list.length)]:1,cell,false);
+  multiOscs.push(op);
+  if(AC&&multiMGain){multiEnsureOpNodes(op,AC);op.gain.gain.setTargetAtTime(multiPlaying?v2g(op.vol):0,AC.currentTime,.02);}
+  muVsApplyTrem();
+  multiRebuildRouting();
+  renderMulti();multiAutoRecalc();
+  return op;
+}
+function multiOpRemove(idx){
+  var op=multiOscs[idx];if(!op)return;
+  multiOscs.splice(idx,1);
+  if(muSelIdx===idx)muSelIdx=-1;else if(muSelIdx>idx)muSelIdx--;
+  multiRouteEpoch++;                 // a rewire still in flight must not land on a removed op
+  multiDisposeOp(op);
+  // ops that fed it re-diff on their own: multiComputeEdges drops it from their fmOut, which
+  // changes their wiring key and triggers a clean ramp-and-reconnect.
+  multiRebuildRouting();
+  renderMulti();multiAutoRecalc();
+}
+/* exposed for the headless routing checks, as fx-drive/comp/verb do */
+window.__fmTest={ops:function(){return multiOscs;},edges:multiComputeEdges,
+  carriers:function(){return multiOscs.filter(function(o){return o.isCarrier;}).length;},
+  add:multiOpAdd,remove:multiOpRemove,fix:multiFixCells,checker:MU_CHECKER,max:MU_MAX_OPS};
+function multiRoll(){
+  var n=multiOscs.length,targets;
+  if(!n)return;
+  if(multiHarmonicIdx>=0){
+    var list=HARMONIC_LISTS[multiHarmonicIdx].ratios;
+    multiOscs.forEach(function(o){o.ratio=list[Math.floor(Math.random()*list.length)];});
+    targets=multiOscs.map(multiOpFreq);
+    renderMulti();
+  }else{
+    var pool=MULTI_FREQS.slice();
+    for(var i=pool.length-1;i>0;i--){var j=Math.floor(Math.random()*(i+1));var tmp=pool[i];pool[i]=pool[j];pool[j]=tmp;}
+    targets=pool.slice(0,n);
+  }
+  multiHarmonicSweep=false;
+  multiStartFreqSweep(targets);
 }
 // ROLL sweeps FREQUENCY ONLY. Volume is owned end-to-end by muVolTick below, which never stops while
 // MATHS plays — so a roll no longer interrupts, restarts or hands off the volume animation.
@@ -2585,16 +2824,20 @@ function multiSweepTick(){
   if(!multiSweepTick._prog)multiSweepTick._prog=0;
   multiSweepTick._prog=Math.min(1,multiSweepTick._prog+dt/Math.max(multiDur,0.01));
   var t=multiSweepTick._prog;
-  for(var i=0;i<8;i++){
-    var o=multiOscs[i];
-    o.freq=r2(sweepVal(multiFreqTypes[i]||'linear',t,multiFreqFrom[i],multiFreqTo[i]));
+  multiOscs.forEach(function(o){
+    o.freq=r2(sweepVal(o.fType||'linear',t,o.fFrom,o.fTo));
     if(o.osc&&AC)o.osc.frequency.setTargetAtTime(o.freq,AC.currentTime,.008);
-  }
+    multiApplyFmDepth(o);          // deviation is proportional to the MODULATOR's frequency
+  });
   if(++multiFrameCount%(multiIsMobile?4:2)===0){
     renderMultiRows();
   }
   if(t>=1){
-    for(var k=0;k<8;k++)multiOscs[k].freq=multiFreqTo[k];
+    // setTargetAtTime never arrives: without an explicit landing write both the pitch and the FM
+    // depth would sit permanently a little short of their nominal target.
+    multiOscs.forEach(function(o){o.freq=o.fTo;
+      if(o.osc&&AC)o.osc.frequency.setValueAtTime(o.freq,AC.currentTime);
+      multiApplyFmDepth(o,true);});
     if(multiHarmonicSweep){multiFundamental=multiFundTo;multiHarmonicSweep=false;}
     multiSweepActive=false;multiSweepRAF=null;multiSweepTick._prog=0;
     renderMulti();
@@ -2608,36 +2851,49 @@ function multiSweepTick(){
 // and its OWN hop length (the rate slider +/-50%), so the 8 never arrive together; and every hop draws
 // a fresh curve from STYPES. Targets are bounded by the "volume sweep range" dual slider, read live at
 // pick time, so dragging its thumbs steers the very next hop.
-function muVolPick(i){
-  muVolFrom[i]=multiOscs[i].vol;
-  muVolTo[i]=multiVolMin+Math.random()*(multiVolMax-multiVolMin);
-  muVolJit[i]=0.5+Math.random();      // this hop runs at 0.5x .. 1.5x the slider value
-  muVolType[i]=bbRand(STYPES);
-  muVolProg[i]=0;
+function muVolPick(o){
+  o.vFrom=o.vol;
+  o.vTo=multiVolMin+Math.random()*(multiVolMax-multiVolMin);
+  o.vJit=0.5+Math.random();           // this hop runs at 0.5x .. 1.5x the slider value
+  o.vType=bbRand(STYPES);
+  o.vProg=0;
 }
 // Scatter the 8 across their cycles: without the random progress they would spend the first hop in
 // lockstep, and the jitter would only pull them apart from the second hop on.
 function muVolSeed(){
-  for(var i=0;i<8;i++){muVolPick(i);muVolProg[i]=Math.random();muVolLen[i]=muVolDur*muVolJit[i];}
+  multiOscs.forEach(function(o){muVolPick(o);o.vProg=Math.random();o.vLen=muVolDur*o.vJit;});
+  muVolSeeded=true;
 }
-function muVolStart(){if(muVolActive||!multiPlaying)return;if(muVolJit.length!==8)muVolSeed();muVolActive=true;muVolLastFrame=performance.now();muVolRAF=requestAnimationFrame(muVolTick);}
+function muVolStart(){if(muVolActive||!multiPlaying)return;if(!muVolSeeded)muVolSeed();muVolActive=true;muVolLastFrame=performance.now();muVolRAF=requestAnimationFrame(muVolTick);}
 function muVolStop(){if(muVolRAF)cancelAnimationFrame(muVolRAF);muVolActive=false;muVolRAF=null;}
 function muVolTick(){
   if(!muVolActive||!multiPlaying){muVolActive=false;muVolRAF=null;return;}
   var now=performance.now();
   var dt=Math.min(0.25,(now-muVolLastFrame)/1000);   // clamp: a backgrounded tab must not jump the sweep
   muVolLastFrame=now;
-  for(var i=0;i<8;i++){
-    var o=multiOscs[i];
-    if(!o)continue;
+  multiOscs.forEach(function(o,i){
+    // selecting an op binds the footer fader to it; a one-shot re-aim is not enough, the sweeper
+    // would walk the value straight back off the fader within one hop.
+    if(i===muSelIdx)return;
+    if(muVolCarriersOnly&&!o.isCarrier)return;   // vProg is kept, so re-enabling resumes mid-hop
     // eased toward the live slider value (as nsVisDur is), so a drag glides in over ~1s instead of
     // waiting out the hop in flight — which at the slow end of the slider would be a whole minute.
-    muVolLen[i]+=(muVolDur*muVolJit[i]-muVolLen[i])*0.05;
-    muVolProg[i]=Math.min(1,muVolProg[i]+dt/Math.max(muVolLen[i],0.01));
-    o.vol=sweepVal(muVolType[i],muVolProg[i],muVolFrom[i],muVolTo[i]);
-    if(muVolProg[i]>=1){o.vol=muVolTo[i];muVolPick(i);}
-    if(o.gain&&AC)o.gain.gain.setTargetAtTime(o.muted?0:v2g(o.vol),AC.currentTime,.02);
-  }
+    o.vLen+=(muVolDur*o.vJit-o.vLen)*0.05;
+    o.vProg=Math.min(1,o.vProg+dt/Math.max(o.vLen,0.01));
+    o.vol=sweepVal(o.vType,o.vProg,o.vFrom,o.vTo);
+    if(o.vProg>=1){o.vol=o.vTo;muVolPick(o);}
+    // a non-finite write THROWS, and the throw lands before the rAF re-arm below: one bad op would
+    // stop the whole sweeper for the rest of the session.
+    if(!isFinite(o.vol))o.vol=75;
+    // same coalescing as the depth write: setTargetAtTime is already gliding, so a sub-1% retarget
+    // buys nothing and 16 of them every frame cost real audio-thread time
+    var g=o.muted?0:v2g(o.vol);
+    if(o.gain&&AC&&(o._gLast==null||Math.abs(g-o._gLast)>Math.max(1e-5,Math.abs(o._gLast)*0.01))){
+      o._gLast=g;o.gain.gain.setTargetAtTime(g,AC.currentTime,.02);
+    }
+    multiApplyFmDepth(o);            // level IS the index, so the sweeper sweeps timbre too
+  });
+  multiAutoRecalc();                 // the sweeper moves the levels the headroom depends on
   if(++multiFrameCount%(multiIsMobile?4:2)===0){
     renderMultiRows();
   }
@@ -2650,9 +2906,11 @@ function muVsMeasure(){
   if(!b||!m||!m.classList.contains('vs-open'))return;
   var h=b.offsetHeight;
   m.style.setProperty('--muvs-h',h+'px');
-  // never lift more than the stage can spare: keep >=34px of image, fully visible above the frame.
-  // the stage's outer height is set by flex, so it doesn't change as we vary the padding.
-  if(st)m.style.setProperty('--muvs-lift',Math.min(h,Math.max(0,st.getBoundingClientRect().height-44))+'px');
+  /* never lift more than the stage can spare. The old floor was 44px, sized for the artwork that
+     used to live here; four rows of operator pads need a real minimum or PULSE crushes the canvas
+     to ~5px per row. The stage's outer height is set by flex, so it does not change with padding. */
+  var FM_GRID_MIN=4*26+3*6+34;   // four rows at the floor, plus the action strip and its gap
+  if(st)m.style.setProperty('--muvs-lift',Math.min(h,Math.max(0,st.getBoundingClientRect().height-FM_GRID_MIN))+'px');
 }
 function muVsTogglePanel(){
   var p=document.getElementById('muVsPanel');if(!p)return;
@@ -2761,8 +3019,8 @@ function muVsTick(){
   if(muVsPerOsc){
     // per-osc-by-ratio: audio-rate LFO on each o.lfoGain; frequency = ratio/x (period ms = x/ratio)
     var x=muVsBase();  // ms
-    for(var i=0;i<8;i++){var o=multiOscs[i];if(!o||!o.lfoSrc)continue;
-      var rr=multiOscRatios[i]||0;
+    for(var i=0;i<multiOscs.length;i++){var o=multiOscs[i];if(!o||!o.lfoSrc)continue;
+      var rr=o.ratio||0;
       var per=Math.min(1000,Math.max(0.0005,x/(rr>1e-6?rr:1e-6)));  // x is seconds now
       muVsLoop(o.lfoSrc,per);
     }
@@ -2805,7 +3063,6 @@ function fmtRatio(r){
   if(Math.abs(r)>=1e6)return Number(r).toExponential(2);
   return''+r;
 }
-var multiVbarDragIdx=-1;
 function closeRatioMenu(){
   var layer=document.getElementById('mathsMenuLayer');if(!layer)return;
   var menu=layer.querySelector('.mr-menu');if(menu)menu.classList.remove('open');
@@ -2817,7 +3074,7 @@ function openRatioMenu(idx,anchorEl){
   menu.innerHTML='';
   menu.dataset.idx=''+idx;
   var ratios=HARMONIC_LISTS[multiHarmonicIdx].ratios;
-  var current=multiOscRatios[idx];
+  var current=multiOscs[idx]?multiOscs[idx].ratio:null;
   var firstActive=ratios.indexOf(current);
   ratios.forEach(function(r,i){
     var d=document.createElement('div');
@@ -2831,12 +3088,12 @@ function openRatioMenu(idx,anchorEl){
     });
     menu.appendChild(d);
   });
-  // Viewport-fixed positioning so menu can spill outside the (small) maths grid.
-  // Width = full panel width (including the 2px slider bar) so the dropdown
-  // visually owns the entire cell column, matching .msel-style proportions.
+  /* Viewport-fixed positioning so the menu can spill outside the (small) maths grid.
+     Width and left come from the ANCHOR (.mc-rclick), not the cell: the cell's border box now
+     carries the 3px transparent gutter that spaces the pads, so measuring it made the dropdown
+     6px wider and 3px further left than the pad you can actually see. */
   var anchorRect=anchorEl.getBoundingClientRect();
-  var cell=anchorEl.closest('.maths-cell')||anchorEl;
-  var cellRect=cell.getBoundingClientRect();
+  var cellRect=anchorRect;
   var vw=window.innerWidth, vh=window.innerHeight;
   var spaceBelow=vh-anchorRect.bottom-6;
   var spaceAbove=anchorRect.top-6;
@@ -2868,27 +3125,17 @@ function openRatioMenu(idx,anchorEl){
 }
 function multiSetOscRatio(idx,ratio){
   if(multiHarmonicIdx<0)return;
-  multiOscRatios[idx]=ratio;
+  var op=multiOscs[idx];if(!op)return;
+  op.ratio=ratio;
   var newFreq=Math.max(0.01,Math.min(1e8,r2(multiFundamental*ratio)));
   // Update ratio label immediately; freq text animates via the sweep tick
-  var rat=document.getElementById('mrat'+idx);
+  var rat=document.getElementById('mrat'+op.id);
   if(rat)rat.textContent='\u00d7'+fmtRatio(ratio);
-  // Snapshot current state of every osc (where each one is right now)
-  var curFreqs=[];
-  for(var k=0;k<8;k++)curFreqs[k]=multiOscs[k].freq;
-  // If a sweep is currently in flight (e.g. from a roll), preserve the
-  // other oscs' targets so they continue toward their original goals.
-  var prevFreqTo=(multiSweepActive&&multiFreqTo&&multiFreqTo.length===8)?multiFreqTo.slice():null;
-  var newFrom=curFreqs.slice();
-  var newTo=curFreqs.slice();
-  if(prevFreqTo){
-    for(var k=0;k<8;k++)if(k!==idx)newTo[k]=prevFreqTo[k];
-  }
-  newTo[idx]=newFreq;
-  multiFreqFrom=newFrom;
-  multiFreqTo=newTo;
-  if(!multiFreqTypes||multiFreqTypes.length!==8)multiFreqTypes=['linear','linear','linear','linear','linear','linear','linear','linear'];
-  for(var t=0;t<8;t++)if(!multiFreqTypes[t])multiFreqTypes[t]='linear';
+  /* Every op glides from where it is now. Because fTo lives on the op, a sweep already in flight
+     keeps its own per-op targets for free -- a ratio tap mid-roll no longer yanks the others back,
+     and there is no length-8 table left to misalign when the operator count changes. */
+  multiOscs.forEach(function(o){o.fFrom=o.freq;if(!multiSweepActive)o.fTo=o.freq;if(!o.fType)o.fType='linear';});
+  op.fTo=newFreq;
   multiHarmonicSweep=false;
   // Restart the sweep from the current state over multiDur seconds
   multiSweepLastFrame=performance.now();
@@ -2898,101 +3145,27 @@ function multiSetOscRatio(idx,ratio){
   if(multiSweepRAF)cancelAnimationFrame(multiSweepRAF);
   multiSweepRAF=requestAnimationFrame(multiSweepTick);
 }
-function attachVolSlider(hit,fill,idx){
-  function setFromY(clientY){
-    var rect=hit.getBoundingClientRect();
-    if(rect.height<=0)return;
-    var pct=1-(clientY-rect.top)/rect.height;
-    if(pct<0)pct=0;else if(pct>1)pct=1;
-    var vol=Math.round(pct*100);
-    multiOscs[idx].vol=vol;
-    fill.style.height=vol+'%';
-    var o=multiOscs[idx];
-    if(o.gain&&AC&&!o.muted){
-      o.gain.gain.setTargetAtTime(v2g(vol),AC.currentTime,.02);
-    }
-    // the sweeper owns o.vol, so a drag would be gone next frame: re-aim it from where it was dropped
-    muVolFrom[idx]=vol;muVolProg[idx]=0;
-  }
-  hit.addEventListener('pointerdown',function(e){
-    e.stopPropagation();e.preventDefault();
-    closeRatioMenu();
-    try{hit.setPointerCapture(e.pointerId);}catch(_){}
-    multiVbarDragIdx=idx;
-    setFromY(e.clientY);
-  });
-  hit.addEventListener('pointermove',function(e){
-    if(multiVbarDragIdx!==idx)return;
-    e.stopPropagation();
-    setFromY(e.clientY);
-  });
-  function endDrag(e){
-    if(multiVbarDragIdx!==idx)return;
-    e.stopPropagation();
-    try{hit.releasePointerCapture(e.pointerId);}catch(_){}
-    setTimeout(function(){multiVbarDragIdx=-1;},0);
-  }
-  hit.addEventListener('pointerup',endDrag);
-  hit.addEventListener('pointercancel',endDrag);
-  hit.addEventListener('click',function(e){e.stopPropagation();},true);
-}
+/* Split three ways, because the old build-everything pass also ran from multiSweepTick -- i.e. up
+   to 30 seconds after a ROLL -- and would delete every cell out from under an in-flight drag.
+   mathsCellsEnsure() is structural (only when the op count changed), mathsCellsSync() is idempotent
+   per-cell state, and renderMultiRows() below stays the cheap per-frame path. The first two live in
+   js/maths-fm.js, which loads after this block: boot is a no-op and the module renders on mount. */
 function renderMulti(){
-  var c=document.getElementById('mathsGrid');
-  // Ensure portal menu layer exists (one shared dropdown for all cells)
-  var layer=document.getElementById('mathsMenuLayer');
-  if(!layer){
-    layer=document.createElement('div');layer.id='mathsMenuLayer';
-    var menu=document.createElement('div');menu.className='mr-menu';
-    layer.appendChild(menu);c.appendChild(layer);
-  }
-  // Remove existing cells but preserve the menu layer
-  Array.prototype.slice.call(c.querySelectorAll('.maths-cell')).forEach(function(el){el.remove();});
-  multiOscs.forEach(function(o,idx){
-    var cell=document.createElement('div');cell.className='maths-cell'+(o.muted?' muted':'');
-    // Top 1/3 ratio click area
-    var rclick=document.createElement('div');rclick.className='mc-rclick';
-    var rat=document.createElement('span');rat.className='mc-ratio';rat.id='mrat'+idx;
-    if(multiHarmonicIdx>=0&&multiOscRatios.length>idx){rat.textContent='\u00d7'+fmtRatio(multiOscRatios[idx]);}
-    else{rat.textContent=''+(idx+1);}
-    rclick.appendChild(rat);
-    rclick.addEventListener('click',(function(i,el){return function(e){
-      e.stopPropagation();
-      var menu=document.querySelector('#mathsMenuLayer .mr-menu');
-      var wasOpenForMe=menu&&menu.classList.contains('open')&&menu.dataset.idx===''+i;
-      closeRatioMenu();
-      if(!wasOpenForMe)openRatioMenu(i,el);
-    };})(idx,rclick));
-    cell.appendChild(rclick);
-    // Frequency text
-    var freq=document.createElement('span');freq.className='mc-freq';freq.id='mfq'+idx;
-    setMcFreq(freq,o.freq);cell.appendChild(freq);
-    // Vertical volume bar
-    var vbar=document.createElement('div');vbar.className='mc-vbar';
-    var fill=document.createElement('div');fill.className='mc-vbar-fill';fill.id='mvbarfill'+idx;
-    fill.style.height=Math.max(0,Math.min(100,Math.round(o.vol)))+'%';
-    vbar.appendChild(fill);cell.appendChild(vbar);
-    var hit=document.createElement('div');hit.className='mc-vbar-hit';
-    cell.appendChild(hit);
-    attachVolSlider(hit,fill,idx);
-    // Mute toggle on the rest of the cell, with drag-guard
-    cell.onclick=(function(i){return function(){
-      if(multiVbarDragIdx===i)return;
-      multiMuteToggle(i);
-    };})(idx);
-    // Insert before the menu layer so layer stays last child
-    c.insertBefore(cell,layer);
-  });
-  closeRatioMenu();
-  var img=document.getElementById('mathsImg');
-  if(img){img.style.transition='none';img.style.filter=multiPlaying?'brightness(5)':'none';}
+  if(typeof mathsCellsEnsure==='function'){mathsCellsEnsure();mathsCellsSync();mathsFmDraw();}
+  mathsSetPowerUI(multiPlaying);
 }
 function renderMultiRows(){
-  for(var i=0;i<8;i++){
-    var fq=document.getElementById('mfq'+i);
-    if(fq)setMcFreq(fq,multiOscs[i].freq);
-    var fill=document.getElementById('mvbarfill'+i);
-    if(fill)fill.style.height=Math.max(0,Math.min(100,Math.round(multiOscs[i].vol)))+'%';
-  }
+  // ids are keyed on the op's stable id, never its array index: a splice shifts every index above
+  // the removal, and nothing guarantees a re-render lands before the next rAF tick.
+  multiOscs.forEach(function(o){
+    var fq=document.getElementById('mfq'+o.id);
+    if(fq)setMcFreq(fq,o.freq);
+    /* the pad's background fill IS the volume readout now (the .mc-vbar strip is gone), so this
+       has to write the custom property — it was still addressing the deleted fill element, which
+       left the level frozen between renderMulti() calls instead of tracking the sweeper. */
+    var cell=document.getElementById('mcell'+o.id);
+    if(cell)cell.style.setProperty('--v',Math.max(0,Math.min(100,Math.round(o.vol)))+'%');
+  });
 }
 // FAST-RIGHT faders: the widget runs the opposite way to the value behind it. The flip lives only at the
 // widget boundary — reading it and writing it back — so nsVsFader/muVsFader/muVolDur keep the meaning
@@ -3066,22 +3239,9 @@ function initMultiHarmonics(){
   document.getElementById('mselHarmText').textContent=HARMONIC_LISTS[multiHarmonicIdx].name.toUpperCase();
 }
 function multiComputeHarmonicFreqs(fund,ratios){
-  var out=new Array(8);
-  for(var i=0;i<8;i++)out[i]=Math.max(0.01,Math.min(1e8,r2(fund*ratios[i])));
-  return out;
+  return ratios.map(function(r){return Math.max(0.01,Math.min(1e8,r2(fund*r)));});
 }
-function multiStartHarmonicSweep(targets){
-  multiFreqFrom=[];multiFreqTo=[];multiFreqTypes=[];
-  for(var k=0;k<8;k++){
-    multiFreqFrom[k]=multiOscs[k].freq;
-    multiFreqTo[k]=targets[k];
-    multiFreqTypes[k]='linear';
-  }
-  multiSweepLastFrame=performance.now();
-  multiSweepActive=true;multiFrameCount=0;multiSweepTick._prog=0;
-  if(multiSweepRAF)cancelAnimationFrame(multiSweepRAF);
-  multiSweepRAF=requestAnimationFrame(multiSweepTick);
-}
+function multiStartHarmonicSweep(targets){multiStartFreqSweep(targets);}
 function multiSetHarmonic(idx){
   multiHarmonicIdx=idx;
   var t=document.getElementById('mselHarmText');if(t&&HARMONIC_LISTS[idx])t.textContent=HARMONIC_LISTS[idx].name.toUpperCase();
@@ -3097,15 +3257,13 @@ function multiSetFundamental(val){
   if(multiHarmonicIdx<0){multiFundamental=val;return;}
   if(multiSweepActive&&multiHarmonicSweep){
     multiFundTo=val;
-    var newTargets=multiComputeHarmonicFreqs(val,multiOscRatios);
-    for(var i=0;i<8;i++)multiFreqTo[i]=newTargets[i];
+    multiOscs.forEach(function(o){o.fTo=Math.max(0.01,Math.min(1e8,r2(val*(o.ratio||1))));});
     return;
   }
   multiFundFrom=multiFundamental;
   multiFundTo=val;
   multiHarmonicSweep=true;
-  var targets=multiComputeHarmonicFreqs(val,multiOscRatios);
-  multiStartHarmonicSweep(targets);
+  multiStartHarmonicSweep(multiComputeHarmonicFreqs(val,multiRatios()));
 }
 function foldIntoRange(f,lo,hi){
   if(f<=0)return null;
@@ -3237,9 +3395,9 @@ function captureState(){
     nrf:nsRfEnabled?1:0,nrfq:nsRfQ,nrflo:nsRfLo,nrfhi:nsRfHi,nrfm:nsRfMix,nrft:nsRfTilt,nrfo:nsRfOct,nrfs:nsRfSpread,
     mv:multiMVol,mw:multiWv,md:multiDur,mvm:multiVolMin,mvx:multiVolMax,mvr:muVolDur,
     mvse:muVsOn?1:0,mvsau:muVsAuto?1:0,mvsa:muVsA,mvsb:muVsB,mvsf:muVsFader,mvsd:muVsDur,mvsr:DIR_ENC[muVsDir]||'fwd',mvsatk:muVsAtk,mvsdec:muVsDec,mvsp:muVsPerOsc?1:0,
-    mhi:multiHarmonicIdx,mfu:multiFundamental,mor:multiOscRatios.slice(),mfl:multiFiltLo,mfh:multiFiltHi,bfr:bbFqRatio,
+    mhi:multiHarmonicIdx,mfu:multiFundamental,mor:multiRatios(),mfl:multiFiltLo,mfh:multiFiltHi,bfr:bbFqRatio,mfmd:multiFmDepth,mvco:muVolCarriersOnly?1:0,
     brl:bbRangeLo,brh:bbRangeHi,bfl:bbFiltLo,bfh:bbFiltHi,bpdl:bbPauseLo,bpdh:bbPauseHi,
-    mr:multiOscs.map(function(o){return{f:o.freq,v:o.vol,m:o.muted?1:0};}),
+    mr:multiOscs.map(function(o){return{f:o.freq,v:o.vol,m:o.muted?1:0,p:o.p,w:o.wv};}),
     xm:appMasterVol,
     ma:multiAutoOn?1:0,xa:appAutoOn?1:0,lm:appLimOn?1:0,
     /* VOICE was the only module absent from archives; capture it while we are here. */
@@ -3278,15 +3436,29 @@ function restoreState(o){
   muVsAtk=o.mvsatk!=null?+o.mvsatk:0.002;muVsDec=o.mvsdec!=null?+o.mvsdec:0.15;   // pre-A/D archives fall back
   multiHarmonicIdx=o.mhi!=null?o.mhi:0;
   multiFundamental=o.mfu!=null?o.mfu:25;multiFundFrom=multiFundamental;multiFundTo=multiFundamental;
-  multiOscRatios=o.mor&&o.mor.length===8?o.mor.slice():[];
+  multiFmDepth=o.mfmd!=null?+o.mfmd:50;muVolCarriersOnly=!!o.mvco;
   multiHarmonicSweep=false;
-  if(o.mr&&o.mr.length===8&&o.mr[0].m!==undefined){
-    multiOscs=o.mr.map(function(r){return{osc:null,gain:null,muted:!!r.m,freq:r.f||400,vol:r.v!=null?r.v:75};});
+  var mor=o.mor&&o.mor.length?o.mor.slice():[];
+  /* Length-agnostic: the old ===8 gates silently fell back to a fresh random 8, so any archive at a
+     different operator count would have been thrown away on load. Pre-grid archives carry no p/w,
+     so they take the checkerboard (zero edges) and the global wave -- loading unchanged in sound. */
+  if(o.mr&&o.mr.length&&o.mr.length<=MU_MAX_OPS&&o.mr[0].m!==undefined){
+    multiOscs.forEach(multiDisposeOp);
+    multiOscs=o.mr.map(function(r,i){
+      var op=multiMakeOp(mor[i]!=null?mor[i]:1,r.p!=null?r.p:(MU_CHECKER[i]!=null?MU_CHECKER[i]:i),!!r.m);
+      op.freq=r.f||400;op.fFrom=op.freq;op.fTo=op.freq;
+      op.vol=r.v!=null?r.v:75;op.vFrom=op.vol;op.vTo=op.vol;
+      op.wv=r.w!=null?r.w:-1;
+      return op;
+    });
+    multiFixCells();
   }else{multiInit();}
-  if(multiHarmonicIdx>=0&&multiOscRatios.length===8){
-    var hFreqs=multiComputeHarmonicFreqs(multiFundamental,multiOscRatios);
-    for(var hi=0;hi<8;hi++)multiOscs[hi].freq=hFreqs[hi];
+  if(multiHarmonicIdx>=0&&mor.length===multiOscs.length){
+    var hFreqs=multiComputeHarmonicFreqs(multiFundamental,mor);
+    multiOscs.forEach(function(op,hi){op.freq=hFreqs[hi];op.fFrom=op.freq;op.fTo=op.freq;});
   }
+  muVolSeeded=false;
+  multiRebuildRouting();
   appMasterVol=o.xm!=null?o.xm:100;
   if(appMaster&&AC)appMaster.gain.setTargetAtTime(v2g(appMasterVol),AC.currentTime,.02);
   multiAutoOn=!!o.ma;appAutoOn=!!o.xa;appLimOn=!!o.lm;
@@ -3347,6 +3519,10 @@ function syncNoiseUI(){
   setPB('n',false);
 }
 function syncMultiUI(){
+  /* a preset load rewrites every op, so a stranded selection would leave the footer fader bound to
+     an operator that no longer exists -- and would send multiSetWave below to that op instead of
+     the module default. */
+  if(typeof mathsClearSel==='function')mathsClearSel();
   multiSetWave(multiWv);
   var durR=document.getElementById('multiDurR');
   durR.value=expSI(multiDur,0.10,30);
@@ -3378,6 +3554,7 @@ function syncMultiUI(){
   muVsApplyTrem();
   if(muVsOn&&multiPlaying)muVsStart();else if(!muVsOn)muVsStop(false);
   if(multiPlaying){muVolSeed();muVolStart();}else muVolStop();
+  if(typeof mathsFmSyncUI==='function')mathsFmSyncUI();
   renderMulti();
 }
 function archiveSave(){
@@ -5914,7 +6091,11 @@ muVsRefreshFader();muVsUpdModes();muVsRenderDir();
 initEQ();initNP();multiInit();initMselWave();initMultiFiltRange();initMultiHarmonics();bbUiLoad();recomputeHarmonicPools();initMultiDualRange();initPulseEnvs();syncMultiUI();renderArchive();initMixer();initBBSpeed();initBBRange();initBBVol();initBBFilt();initBBPause();seedDefaultScore();renderScores();initScoreTab();
 document.addEventListener('click',function(e){
   if(!e.target.closest('.msel'))document.querySelectorAll('.msel.open').forEach(function(s){s.classList.remove('open');});
-  if(!e.target.closest('.mc-rclick')&&!e.target.closest('#mathsMenuLayer'))closeRatioMenu();
+  /* #mathsGrid is excluded because its pointer machine captures the pointer, which retargets the
+     click to the GRID — so a tap that just opened the ratio menu arrives here looking like a click
+     outside it and used to close the menu on the same gesture that opened it. The grid closes
+     menus itself, in its own pointerdown. */
+  if(!e.target.closest('.mc-rclick')&&!e.target.closest('#mathsMenuLayer')&&!e.target.closest('#mathsGrid'))closeRatioMenu();
 });
 // --tab-h can't be derived in CSS (it depends on rendered font metrics), so measure it
 function measureTabH(){var t=document.querySelector('.tabs');if(t)document.documentElement.style.setProperty('--tab-h',t.offsetHeight+'px');}
@@ -5961,5 +6142,6 @@ switchTab('birdbox');
 <script src="js/fx-drive.js"></script>
 <script src="js/fx-comp.js"></script>
 <script src="js/fx-verb.js"></script>
+<script src="js/maths-fm.js"></script>
 </body>
 </html>
