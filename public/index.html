@@ -2669,6 +2669,7 @@ function multiToggle(){
     multiOscs.forEach(function(o){o._gLast=null;if(o.gain)o.gain.gain.setTargetAtTime(0,c.currentTime,.02);});
     if(multiSweepRAF)cancelAnimationFrame(multiSweepRAF);
     multiSweepActive=false;multiSweepRAF=null;
+    multiFundCommit();                         // the glide dies here; the next play starts from its target
     muVolStop();
     muVsStop(false);
     mathsSetPowerUI(false);renderMulti();multiAutoRecalc();appAutoRecalc();return;
@@ -2829,9 +2830,16 @@ function multiOpRemove(idx){
 window.__fmTest={ops:function(){return multiOscs;},edges:multiComputeEdges,
   carriers:function(){return multiOscs.filter(function(o){return o.isCarrier;}).length;},
   add:multiOpAdd,remove:multiOpRemove,fix:multiFixCells,checker:MU_CHECKER,max:MU_MAX_OPS};
+/* A fundamental glide commits multiFundamental only when it LANDS. Every path that abandons or
+   replaces the glide must commit first, or the fundamental stays on the old value for good while
+   the readout already shows the new one: a roll and a ratio pick (their targets came from the old
+   value too), a list change (it recomputes NOISE's, BIRDBOX's and the ototune pools from it), and
+   a stop (the next play re-seats every oscillator from it). */
+function multiFundCommit(){if(multiHarmonicSweep){multiFundamental=multiFundTo;multiHarmonicSweep=false;}}
 function multiRoll(){
   var n=multiOscs.length,targets;
   if(!n)return;
+  multiFundCommit();
   if(multiHarmonicIdx>=0){
     var list=HARMONIC_LISTS[multiHarmonicIdx].ratios;
     multiOscs.forEach(function(o){o.ratio=list[Math.floor(Math.random()*list.length)];});
@@ -3157,6 +3165,7 @@ function openRatioMenu(idx,anchorEl){
 function multiSetOscRatio(idx,ratio){
   if(multiHarmonicIdx<0)return;
   var op=multiOscs[idx];if(!op)return;
+  multiFundCommit();   // newFreq below must use the NEW fundamental
   op.ratio=ratio;
   var newFreq=Math.max(0.01,Math.min(1e8,r2(multiFundamental*ratio)));
   // Update ratio label immediately; freq text animates via the sweep tick
@@ -3274,6 +3283,7 @@ function multiComputeHarmonicFreqs(fund,ratios){
 }
 function multiStartHarmonicSweep(targets){multiStartFreqSweep(targets);}
 function multiSetHarmonic(idx){
+  multiFundCommit();   // before the pools below are recomputed from it
   multiHarmonicIdx=idx;
   var t=document.getElementById('mselHarmText');if(t&&HARMONIC_LISTS[idx])t.textContent=HARMONIC_LISTS[idx].name.toUpperCase();
   var opts=document.querySelectorAll('#mselHarmOpts .msel-opt');

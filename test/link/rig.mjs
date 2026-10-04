@@ -15,7 +15,7 @@ export const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 export function rig({ port, debugPort }) {
   const BASE = `http://127.0.0.1:${port}`;
   let server = null, browser = null, nextId = 0, pass = 0, fail = 0;
-  const waiting = new Map();
+  const waiting = new Map(), thrown = new Map();     // thrown: sessionId -> uncaught exceptions seen in that page
   const profile = mkdtempSync(path.join(tmpdir(), 'link-rig-'));
   const chrome = spawn(CHROME, ['--headless=new', `--remote-debugging-port=${debugPort}`, `--user-data-dir=${profile}`,
     '--no-first-run', '--no-default-browser-check', '--disable-gpu', '--mute-audio',
@@ -55,7 +55,14 @@ export function rig({ port, debugPort }) {
       catch { await sleep(150); }
     }
     await new Promise((res, rej) => { browser.onopen = res; browser.onerror = rej; });
-    browser.onmessage = (e) => { const m = JSON.parse(e.data); if (m.id && waiting.has(m.id)) { waiting.get(m.id)(m.result || m); waiting.delete(m.id); } };
+    browser.onmessage = (e) => {
+      const m = JSON.parse(e.data);
+      if (m.id && waiting.has(m.id)) { waiting.get(m.id)(m.result || m); waiting.delete(m.id); }
+      else if (m.method === 'Runtime.exceptionThrown' && thrown.has(m.sessionId)) {
+        const d = m.params.exceptionDetails;
+        thrown.get(m.sessionId).push(((d.exception && d.exception.description) || d.text || '').split('\n')[0]);
+      }
+    };
   }
   const cdp = (method, params = {}, sessionId) => new Promise((res) => { const id = ++nextId; waiting.set(id, res); browser.send(JSON.stringify({ id, method, params, sessionId })); });
 
@@ -64,6 +71,7 @@ export function rig({ port, debugPort }) {
     const { targetId } = await cdp('Target.createTarget', { url: 'about:blank', newWindow: true });
     const { sessionId } = await cdp('Target.attachToTarget', { targetId, flatten: true });
     const send = (method, params) => cdp(method, params, sessionId);
+    const errors = []; thrown.set(sessionId, errors);
     await send('Page.enable'); await send('Runtime.enable');
     await send('Emulation.setDeviceMetricsOverride', { width: 390, height: 844, deviceScaleFactor: 2, mobile: true });
     await send('Emulation.setTouchEmulationEnabled', { enabled: true });
@@ -82,9 +90,29 @@ export function rig({ port, debugPort }) {
       await send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
       await sleep(settle);
     };
+    /* A real touch drag from the element's centre by (dx, dy), in `steps` moves. */
+    const drag = async (sel, dx, dy, steps = 8) => {
+      const [x, y] = await centre(sel);
+      await send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [{ x, y }] });
+      for (let i = 1; i <= steps; i++) { await send('Input.dispatchTouchEvent', { type: 'touchMove', touchPoints: [{ x: x + dx * i / steps, y: y + dy * i / steps }] }); await sleep(25); }
+      await send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
+      await sleep(300);
+    };
+    /* A REAL screen-away: the page opens a tab over itself in its own window, so `visibilitychange`
+       is trusted — a dispatched one is not, and the app tells the two apart. Resolves to whether
+       the page really was hidden. */
+    const away = async (ms) => {
+      await send('Runtime.evaluate', { expression: `window.__w = window.open('about:blank', '_blank'); 1`, userGesture: true });
+      await sleep(ms);
+      const hidden = await ev(`document.hidden`);
+      await send('Runtime.evaluate', { expression: `window.__w && window.__w.close(); 1`, userGesture: true });
+      await send('Page.bringToFront');
+      for (let i = 0; i < 40 && (await ev(`document.hidden`)) === true; i++) await sleep(50);
+      return hidden === true;
+    };
     const shot = async (file) => { writeFileSync(file, Buffer.from((await send('Page.captureScreenshot', { format: 'png' })).data, 'base64')); };
     await load();
-    return { ev, load, centre, tap, shot };
+    return { ev, load, centre, tap, drag, away, shot, errors };
   }
   return { BASE, startServer, stopServer, openBrowser, page, ok, until, finish };
 }

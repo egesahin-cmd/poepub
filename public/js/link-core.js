@@ -59,6 +59,23 @@ var LINK = (function () {
     return row.kind === 'transport' ? (v ? 3 : 0) : row.kind === 'anchor' ? 4 : row.kind === 'struct' ? 2 : 1;
   }
 
+  /* Anchors: a start time. The app keeps it in local performance.now() time; the wire carries
+     shared-clock time. off = shared - local.
+     Out: cached per row, so a still anchor does not look changed while the offset slews; converted
+     again when the local value changes or the offset has moved by more than ANCHOR_SLOP. */
+  var ANCHOR_SLOP = 5;     // ms
+  function anchorOut(cache, id, local, off) {
+    var a = cache[id];
+    if (a && a.local === local && Math.abs(off - a.off) <= ANCHOR_SLOP) return a.shared;
+    cache[id] = a = { local: local, shared: local + off, off: off };
+    return a.shared;
+  }
+  function anchorIn(cache, id, shared, off) {
+    var local = shared - off;
+    cache[id] = { local: local, shared: shared, off: off };
+    return local;
+  }
+
   /* Clock: the sample with the shortest round trip is the least distorted. */
   function pick(samples) { var b = null; for (var i = 0; i < samples.length; i++) if (!b || samples[i].rtt < b.rtt) b = samples[i]; return b; }
   function settle(cur, target) { return cur == null || Math.abs(target - cur) > 50 ? target : cur + (target - cur) * 0.25; }
@@ -69,7 +86,16 @@ var LINK = (function () {
      get reads the globals that hold INTENT (never the DOM, never an in-flight value);
      set is idempotent, makes no click, updates the control's visual, and get() === v afterwards. */
   function row(r) { rows.push(r); byId[r.id] = r; }
-  function readAll() { var o = {}; for (var i = 0; i < rows.length; i++) o[rows[i].id] = rows[i].get(); return o; }
+  /* Anchors are left out while the clock has no estimate: nothing sensible could be sent. */
+  function readAll() {
+    var o = {};
+    for (var i = 0; i < rows.length; i++) {
+      var r = rows[i];
+      if (r.kind !== 'anchor') o[r.id] = r.get();
+      else if (off !== null) o[r.id] = anchorOut(anchors, r.id, r.get(), off);
+    }
+    return o;
+  }
 
   /* ── state ────────────────────────────────────────────────────────────────── */
   var role = null, room = '', key = '', sock = null;
@@ -79,6 +105,8 @@ var LINK = (function () {
   var mirror = null;       // slave: the last state received from the master
   var pend = null, raf = 0;
   var off = null, samples = [];
+  var anchors = Object.create(null);   // row id -> {local, shared, off}: the last conversion, see anchorOut
+  var stale = Object.create(null);     // slave: anchors not to self-check until the server confirms them
   var timers = [], subs = [];
 
   function on(fn) { subs.push(fn); }
@@ -94,14 +122,19 @@ var LINK = (function () {
     for (var id in d) if (byId[id]) list.push([byId[id], d[id]]);       // unknown ids are ignored
     list.sort(function (a, b) { return phase(a[0], a[1]) - phase(b[0], b[1]); });
     for (var i = 0; i < list.length; i++) {
-      try { list[i][0].set(list[i][1]); }
-      catch (e) { if (typeof console !== 'undefined') console.warn('LINK row ' + list[i][0].id, e); }
+      var r = list[i][0], v = list[i][1];
+      if (r.kind === 'anchor') {
+        if (off === null) continue;                              // no clock yet: the self-check applies it later
+        v = anchorIn(anchors, r.id, v, off);
+      }
+      try { r.set(v); }
+      catch (e) { if (typeof console !== 'undefined') console.warn('LINK row ' + r.id, e); }
     }
   }
   /* Rows are collected and applied once per frame, so a burst of packets costs one pass. */
   function queue(d) {
     pend = pend || {};
-    for (var id in d) { pend[id] = d[id]; mirror[id] = clone(d[id]); }
+    for (var id in d) { pend[id] = d[id]; mirror[id] = clone(d[id]); delete stale[id]; }
     if (!raf) raf = requestAnimationFrame(flush);
   }
   function flush() { raf = 0; var d = pend; pend = null; if (d && role === 'slave') applyBatch(d); }
@@ -110,7 +143,10 @@ var LINK = (function () {
   function takeState(st) {
     var first = !mirror, d = {}, any = false;
     if (first) mirror = {};
-    for (var id in st) if (first || !eq(st[id], mirror[id])) { d[id] = st[id]; any = true; }
+    for (var id in st) {
+      delete stale[id];                                          // the server has it, on its current clock
+      if (first || !eq(st[id], mirror[id])) { d[id] = st[id]; any = true; }
+    }
     if (any) queue(d);
   }
   function heal() {
@@ -119,6 +155,18 @@ var LINK = (function () {
     for (var i = 0; i < rows.length; i++) {
       var r = rows[i];
       if (r.heal === false || !(r.id in mirror)) continue;
+      /* A row whose value is an event cannot be healed by re-applying it, but may know a state it
+         can safely restore: it is handed what the room has. */
+      if (typeof r.heal === 'function') {
+        try { r.heal(mirror[r.id]); } catch (e) { if (typeof console !== 'undefined') console.warn('LINK row ' + r.id, e); }
+        continue;
+      }
+      if (r.kind === 'anchor') {
+        /* One rule covers a wake (the app shifts its start times by the hidden time) and a clock
+           that has moved: put the start back where the master's is, in this phone's time. */
+        if (off !== null && !stale[r.id] && Math.abs(r.get() - (mirror[r.id] - off)) > ANCHOR_SLOP) (d = d || {})[r.id] = mirror[r.id];
+        continue;
+      }
       if (!eq(r.get(), mirror[r.id])) (d = d || {})[r.id] = mirror[r.id];
     }
     if (d) applyBatch(d);
@@ -155,6 +203,10 @@ var LINK = (function () {
   /* Runs on every (re)connect. */
   function hello() {
     if (!sock || !sock.connected || !role) return;
+    /* A (re)connect may be to a restarted server, whose clock starts again. The master converts its
+       anchors afresh; a slave leaves its anchors alone until a state from the server confirms them. */
+    anchors = Object.create(null);
+    for (var i = 0; i < rows.length; i++) if (rows[i].kind === 'anchor') stale[rows[i].id] = true;
     burst();
     if (role === 'master') {
       sock.timeout(5000).emit('claim', { v: V, room: room, key: key }, function (err, a) {
@@ -269,7 +321,8 @@ var LINK = (function () {
     V: V, row: row, start: start, stop: stop, hold: hold, on: on, info: info, wake: wake, norm: norm,
     now: function () { return performance.now() + (off || 0); },                 // shared time, ms
     clock: function () { var b = pick(samples); return { off: off, rtt: b ? b.rtt : null, n: samples.length }; },
-    _: { eq: eq, clone: clone, step: step, phase: phase, pick: pick, settle: settle, MOVING_MS: MOVING_MS }
+    _: { eq: eq, clone: clone, step: step, phase: phase, pick: pick, settle: settle, MOVING_MS: MOVING_MS,
+         rows: rows, read: readAll, anchorOut: anchorOut, anchorIn: anchorIn, ANCHOR_SLOP: ANCHOR_SLOP }                                   // the table itself, for the row checks
   };
 })();
 if (typeof module !== 'undefined' && module.exports) module.exports = LINK;

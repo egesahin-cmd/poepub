@@ -180,6 +180,19 @@
     };
   }
 
+  /* A slave changes tabs while rows arrive for tabs that are not showing. Whatever places itself
+     from measured rectangles got zeros then, so measure again once the tab is up: the pulse panels
+     (onViewportResize), and the MATHS settings panel, which positions itself only as it opens. */
+  var realSwitchTab = switchTab;
+  switchTab = function (t) {
+    var out = realSwitchTab.apply(this, arguments);
+    if (LINK.info().role === 'slave') {
+      onViewportResize();
+      if (t === 'multi' && mathsSettingsOn) { toggleMathsSettings(); toggleMathsSettings(); }
+    }
+    return out;
+  };
+
   var WHY = { key: 'WRONG KEY', nokey: 'THE SERVER HAS NO KEY SET', room: 'ENTER A ROOM NAME', full: 'THE ROOM IS FULL', version: 'RELOAD THE PAGE' };
   LINK.on(function (evt, data) {
     if (evt === 'joined') return enter();

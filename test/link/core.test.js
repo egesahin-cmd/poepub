@@ -73,3 +73,28 @@ test('the clock trusts the shortest round trip, steps when far off and slews whe
   assert.equal(settle(1000, 1100), 1100);
   assert.equal(settle(1000, 1020), 1005);
 });
+
+test('the table can be read whole, for the row checks', () => {
+  LINK.row({ id: 't.x', kind: 'setting', get: () => 7, set() {} });
+  assert.equal(LINK._.read()['t.x'], 7);
+  assert.ok(LINK._.rows.some((r) => r.id === 't.x'));
+});
+
+test('an anchor goes out in shared time and comes back in local time', () => {
+  const { anchorOut, anchorIn } = LINK._;
+  const master = {}, slave = {};
+  const shared = anchorOut(master, 'rs.t0', 1000, 250);          // master: local 1000, its clock is 250 behind shared
+  assert.equal(shared, 1250);
+  assert.equal(anchorIn(slave, 'rs.t0', shared, -400), 1650);    // slave: its clock is 400 ahead
+  assert.equal(anchorOut(slave, 'rs.t0', 1650, -400), 1250, 'and the slave reads back exactly what it was given');
+});
+
+test('a still anchor does not look changed while the clock offset slews', () => {
+  const { anchorOut, ANCHOR_SLOP } = LINK._;
+  const cache = {};
+  assert.equal(anchorOut(cache, 'a', 1000, 250), 1250);
+  assert.equal(anchorOut(cache, 'a', 1000, 250 + ANCHOR_SLOP), 1250, 'a small slew: the cached value stands');
+  const moved = 250 + ANCHOR_SLOP + 1.5;
+  assert.equal(anchorOut(cache, 'a', 1000, moved), 1000 + moved, 'a real move of the clock: converted again');
+  assert.equal(anchorOut(cache, 'a', 2000, moved), 2000 + moved, 'a new start time: converted again');
+});

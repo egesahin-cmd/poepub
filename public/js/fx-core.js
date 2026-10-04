@@ -19,6 +19,7 @@ var FX = (function () {
   var amt = {};          // unitKey -> {chKey: 0..100}
   var knobs = {};        // unitKey -> {chKey: knob handle}
   var store = {};        // unitKey -> persisted unit state (units read/write freely)
+  var racks = {};        // unitKey -> rack handle, for callers that are not the unit itself (LINK)
   var MASTER = 'master';
 
   /* ── persistence ─────────────────────────────────────────────────────────
@@ -273,7 +274,7 @@ var FX = (function () {
       chips.appendChild(sp);
     });
 
-    return {
+    return racks[o.unit] = {
       panel: p,
       chip: function (id, t) { var e = document.getElementById(o.key + id + 'V'); if (e) e.textContent = t; },
       chipClass: function (id, name, on) {
@@ -315,7 +316,7 @@ var FX = (function () {
     register: register, unit: unit, state: state, persist: persist,
     tap: tap, ports: ports, out: out, applyCh: applyCh, applyAll: applyAll,
     amt: getAmt, setAmt: setAmt, knob: knob, knobOf: knobOf, chKeys: chKeys,
-    rack: rack, mount: mount, MASTER: MASTER,
+    rack: rack, rackOf: function (uKey) { return racks[uKey] || null; }, mount: mount, MASTER: MASTER,
     _chans: chans, _units: units
   };
 })();
