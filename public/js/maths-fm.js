@@ -10,11 +10,11 @@
    four gestures are disjoint by construction, which is why there is no mode switch:
 
      tap, top third    -> ratio menu, ALWAYS, selected or not
-     tap, elsewhere    -> select / deselect (binds the footer fader and wave dropdown to this op)
+     tap, elsewhere    -> switch the operator on / off
      drag past FM_SLOP -> move / swap the pad
-     press FM_HOLD_MS  -> switch the operator on / off                                            */
+     press FM_HOLD_MS  -> select / deselect (binds the footer fader and wave dropdown to this op) */
 
-var FM_HOLD_MS=1000;   // >1s to switch an op on/off; the contextmenu guard below makes it reachable
+var FM_HOLD_MS=1000;   // >1s to select an op; the contextmenu guard below makes it reachable
 var FM_SLOP=8;         // 6px is tight when the whole gesture is "move one cell over"
 var fmDrag=null;       // the single in-flight gesture, or null
 var fmPrevPos=null;    // one level of undo for ROLL POS
@@ -178,7 +178,7 @@ function fmUp(e){
   d.el.classList.remove('fm-press','fm-drag');
   d.el.style.transform='';
   Array.prototype.forEach.call(g.querySelectorAll('.maths-cell'),function(c){c.classList.remove('fm-drop');});
-  if(d.held){renderMulti();return;}                       // the on/off hold already fired
+  if(d.held){renderMulti();return;}                       // the select hold already fired
   if(d.moved){fmDrop(d,e.clientX,e.clientY);return;}
   /* the ratio strip answers a tap whether the pad is selected or not, and tapping the SAME strip
      again closes the menu rather than rebuilding it in place */
@@ -186,7 +186,7 @@ function fmUp(e){
     if(d.wasFor!==''+d.idx)openRatioMenu(d.idx,d.el.querySelector('.mc-rclick'));
     return;                                 // already open for this pad -> fmDown's close is the toggle
   }
-  mathsSetSel(muSelIdx===d.idx?-1:d.idx);                 // tap highlights; tap again releases
+  multiMuteToggle(d.idx);                                 // tap is the operator's on/off switch
 }
 function fmDrop(d,cx,cy){
   var op=multiOscs[d.idx];if(!op){renderMulti();return;}
@@ -200,13 +200,13 @@ function fmDrop(d,cx,cy){
   renderMulti();
 }
 
-/* ── on/off (hold) and selection (tap) ───────────────────────────────────────────────────────── */
-/* the long press is the operator's on/off switch */
+/* ── on/off (tap) and selection (hold) ───────────────────────────────────────────────────────── */
+/* the long press highlights the operator; holding it again releases */
 function fmHoldFire(idx){
   var d=fmDrag;if(!d||d.idx!==idx||d.moved)return;
   d.held=true;
   if(d.el)d.el.classList.remove('fm-press');
-  multiMuteToggle(idx);
+  mathsSetSel(muSelIdx===idx?-1:idx);
 }
 function mathsSetSel(i){muSelIdx=i;fmSyncSelUI();renderMulti();}
 function mathsClearSel(){if(muSelIdx>=0)mathsSetSel(-1);}
@@ -231,6 +231,18 @@ function fmSyncSelUI(){
     if(wt)wt.textContent=WN[multiWv];
   }
   fmSyncStrip();
+}
+/* the fm depth row doubles as the filter, the way NOISE's volume row doubles as its range: view state
+   only, so the passband keeps working (and keeps its values) while the row shows fm depth */
+var muFiltOn=false;
+function muFiltToggle(){
+  muFiltOn=!muFiltOn;
+  var b=document.getElementById('muFiltBtn');
+  if(b){b.classList.toggle('on',muFiltOn);b.setAttribute('aria-pressed',muFiltOn?'true':'false');}
+  [['multiFmDepthR',false],['msFmDepthVal',false],['multiFiltRange',true],['msFiltLoVal',true],['msFiltHiVal',true]].forEach(function(x){
+    var el=document.getElementById(x[0]);if(el)el.style.display=(x[1]===muFiltOn)?'':'none';});
+  var u=document.getElementById('msFmDepthUnit');if(u)u.textContent=muFiltOn?'Hz':'%';
+  syncFiltRange();
 }
 /* the footer fader is the module's, or the selected operator's */
 function mathsVolInput(v){
@@ -323,7 +335,11 @@ function fmBindRollPosUndo(){
 function mathsSetFmDepth(v){
   multiFmDepth=Math.max(0,Math.min(100,v));
   multiAutoLast=null;multiAutoRecalc();      // the clipping headroom tracks depth
-  updateSliderVal('msFmDepthVal',document.getElementById('multiFmDepthR'),Math.round(multiFmDepth));
+  var d=document.getElementById('multiFmDepthR');
+  // keep the thumb with the value for programmatic callers (archive restore, tests); a drag is
+  // already the source of truth so this is a no-op there
+  if(d&&+d.value!==multiFmDepth)d.value=multiFmDepth;
+  updateSliderVal('msFmDepthVal',d,Math.round(multiFmDepth));
   /* multiSweepTick is not a heartbeat — it stops between sweeps, so without an explicit pass the
      slider would look dead until the next ROLL */
   multiApplyFmDepthAll();

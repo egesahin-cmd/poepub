@@ -166,7 +166,14 @@ input[type=range]::-moz-range-thumb{width:20px;height:20px;border-radius:50%;bac
 /* the old single-fader look, kept verbatim — flat #aaa 20px cap, no ring, and no fill bar;
    .dual-track already matches its 3px #ccc groove. Only difference now is the second thumb. */
 #multiFiltRange .dual-thumb{background:#aaa;border:none}
-#multiFiltRange .dual-fill{display:none}
+/* FM DEPTH wears the modulator pads' own fill (maths-fm.css .fm-mod, #e9eee8) on its text and cap.
+   The groove stays the volume's, and the filter sharing the row keeps its greys. */
+#msMasterWrap #msFmDepthLabel,#msMasterWrap #msFmDepthVal{color:#e9eee8}
+#msMasterWrap #msFmDepthLabel{font-weight:700}
+#msMasterWrap input[type=range]::-webkit-slider-thumb{background:#e9eee8}
+#msMasterWrap input[type=range]::-moz-range-thumb{background:#e9eee8}
+/* the passband between the two caps reads white */
+#multiFiltRange .dual-fill{background:#fff}
 /* .ms-val sits at bottom:0 of the wrap, so the thumb->readout gap is whatever the block above
    leaves below its thumb. The 36px range box leaves 8px under its 20px cap, while the volume
    slider's inline <input> instead sits 3.5px ABOVE its own thumb bottom (5px descender line-box
@@ -175,6 +182,9 @@ input[type=range]::-moz-range-thumb{width:20px;height:20px;border-radius:50%;bac
    Applies to EVERY .dual-* range sharing a panel with plain <input> sliders -- the filter in the
    MATHS column and the volume-sweep range in settings both measure 12.5px thumb->readout with it. */
 #multiFiltRange,#multiDualRange{margin-bottom:-11.5px}
+/* the filter swaps in for the fm depth <input> in the same row: without this the 36px box sits
+   4px lower than the input it replaces and the whole footer jumps on every toggle */
+#msMasterWrap #multiFiltRange{margin-top:-4px}
 .maths-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:6px;width:100%;max-width:360px}
 .maths-cell{position:relative;aspect-ratio:var(--mu-cell-ar);background:#f8f4eb;border:1px solid #ccc;border-radius:1px;cursor:pointer;display:flex;flex-direction:column;justify-content:flex-end;padding:5px 6px;transition:opacity .15s;min-width:0;overflow:hidden}
 .maths-cell.muted{opacity:.25}
@@ -438,11 +448,14 @@ input[type=range]::-moz-range-thumb{width:20px;height:20px;border-radius:50%;bac
    tapping the button's lower third moved the volume instead. Only the thumb's invisible upper margin is
    covered: the 10px disc is centred on the groove, entirely below the button, so it stays grabbable. */
 /* 2px in on every edge: .pulse-lbl is 20px tall with 6px side padding, so 16px + 4px here. */
-#nsVolRangeBtn{margin-left:0;position:relative;z-index:2;border:none;height:16px;padding:0 4px;}
+#nsVolRangeBtn,#muFiltBtn{margin-left:0;position:relative;z-index:2;border:none;height:16px;padding:0 4px;}
+/* the MATHS header is a bare text line, not a .ns-fhdr row: the chip must not make it taller */
+#muFiltBtn{margin-top:-4px;margin-bottom:-4px;background:#b0b0b0;color:#111;}
 /* lit state diverges from .pulse-lbl.on ON PURPOSE — grey, to sit with the range slider's own greys.
    Scoped to this id so the NOISE and MATHS pulse buttons keep the black they share. Text colour still
    comes from .pulse-lbl.on. */
 #nsVolRangeBtn.on{background:#b0b0b0;color:#222;}
+#muFiltBtn.on{background:#b0b0b0;color:#fff;}
 /* rate of change and volume are the SAME control visually, so the look lives on .ns-groove and neither row
    restates it: a thin groove, no frame, and a 10px disc in the app beige floating in the masked gap. The
    gap is 22px against an 18px thumb, so 2px of background shows either side of the disc. */
@@ -673,6 +686,12 @@ input[type=range]::-moz-range-thumb{width:20px;height:20px;border-radius:50%;bac
 #vtSpeakText:focus{border-color:#C070C6}
 #vtSpeakRow{display:flex;justify-content:center;align-items:flex-end;gap:10px;width:100%;max-width:360px}
 #modVoice #vtSpeakRow .bsm{padding:6px 22px;font-size:14px}
+/* The language toggle stays hidden until a second language registers. Only then
+   does the row carry .has-lang and tighten, so the English-only row is exactly
+   what it was. The toggle is permanently .on: it is a readout, and an un-.on
+   button here is white on pale pink. */
+#modVoice #vtSpeakRow.has-lang .bsm{padding:6px 15px}
+#modVoice #vtSpeakRow.has-lang #vtLangBtn{padding:6px 11px;min-width:38px}
 #vtSpeakRateWrap{flex:1;min-width:0}
 /* A dimmed control is one AUTO ignores, so it must also be unclickable —
    otherwise it can be toggled into a state that silently does nothing. */
@@ -774,6 +793,7 @@ input[type=range]::-moz-range-thumb{width:20px;height:20px;border-radius:50%;bac
 </style>
 <link rel="stylesheet" href="css/fx.css">
 <link rel="stylesheet" href="css/maths-fm.css">
+<link rel="stylesheet" href="css/link.css">
 </head>
 <body>
 <div id="landingOverlay">
@@ -1049,10 +1069,12 @@ input[type=range]::-moz-range-thumb{width:20px;height:20px;border-radius:50%;bac
       </div>
     </div>
     <div class="maths-slider-wrap" id="msMasterWrap">
-      <div class="ms-hdr"><span class="ms-label">filter</span><span class="ms-unit">Hz</span></div>
-      <div id="multiFiltRange" style="position:relative;height:36px;width:100%;touch-action:none"></div>
-      <span class="ms-val" id="msFiltLoVal">20</span>
-      <span class="ms-val" id="msFiltHiVal">20.0k</span>
+      <div class="ms-hdr"><span class="ns-hdr-left"><span class="ms-label" id="msFmDepthLabel">fm depth</span><span class="ns-sep">/</span><button class="pulse-lbl" id="muFiltBtn" onclick="muFiltToggle()" aria-pressed="false">filter</button></span><span class="ms-unit" id="msFmDepthUnit">%</span></div>
+      <input type="range" id="multiFmDepthR" min="0" max="100" value="50" oninput="mathsSetFmDepth(+this.value)">
+      <div id="multiFiltRange" style="position:relative;height:36px;width:100%;touch-action:none;display:none"></div>
+      <span class="ms-val" id="msFmDepthVal">50</span>
+      <span class="ms-val" id="msFiltLoVal" style="display:none">20</span>
+      <span class="ms-val" id="msFiltHiVal" style="display:none">20.0k</span>
     </div>
     <div class="maths-slider-wrap" id="msVolumeWrap">
       <span class="ms-unit" id="msVolumeUnit">%</span><span class="ms-label" id="msVolumeLabel">volume</span>
@@ -1078,11 +1100,6 @@ input[type=range]::-moz-range-thumb{width:20px;height:20px;border-radius:50%;bac
       <div id="multiDualRange" style="position:relative;height:36px;width:100%;touch-action:none"></div>
       <span class="ms-val" id="msVolMinVal">65</span>
       <span class="ms-val" id="msVolMaxVal">100</span>
-    </div>
-    <div class="maths-slider-wrap" id="msFmDepthWrap">
-      <span class="ms-unit">%</span><span class="ms-label">fm depth</span>
-      <input type="range" id="multiFmDepthR" min="0" max="100" value="50" oninput="mathsSetFmDepth(+this.value)">
-      <span class="ms-val" id="msFmDepthVal">50</span>
     </div>
     <div class="ms-toggle-row"><span class="ms-tlabel">Volume Sweep &mdash; Carriers Only</span><button class="ms-toggle" id="mVolCarBtn" onclick="mathsToggleVolScope()">OFF</button></div>
     <div class="ms-toggle-row"><span class="ms-tlabel">Multi-AutoGain</span><button class="ms-toggle on" id="mAutoBtn" onclick="toggleMultiAuto()">ON</button></div>
@@ -1176,6 +1193,7 @@ input[type=range]::-moz-range-thumb{width:20px;height:20px;border-radius:50%;bac
   <div id="vtSpeakRow">
     <button class="bsm" id="vtSpeakBtn" onclick="vtSpkToggle()">speak</button>
     <button class="bsm" id="vtLoopBtn" onclick="vtSpkToggleLoop()">loop</button>
+    <button class="bsm on" id="vtLangBtn" onclick="vtSpkCycleLang()" style="display:none">en</button>
     <div class="rr" id="vtSpeakRateWrap">
       <div class="lbl" style="text-align:center;font-size:11px;margin-bottom:3px">rate</div>
       <input type="range" id="vtSpeakRateR" min="0" max="100" value="33" oninput="vtSpkSetRate(+this.value)">
@@ -1557,7 +1575,12 @@ function multiCountActive(){
    appLimiter is threshold -1 / ratio 20 / knee 0 and its output ceiling is ~1.02 — driving it at
    all lands slightly over full scale, so the point is to stay under it, not to lean on it. */
 var multiAutoLast=null;
-function multiHeadroom(){return 0.95-0.20*multiFmDepth01();}
+/* Measured pre- vs post-filter peak on a single-carrier chain: the oscillator sum is EXACTLY 1.000
+   at every depth (FM does not change amplitude), so every bit of the overshoot is multiHP/multiLP
+   ringing on a frequency-modulated signal. That ringing SATURATES early rather than scaling with
+   depth — 1.02 at depth 0, 1.05 at 10, 1.11 at 15, 1.21 at 20, 1.36 by 25, and no worse (1.23) at
+   100 — so a margin linear in depth was far too generous exactly where the ringing peaks. */
+function multiHeadroom(){return 0.95-0.23*Math.min(1,multiFmDepth/25);}
 function multiAutoRecalc(){
   if(!multiAutoGn||!AC)return;
   var target=1.0;
@@ -2499,7 +2522,7 @@ function multiDisposeOp(o){
   try{if(o.lfoSrc){o.lfoSrc.stop();o.lfoSrc.disconnect();}}catch(e){}
   [o.lfoDepth,o.lfoGain,o.carGain,o.fmGain,o.gain,o.osc].forEach(function(n){try{if(n)n.disconnect();}catch(e){}});
   o.lfoSrc=o.lfoDepth=o.lfoGain=o.carGain=o.fmGain=o.gain=o.osc=null;
-  o.fmTo=null;
+  o.fmTo=null;o._fmPending=null;o._fmWired=null;
 }
 /* Built once and never torn down. Stop just ramps o.gain to 0 (exactly what mute already does), so
    the oscillator keeps running: recreating it would leave fmGain retaining every dead oscillator it
@@ -2562,7 +2585,11 @@ function multiFmDepth01(){return Math.pow(Math.max(0,Math.min(100,multiFmDepth))
    and index is made linear in level. The divisor is floored, which makes a near-silent modulator
    contribute near-zero FM rather than dividing by ~0. */
 function multiApplyFmDepth(o,land){
-  if(!AC||!o.fmGain||o._fmBusy)return;
+  /* _fmPending holds the EPOCH that owns this op's ramp window, not a bare flag: multiRouteEpoch is
+     bumped by every mutation, so an op whose wiring did not change gets no new rewire, and a bare
+     flag left set by the stale callback froze that operator out of every depth update for good --
+     which is what silenced every modulator except the one feeding the carrier. */
+  if(!AC||!o.fmGain||o._fmPending!=null)return;
   var v=0;
   /* An op parked at the Nyquist rail (BELL / FACTORIALS clamp to 1e8) is a full-scale square at
      Nyquist; as a modulator that is pure aliasing, so it simply does not modulate. */
@@ -2615,17 +2642,21 @@ function multiRebuildRouting(){
    throw inside a setTimeout, leaving fmGain parked at 0 forever. */
 function multiRewireOp(o,want,ep){
   var t=AC.currentTime,g=o.fmGain;
-  o._fmBusy=true;
+  o._fmPending=ep;
   g.gain.cancelScheduledValues(t);
   g.gain.setValueAtTime(g.gain.value,t);
   g.gain.linearRampToValueAtTime(0,t+0.03);
   setTimeout(function(){
-    if(ep!==multiRouteEpoch)return;            // a newer rewire owns this op and will clear _fmBusy
-    if(!AC||!o.fmGain||multiOscs.indexOf(o)<0){o._fmBusy=false;return;}
+    /* Release the window whenever WE still own it, stale epoch or not. Only a newer rewire for this
+       same op may hold it open, and that one clears it when its own timeout lands. */
+    if(o._fmPending===ep)o._fmPending=null;
+    if(ep!==multiRouteEpoch)return;            // the graph moved on; _fmWired stays unset so the
+                                               // next rebuild sees the mismatch and redoes this
+    if(!AC||!o.fmGain||multiOscs.indexOf(o)<0)return;
     (o.fmTo||[]).forEach(function(p){try{o.fmGain.disconnect(p);}catch(e){}});
     o.fmTo=[];
     o.fmOut.forEach(function(x){if(x.osc){try{o.fmGain.connect(x.osc.frequency);o.fmTo.push(x.osc.frequency);}catch(e){}}});
-    o._fmWired=want;o._fmBusy=false;
+    o._fmWired=want;
     multiApplyFmDepth(o,true);
   },40);
 }
@@ -3401,7 +3432,7 @@ function captureState(){
     xm:appMasterVol,
     ma:multiAutoOn?1:0,xa:appAutoOn?1:0,lm:appLimOn?1:0,
     /* VOICE was the only module absent from archives; capture it while we are here. */
-    vst:(vtSpkText||'').slice(0,2000),vspr:vtSpkRate,vspl:vtSpkLoop?1:0,vvol:vtVol,
+    vst:(vtSpkText||'').slice(0,2000),vsl:vtSpkLang,vspr:vtSpkRate,vspl:vtSpkLoop?1:0,vvol:vtVol,
     vsot:vtInitialized&&VT.getOtotune()?1:0,vsfr:vtInitialized&&VT.getFree()?1:0,
     vswb:vtInitialized&&VT.getAutoWobble()?1:0,vsav:vtInitialized&&VT.getAlwaysVoice()?1:0
   };
@@ -3475,6 +3506,13 @@ function restoreState(o){
   bbSyncRange();bbFiltSync();bbFiltApply();bbPauseSync();bbUiSave();
   /* Every field validated and clamped, never trusted — archives outlive schemas. */
   if(typeof o.vst==='string')vtSpkText=o.vst;
+  /* vtSpkUiSave() below re-reads the textarea, so the restored text has to be IN
+     it first — otherwise the archive's text was overwritten by whatever was on
+     screen and never came back. */
+  var vtT=document.getElementById('vtSpeakText');if(vtT)vtT.value=vtSpkText||'';
+  /* Archives from before languages existed are English. Shape only: the pack it
+     names may load after this runs. */
+  vtSpkLang=(typeof o.vsl==='string'&&VT_SPK_LANG_ID.test(o.vsl))?o.vsl:'en';
   vtSpkRate=isFinite(o.vspr)?Math.max(0.6,Math.min(1.8,+o.vspr)):1.0;
   vtSpkLoop=!!o.vspl;
   vtVol=o.vvol!=null?Math.max(0,Math.min(100,+o.vvol)):100;
@@ -5402,7 +5440,7 @@ function vtSpkG2P(word){
 
 /* Split into sentences of tokens. Punctuation survives as pause markers rather
    than being dropped, because it is most of what prosody has to work with. */
-function vtSpkNormText(text){
+function vtSpkNormText(text,L){
   var sentences=[],cur=[];
   /* Text beginning with / is raw IPA — an escape hatch for debugging, and
      genuinely useful for writing pronunciation into a score. */
@@ -5410,6 +5448,10 @@ function vtSpkNormText(text){
     var raw=text.replace(/^\s*\//,'').trim().split(/\s+/).filter(Boolean);
     return[[{w:'',ph:raw,stress:raw.map(function(){return 0;}),fn:false}]];
   }
+  /* Every pack but English brings its own tokenizer. English has none, so
+     everything below is exactly what it always ran. */
+  L=(L&&L.info)?L:vtSpkLangCur();
+  if(L.norm)return L.norm(text);
   /* Case is NOT folded here any more: an all-caps word is a shout. The token
      is lowercased individually for lookup, so G2P, the dictionary, VT_SPK_FUNC
      and vtSpkStress all still see exactly what they saw before. */
@@ -5471,12 +5513,14 @@ var VT_SPK_WORDGAP=0.09,VT_SPK_COMMA=0.28,VT_SPK_SENTGAP=0.55;
 var VT_SPK_END_MS=0.040,VT_SPK_END_ST=1.2,VT_SPK_END_Z=0.25;
 
 function vtSpkVoiceness(v){var t=1-Math.cos(v*Math.PI*0.5);return{ten:t,lou:Math.pow(t,0.25)};}
-function vtSpkInfo(ph){var p=VT_SPK_PHONEMES[ph];if(!p)return null;
+/* T is a language pack's own table, so `alt` resolves inside it. Shape-checked
+   rather than trusted: with no T this is exactly the lookup it always was. */
+function vtSpkInfo(ph,T){T=(T&&typeof T==='object')?T:VT_SPK_PHONEMES;var p=T[ph];if(!p)return null;
   /* `alt` means "same geometry as its twin, different voicing" — so geometry
      and timing come across, but ten/lou must NOT. They are the voicing, and
      inheriting them made /v/ (v:1, alt:'f') speak as a voiceless /f/, because
      /f/ carries an explicit ten 0.049 / lou 0.23. */
-  if(!p.alt)return p;var b=VT_SPK_PHONEMES[p.alt],o={};
+  if(!p.alt)return p;var b=T[p.alt],o={};
   for(var k in b)o[k]=b[k];
   if(p.ten===undefined)delete o.ten;
   if(p.lou===undefined)delete o.lou;
@@ -5625,6 +5669,64 @@ var VT_SPK_TEN_MAX=0.8333;   /* the Rd knee: Rd=3(1-ten) clamps at 0.5 here, and
                                 Measured 2-4kHz tilt: ten .691 -19.6dB, .813
                                 -14.3dB, .95 -16.8dB. Raising this makes it duller. */
 
+/* ── languages ──────────────────────────────────────────────────────────────
+   A pack is everything that makes text sound like one language: the phoneme
+   table, the class sets, the duration table, a few constants and — for every
+   pack but English — its own text front-end. vtSpkKeyframes and vtSpkCompile
+   re-declare the language-dependent names as locals taken from the pack, so
+   their bodies read exactly as they always did and no call site can be missed.
+
+   English holds the original objects BY REFERENCE and is never rebuilt. The
+   legacy sets are plain objects, so a raw-IPA key such as "constructor" counts
+   as a stop today; a rebuilt, prototype-free copy would change that buffer, and
+   English output has to stay bit-identical.
+
+   Other packs live in their own files (public/js/voice-*.js) and call
+   vtSpkLangReg once they load — after this script's init has already run, so
+   vtSpkLang is checked by SHAPE only and never against the registry: a saved
+   'tr' has to survive until its pack arrives. */
+var VT_SPK_LANGS=Object.create(null),VT_SPK_LANG_ORDER=['en'],vtSpkLang='en';
+var VT_SPK_LANG_ID=/^[a-z]{2,8}$/;
+function vtSpkLangCur(){return VT_SPK_LANGS[vtSpkLang]||VT_SPK_LANGS.en;}
+VT_SPK_LANGS.en={id:'en',label:'en',placeholder:'type something for it to read…',
+  ph:VT_SPK_PHONEMES,vowels:VT_SPK_VOWELS,stop:VT_SPK_STOP,vstop:VT_SPK_VSTOP,
+  dur:VT_SPK_DUR,fricmPh:VT_SPK_FRICM_PH,antic:VT_SPK_ANTIC,
+  expI:VT_SPK_EXPAND_I,expD:VT_SPK_EXPAND_D,
+  dFinal:VT_SPK_D_FINAL,dNonfin:VT_SPK_D_NONFIN,dPoly:VT_SPK_D_POLY,dUnstr:VT_SPK_D_UNSTR,
+  info:vtSpkInfo,cls:vtSpkClass,endsSon:vtSpkTokEndsSonorant,prepare:vtSpkDictLoad};
+/* Resolve a pack that inherits from another (English unless it names a base).
+   Table and class sets are flattened once into prototype-free maps. Entries are
+   shared by reference, so a pack must never write into one it inherited — and
+   neither may the compiler: keyframes point straight at these objects. */
+function vtSpkLangReg(spec){
+  if(!spec||!VT_SPK_LANG_ID.test(spec.id)||spec.id==='en')return null;
+  var B=VT_SPK_LANGS[spec.base]||VT_SPK_LANGS.en,T=Object.create(null),C=Object.create(null),k,i;
+  for(k in B.ph)if(Object.prototype.hasOwnProperty.call(B.ph,k)){T[k]=B.ph[k];C[k]=B.cls(k);}
+  for(k in spec.ph||{})T[k]=spec.ph[k];
+  for(k in spec.cls||{})for(i=0;i<spec.cls[k].length;i++)C[spec.cls[k][i]]=k;
+  function set(test){var o=Object.create(null);for(var q in T)if(test(q))o[q]=1;return o;}
+  function over(base,o){var m=Object.create(base);for(var q in o||{})m[q]=o[q];return m;}
+  function num(v,d){return typeof v==='number'?v:d;}
+  var VS=set(function(q){return C[q]==='stop'&&B.vstop[q]===1;});
+  for(i=0;i<(spec.vstop||[]).length;i++)VS[spec.vstop[i]]=1;
+  var SON={vowel:1,nasal:1,liquid:1,glide:1};
+  var L={id:spec.id,label:spec.label||spec.id,placeholder:spec.placeholder||'',
+    ph:T,vowels:set(function(q){return C[q]==='vowel';}),stop:set(function(q){return C[q]==='stop';}),vstop:VS,
+    dur:over(B.dur,spec.dur),fricmPh:over(B.fricmPh,spec.fricmPh),
+    antic:num(spec.antic,B.antic),expI:num(spec.expI,B.expI),expD:num(spec.expD,B.expD),
+    dFinal:num(spec.dFinal,B.dFinal),dNonfin:num(spec.dNonfin,B.dNonfin),
+    dPoly:num(spec.dPoly,B.dPoly),dUnstr:num(spec.dUnstr,B.dUnstr),
+    info:function(ph){return vtSpkInfo(ph,T);},
+    cls:function(ph){return C[ph]||'fric';},
+    endsSon:function(tok){return !!(tok&&tok.ph&&tok.ph.length&&SON[C[tok.ph[tok.ph.length-1]]]);},
+    prepare:spec.prepare||function(){return Promise.resolve();},
+    norm:spec.norm,lead:spec.lead,leadMax:num(spec.leadMax,0.14)};
+  VT_SPK_LANGS[L.id]=L;
+  if(VT_SPK_LANG_ORDER.indexOf(L.id)<0)VT_SPK_LANG_ORDER.push(L.id);
+  vtSpkLangSyncUI();
+  return L;
+}
+
 /* One sentence of tokens → keyframes carrying a semitone offset for prosody. */
 /* Pitch has to land on something voiced and open to be heard. A word ending in
    an obstruent has nowhere to put a fall: the move happens while the voice is
@@ -5636,7 +5738,15 @@ function vtSpkSonorant(ph){
 function vtSpkTokEndsSonorant(tok){
   return !!(tok&&tok.ph&&tok.ph.length&&vtSpkSonorant(tok.ph[tok.ph.length-1]));
 }
-function vtSpkKeyframes(tokens){
+function vtSpkKeyframes(tokens,L){
+  /* L is shape-checked because this is also an array-map callback, which hands
+     an index here. Everything language-dependent below reads these locals; for
+     English each one IS the global of the same name. */
+  L=(L&&L.info)?L:vtSpkLangCur();
+  var VT_SPK_VOWELS=L.vowels,VT_SPK_STOP=L.stop,VT_SPK_VSTOP=L.vstop,VT_SPK_DUR=L.dur,
+      VT_SPK_FRICM_PH=L.fricmPh,VT_SPK_D_FINAL=L.dFinal,VT_SPK_D_NONFIN=L.dNonfin,
+      VT_SPK_D_POLY=L.dPoly,VT_SPK_D_UNSTR=L.dUnstr,
+      vtSpkInfo=L.info,vtSpkClass=L.cls,vtSpkTokEndsSonorant=L.endsSon;
   var out=[],i,j,k;
   var nTok=0;for(i=0;i<tokens.length;i++)if(!tokens[i].brk)nTok++;
   var seen=0,nucleusDone=false,isQ=false;
@@ -5652,6 +5762,9 @@ function vtSpkKeyframes(tokens){
           var lw=null;for(k=i-1;k>=0;k--)if(!tokens[k].brk){lw=tokens[k];break;}
           var prevSt=out.length?(out[out.length-1].st||0):0;
           var endSt=isQ?7:(vtSpkTokEndsSonorant(lw)?prevSt-VT_SPK_END_ST:prevSt);
+          /* A pack may plan the terminal move itself, relative to the last
+             segment — a Turkish mi-question ends low, not on this rise. */
+          if(tok.st!==undefined)endSt=prevSt+tok.st;
           out.push({name:'.',dt:VT_SPK_SENTGAP,int:0,sil:1,st:endSt});continue;
         }
     seen++;
@@ -5702,8 +5815,12 @@ function vtSpkKeyframes(tokens){
       if(stressed&&holdAt<0){
         accentDecay=(isLastWord&&!nucleusDone)?4:3;
         if(isLastWord)nucleusDone=true;
+        /* Pack-planned accent size: where the nucleus sits and how big each
+           accent is are the language's business, not this loop's. */
+        if(tok.acc!==undefined)accentDecay=tok.acc;
       }
       var semis=decl+(tok.fn?-1:0)+accentDecay*(shout?VT_SPK_SHOUT_ACC:1)+(shout?VT_SPK_SHOUT_ST:0);
+      if(tok.st0!==undefined)semis+=tok.st0;  /* pack-planned register for this word */
       accentDecay*=0.45;                      /* accent decays over the next two steps */
       var fricAmt=VT_SPK_FRICAMT[cls];if(fricAmt===undefined)fricAmt=0;
       var dm,dh;
@@ -5737,6 +5854,11 @@ function vtSpkKeyframes(tokens){
          touching p.c: `last` is measured against p.c.length, so this leaves the
          aspiration block dormant while the closure keeps its silence. */
       var nCi=(cls==='stop'&&nextStop)?1:p.c.length;
+      /* Pack hook: a last sub-target marked preV is a release that exists for the
+         vowel after it. With no vowel next in the word it would leave the tract
+         open and voiced, and the word gap would hold that — a vowel nobody wrote
+         ("beşe yüz"). English sets no preV. */
+      if(nCi>1&&p.c[nCi-1].preV&&!nextVow)nCi--;
 
       /* /h/ gets a per-token constriction rather than the table's fixed one. */
       var hOver=null;
@@ -5777,6 +5899,14 @@ function vtSpkKeyframes(tokens){
         var fm=dm*VT_SPK_D_FLOOR,fh=dh*VT_SPK_D_FLOOR;
         move.dt=(fm+(dm-fm)*fac)*sub*durScale;move.el=el;
         held.dt=(fh+(dh-fh)*fac)*sub*durScale;held.el=el;
+        /* Pack hooks; no English entry or token carries any of these fields.
+           A sub-target may state its own timing outright — a tap, or a nasal's
+           release, is not a Klatt segment and must not be halved by `sub`.
+           `len` stretches the hold of a long vowel or a geminate closure; it
+           sits BEFORE the elongation hold, which is absolute and not scaled. */
+        if(c.dur){move.dt=c.dur[0]*durScale;held.dt=c.dur[1]*durScale;}
+        if(ci===0&&p.len!==undefined)held.dt*=p.len;
+        if(ci===0&&tok.len&&tok.len[j]!==undefined)held.dt*=tok.len[j];
         /* Absolute, not rate-scaled: "aaaa" adds the same held time whatever the
            rate slider is doing. */
         if(isHeld)held.dt+=tok.hold;
@@ -5795,6 +5925,12 @@ function vtSpkKeyframes(tokens){
           }else{move.int=0;held.int=0;}
         }
         if(ci===0&&p.nasal){move.int=1;held.int=1;}
+        /* Pack hook: a sub-target that states its own voicing [int,ten,lou].
+           The block above silences the first sub-target of anything that is not
+           a voiced stop, which is wrong for a tap — its closure is a brief dip
+           in the voice, and that dip (not the constriction, which the tract
+           cannot close reliably inside one audio block) is what makes it audible. */
+        if(c.vo){move.int=held.int=c.vo[0];move.ten=held.ten=c.vo[1];move.lou=held.lou=c.vo[2];}
         /* Long-lag VOT: a voiceless stop releases into breath before the next
            segment voices. Low tenseness with intensity up is aspiration —
            asp = int*(1-sqrt(ten))*... — so this is loud breath, no voicing.
@@ -5824,6 +5960,9 @@ function vtSpkKeyframes(tokens){
 
 function vtSpkCompile(kfs,opts){
   opts=opts||{};
+  /* The same trick as vtSpkKeyframes: language-dependent names become locals. */
+  var L=(opts.lang&&opts.lang.info)?opts.lang:vtSpkLangCur();
+  var VT_SPK_VOWELS=L.vowels,VT_SPK_ANTIC=L.antic,VT_SPK_EXPAND_I=L.expI,VT_SPK_EXPAND_D=L.expD;
   /* Layout and rest pose come from the engine, so the compiler and the tick
      that reads its output cannot drift apart. */
   /* Layout, rest pose AND the column map all come from the engine, so the
@@ -5855,11 +5994,11 @@ function vtSpkCompile(kfs,opts){
       if(t-pz.t>VT_SPK_END_MS*1.5){
         rows.push(row({t:pz.t+VT_SPK_END_MS,int:0,ten:ten,lou:lou,ti:null,td:null,
                    z:zc.map(function(e){return[e[0],e[1]+(PARK-e[1])*VT_SPK_END_Z];}),
-                   vel:0.01,st:k.st||0,fric:0,steady:0,fricm:0}));
+                   vel:0.01,st:k.st||0,fric:0,steady:0,fricm:0,sil:1}));
       }
       zc=zc.map(function(e){return[e[0],PARK];});
       rows.push(row({t:t,int:0,ten:ten,lou:lou,ti:null,td:null,z:zc.slice(),
-                 vel:0.01,st:k.st||0,fric:0,steady:0,fricm:0}));
+                 vel:0.01,st:k.st||0,fric:0,steady:0,fricm:0,sil:1}));
       continue;
     }
     var ti=null,td=null,tset=false;
@@ -5906,6 +6045,33 @@ function vtSpkCompile(kfs,opts){
              vel:0.01,st:lz.st||0,fric:0,steady:0,fricm:0}));
   rows.push(row({t:t+VT_SPK_RELEASE/rate,int:0,ten:0.6,lou:0.9,ti:RTI,td:RTD,
              z:parked(),vel:0.01,st:lz.st||0,fric:0,steady:0,fricm:0,tset:true}));
+
+  /* Zone lead (packs only; English sets no `lead`). A vowel's lip rounding —
+     and the throat narrowing that stands in for a lowered larynx — has to be in
+     place when the vowel STARTS. Slots travel in from PARK linearly, so left
+     alone the constriction only bites in the vowel's last third: measured at
+     mid-vowel, ü came out as i and ö as e. So the target is copied back over
+     the rows before the vowel, for as long as that zone is parked there and no
+     other vowel or pause is in the way — which is also what speakers do:
+     rounding runs through the preceding consonants.
+     Never below 0.75 on a row that carries frication: 0.30-0.70 is the
+     turbulence window, and a rounded /s/ would hiss at the lips.
+     This works on the rows' OWN arrays and must never move into
+     vtSpkKeyframes: a keyframe's `z` is the phoneme table entry itself. */
+  if(L.lead)for(var lq=0;lq<L.lead.length;lq++){
+    for(zi=0;zi<NZ&&ZN[zi].name!==L.lead[lq];zi++);
+    if(zi===NZ)continue;
+    for(i=1;i<rows.length;i++){
+      var rv=rows[i];
+      if(rv.z[zi][0]===null||!rowIsVowel(rv))continue;
+      for(var bk=i-1;bk>0;bk--){
+        var rq=rows[bk];
+        if(rq.sil||rq.z[zi][0]!==null||rowIsVowel(rq)||rv.t-rq.t>L.leadMax)break;
+        rq.z[zi]=[rv.z[zi][0],(rq.fricm>0&&rv.z[zi][1]<0.75)?0.75:rv.z[zi][1]];
+      }
+    }
+  }
+  function rowIsVowel(r){return !!VT_SPK_VOWELS[(r.name||'').replace(/[\[\]()0-9ʰ\]]/g,'')];}
 
   /* A parked constriction must WAIT where it will next be needed rather than
      sweeping across the tract on its way in: carry each index backwards from
@@ -5970,6 +6136,11 @@ var vtSpkOn=false,vtSpkLoop=false,vtSpkPlaying=false;
    milliseconds, so rate is a plain multiplier rather than a divisor the table
    was implicitly calibrated against. */
 var vtSpkRate=1.0,vtSpkQueue=[],vtSpkQi=0;
+/* The pack that tokenised the queue also compiles it, so the language cannot
+   change under a running utterance. vtSpkGen says which start() a pending
+   prepare() belongs to: stop + start during the first dictionary fetch used to
+   let both callbacks run. */
+var vtSpkQLang=null,vtSpkGen=0;
 
 function vtSpkSetRate(v){vtSpkRate=0.6+(v/100)*1.2;vtSpkUiSave();}
 function vtSpkRateSlider(r){return Math.round((r-0.6)/1.2*100);}
@@ -5996,13 +6167,18 @@ function vtSpkStart(){
   vtSpkPlaying=true;vtSpkSyncUI();
   /* The dictionary is ~240KB and only fetched the first time anyone speaks, so
      the button shows a loading state rather than appearing to do nothing. */
-  vtSpkDictLoad().then(function(){
-    if(!vtSpkPlaying)return;                  /* stopped while the fetch was in flight */
-    vtSpkQueue=vtSpkNormText(text);vtSpkQi=0;
+  var L=vtSpkLangCur(),gen=++vtSpkGen;
+  L.prepare().then(function(){
+    if(!vtSpkPlaying||gen!==vtSpkGen)return;  /* stopped, or restarted, while the fetch was in flight */
+    vtSpkQLang=L;
+    vtSpkQueue=vtSpkNormText(text,L);vtSpkQi=0;
     if(!vtSpkQueue.length){vtSpkStop();return;}
     VT.spkOnEnd(vtSpkAdvance);
     vtSpkSpeakCurrent();
     vtSpkSyncUI();
+  }).catch(function(e){
+    /* A pack that throws must not leave the button on "…" with the toggle dimmed. */
+    console.warn(e);if(gen===vtSpkGen)vtSpkStop();
   });
 }
 function vtSpkSpeakCurrent(){
@@ -6010,7 +6186,7 @@ function vtSpkSpeakCurrent(){
   /* Pitch comes from the pitch strip, clamped to a plausible speaking range —
      the tract can sing at 300Hz but nobody talks up there. */
   var f0=Math.max(70,Math.min(260,VT.getPitch()));
-  var prog=vtSpkCompile(vtSpkKeyframes(s),{rate:vtSpkRate,f0:f0});
+  var prog=vtSpkCompile(vtSpkKeyframes(s,vtSpkQLang),{rate:vtSpkRate,f0:f0,lang:vtSpkQLang});
   VT.spkBegin(prog.buf,prog.n);
 }
 function vtSpkAdvance(){
@@ -6031,15 +6207,17 @@ function vtSpkToggleLoop(){
   vtSpkUiSave();
 }
 
-/* While SPEAK owns the voice, the two controls the engine ignores are dimmed
+/* While SPEAK owns the voice, the controls the engine ignores are dimmed
    and made unclickable — the nsVs* convention — so they cannot be flipped into
    a state that silently does nothing. OTOTUNE and `free` stay live: they are
-   the point, and they retune the speech melody as it plays. */
+   the point, and they retune the speech melody as it plays. The language toggle
+   is in the list because the queue was tokenised by one pack and is compiled by
+   that same pack until it ends. */
 function vtSpkSyncUI(){
   var b=document.getElementById('vtSpeakBtn');
   if(b){b.textContent=vtSpkPlaying?(VT.spkActive()?'stop':'…'):'speak';
         b.classList.toggle('on',vtSpkPlaying);}
-  var ids=['vtAlwaysVoiceBtn','vtAutoWobbleBtn'];
+  var ids=['vtAlwaysVoiceBtn','vtAutoWobbleBtn','vtLangBtn'];
   for(var i=0;i<ids.length;i++){var e=document.getElementById(ids[i]);
     if(e)e.classList.toggle('ns-dim',vtSpkPlaying);}
 }
@@ -6054,7 +6232,27 @@ function syncVoiceUI(){
     for(var i=0;i<m.length;i++){var e=document.getElementById(m[i][0]);
       if(e)e.classList.toggle('on',!!m[i][1]);}
   }
-  vtSpkSyncUI();
+  vtSpkSyncUI();vtSpkLangSyncUI();
+}
+/* The toggle only shows once a second pack has registered, so a pack that fails
+   to load leaves the row exactly as it was; `has-lang` lets the stylesheet
+   tighten the row's buttons only then. */
+function vtSpkLangSyncUI(){
+  var L=vtSpkLangCur(),many=VT_SPK_LANG_ORDER.length>1;
+  var b=document.getElementById('vtLangBtn');
+  if(b){b.style.display=many?'':'none';b.textContent=L.label;}
+  var r=document.getElementById('vtSpeakRow');if(r)r.classList.toggle('has-lang',many);
+  var t=document.getElementById('vtSpeakText');
+  if(t){t.placeholder=L.placeholder;t.setAttribute('lang',L.id);}
+}
+function vtSpkSetLang(id){
+  if(typeof id!=='string'||!VT_SPK_LANG_ID.test(id))return;
+  if(vtSpkPlaying)vtSpkStop();
+  vtSpkLang=id;vtSpkUiSave();vtSpkLangSyncUI();
+}
+function vtSpkCycleLang(){
+  var i=VT_SPK_LANG_ORDER.indexOf(vtSpkLangCur().id);
+  vtSpkSetLang(VT_SPK_LANG_ORDER[(i+1)%VT_SPK_LANG_ORDER.length]);
 }
 
 /* ── persistence ────────────────────────────────────────────────────────────
@@ -6066,7 +6264,7 @@ function vtSpkUiSet(o){try{localStorage.setItem('pvt_ui',JSON.stringify(o));}cat
 function vtSpkUiSave(){
   var u=vtSpkUiGet(),t=document.getElementById('vtSpeakText');
   if(t)vtSpkText=t.value;
-  u.text=vtSpkText;u.rate=vtSpkRate;u.loop=vtSpkLoop?1:0;
+  u.text=vtSpkText;u.rate=vtSpkRate;u.loop=vtSpkLoop?1:0;u.lang=vtSpkLang;
   vtSpkUiSet(u);
 }
 function vtSpkUiLoad(){
@@ -6074,6 +6272,8 @@ function vtSpkUiLoad(){
   if(typeof u.text==='string')vtSpkText=u.text;
   if(isFinite(u.rate))vtSpkRate=Math.max(0.6,Math.min(1.8,+u.rate));
   vtSpkLoop=!!u.loop;
+  /* Shape only — the pack it names may not have loaded yet. */
+  if(typeof u.lang==='string'&&VT_SPK_LANG_ID.test(u.lang))vtSpkLang=u.lang;
 }
 
 
@@ -6138,10 +6338,14 @@ switchTab('birdbox');
   var app=document.getElementById('appQR');if(app)new QRCode(app,qrOpts);
 })();
 </script>
+<script src="js/voice-tr.js"></script>
 <script src="js/fx-core.js"></script>
 <script src="js/fx-drive.js"></script>
 <script src="js/fx-comp.js"></script>
 <script src="js/fx-verb.js"></script>
 <script src="js/maths-fm.js"></script>
+<script src="js/link-core.js"></script>
+<script src="js/link-table.js"></script>
+<script src="js/link-ui.js"></script>
 </body>
 </html>

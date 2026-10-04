@@ -9,10 +9,12 @@ const io = new Server(server, {
   cors: { origin: '*' },
   transports: ['websocket', 'polling'],
   pingInterval: 10000,
-  pingTimeout: 5000
+  pingTimeout: 5000,
+  maxHttpBufferSize: 64e3
 });
 
 app.use(express.static(path.join(__dirname, 'public')));
+require('./link-server').attach(io, app);
 
 const rooms = {};
 const MAX_ROOM_SIZE = 35;

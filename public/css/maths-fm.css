@@ -62,7 +62,7 @@
 #modMulti .maths-cell.fm-mod .mc-freq{color:#7d9a88}
 #modMulti .maths-cell.fm-mod .mc-rclick{background:linear-gradient(rgba(45,106,78,.05),rgba(45,106,78,.05))}
 
-/* .fm-press builds through the long press, so the on/off switch is legible before it fires */
+/* .fm-press builds through the long press, so the select is legible before it fires */
 #modMulti .maths-cell.fm-press{box-shadow:inset 0 0 0 1px var(--fm-sel)}
 #modMulti .maths-cell.fm-sel{box-shadow:inset 0 0 0 2px var(--fm-sel);background-color:var(--fm-sel-bg)}
 #modMulti .maths-cell.fm-drag{transition:none;z-index:20;box-shadow:inset 0 0 0 1px var(--fm-route),0 4px 12px rgba(0,0,0,.18)}
