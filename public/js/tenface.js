@@ -79,19 +79,27 @@ var TF = (function () {
      rewriting times already handed out. */
   function makeClock(state, t0) {
     var ln = [], pending = null, cbs = [], i;
+    /* barAt = the first bar line not yet behind the emitted horizon. Accumulated
+       with the bpm in effect, like the lanes' g, so BPM edits move later bars. */
+    var barAt = t0;
+    function barDur() { return ROWS * stepDur(state.bpm, 1); }
     for (i = 0; i < LANES; i++) ln.push({ idx: 0, g: t0 });
     function lanes() { return state.slots[state.slot].lanes; }
     function advance(j, out, from, stop, byGrid) {
-      var L = ln[j], l = lanes()[j], t;
+      var L = ln[j], l = lanes()[j], t, d;
       for (;;) {
         l = lanes()[j];
         if (L.idx >= l.len) L.idx = 0;               /* len was lowered under us */
         t = L.g + swingOffset(L.idx, state.bpm, l.rate, state.swing);
-        if ((byGrid ? L.g : t) >= stop) return;
-        for (var c = 0; c < cbs.length; c++) cbs[c](j, L.idx, t);
-        var v = l.steps[L.idx];
-        if (v && !l.mute && t >= from) out.push({ lane: j, step: L.idx, t: t, v: v });
-        L.g += stepDur(state.bpm, l.rate);
+        d = stepDur(state.bpm, l.rate);
+        if (!(d > 0 && d < Infinity)) return;       /* NaN/0 duration would spin forever */
+        if (!(L.g < stop) || !(byGrid || t < stop)) return;
+        if (!byGrid || t < stop) {                  /* swung past the bar line: old slot stays silent */
+          for (var c = 0; c < cbs.length; c++) cbs[c](j, L.idx, t);
+          var v = l.steps[L.idx];
+          if (v && !l.mute && t >= from) out.push({ lane: j, step: L.idx, t: t, v: v });
+        }
+        L.g += d;
         L.idx++;
       }
     }
@@ -105,11 +113,14 @@ var TF = (function () {
           pending = null;
         }
         for (j = 0; j < LANES; j++) advance(j, out, fromT, toT, false);
+        var bd = barDur();
+        if (bd > 0 && bd < Infinity) while (barAt < toT) barAt += bd;
         return out.sort(function (a, b) { return a.t - b.t || a.lane - b.lane; });
       },
       requestSlot: function (slotIdx, t) {
-        var bar = ROWS * stepDur(state.bpm, 1);
-        pending = { slot: slotIdx, at: t0 + Math.ceil((t - t0) / bar - 1e-9) * bar };
+        var bd = barDur(), at = barAt;
+        if (bd > 0 && bd < Infinity) while (at < t - 1e-9) at += bd;
+        pending = { slot: slotIdx, at: at };
       },
       onStep: function (cb) { cbs.push(cb); }
     };

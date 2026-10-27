@@ -92,3 +92,49 @@ test('a muted lane emits nothing but still calls onStep; empty steps too', () =>
   assert.equal(seen.filter((x) => x[0] === 0).length, 3);
   assert.equal(seen.filter((x) => x[0] === 4).length, 3);
 });
+
+test('a request landing in an already-emitted bar waits for the next bar line', () => {
+  const s = defaults(); s.slots[0].lanes[0].steps.fill(1); s.slots[1].lanes[0].steps[0] = 1;
+  const c = makeClock(s, 0);
+  const a = c.events(0, 2.05);
+  assert.ok(a.some((e) => Math.abs(e.t - 2) < 1e-9));          // slot 0's kick at 2.0 already sent
+  c.requestSlot(1, 1.96);
+  c.events(2.05, 3);
+  assert.equal(s.slot, 0);                                    // not switched at the stale 2.0
+  const b = c.events(3, 4.5);
+  assert.equal(b.filter((e) => e.step === 0 && e.t < 4 - 1e-9).length, 0);   // no restart at 2.0
+  const at4 = b.filter((e) => e.t >= 4 - 1e-9);
+  assert.equal(at4.length, 1); near(at4[0].t, 4); assert.equal(at4[0].step, 0); assert.equal(s.slot, 1);
+  assert.ok(b.filter((e) => e.t < 4 - 1e-9).every((e) => e.v === 1 && e.step > 0));
+});
+
+test('the bar line follows BPM changes (accumulated, not t0 + k*bar)', () => {
+  const s = defaults(); s.slots[1].lanes[0].steps[0] = 1;
+  const c = makeClock(s, 0);
+  c.events(0, 1);                       // bar 1 at 2.0 (120 bpm)
+  s.bpm = 100;
+  c.events(1, 2.5);                     // passes 2.0; next bar = 2.0 + 16*0.15 = 4.4
+  c.requestSlot(1, 3);
+  const ev = c.events(2.5, 5);
+  const k = ofLane(ev, 0).filter((e) => e.t >= 4);
+  assert.equal(k.length, 1); near(k[0].t, 4.4);
+});
+
+test('NaN bpm or undefined rate cannot hang events()', () => {
+  const s = defaults(); s.bpm = NaN;
+  assert.deepEqual(makeClock(s, 0).events(0, 1), []);
+  const r = defaults(); r.slots[0].lanes[2].rate = undefined; r.slots[0].lanes[0].steps[0] = 1;
+  const ev = makeClock(r, 0).events(0, 1);
+  assert.equal(ofLane(ev, 0).length, 1);
+});
+
+test('no old-slot event is emitted at or after the bar line, even when swung past it', () => {
+  const s = defaults(); s.swing = 75;
+  s.slots[0].lanes[0].rate = 4 / 3; s.slots[0].lanes[0].steps.fill(1);
+  s.slots[1].lanes[1].steps[0] = 1;
+  const c = makeClock(s, 0);
+  c.requestSlot(1, 0.1);
+  const ev = c.events(0, 3);
+  assert.ok(ofLane(ev, 0).every((e) => e.t < 2 - 1e-9));
+  assert.equal(ofLane(ev, 1).length, 1);
+});
