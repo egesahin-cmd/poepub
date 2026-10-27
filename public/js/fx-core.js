@@ -20,6 +20,7 @@ var FX = (function () {
   var knobs = {};        // unitKey -> {chKey: knob handle}
   var store = {};        // unitKey -> persisted unit state (units read/write freely)
   var racks = {};        // unitKey -> rack handle, for callers that are not the unit itself (LINK)
+  var scale = {};        // chKey -> multiplier on every send gain (TENFACE bus volume); absent = 1
   var MASTER = 'master';
 
   /* ── persistence ─────────────────────────────────────────────────────────
@@ -72,8 +73,12 @@ var FX = (function () {
      construction, which is what "compressor on master, pre-fader" means.
 
      `tap` exists so re-tapping a re-created source node (TONE GEN rebuilds rsMGn
-     on every start) touches exactly one connection and never disturbs the sends. */
-  function ports(chKey) {
+     on every start) touches exactly one connection and never disturbs the sends.
+
+     `outNode` (first call only) sends the dry somewhere other than the master bus:
+     TENFACE's lanes tf1..tf5 sum into its `tenface` bus this way. Sends still go to
+     the global returns. Later calls ignore it — a channel is wired once. */
+  function ports(chKey, outNode) {
     var s = chans[chKey];
     if (s) return s;
     var c = getAC();
@@ -87,7 +92,7 @@ var FX = (function () {
     }
     last.connect(s.tap);
     s.tap.connect(s.dry);
-    s.dry.connect(chKey === MASTER ? appMaster : out());
+    s.dry.connect(chKey === MASTER ? appMaster : outNode || out());
     if (chKey !== MASTER) ensureSends(s);
     applyCh(chKey);
     return s;
@@ -113,8 +118,8 @@ var FX = (function () {
   }
 
   /* Called from index.html in place of `node.connect(appMaster)`. */
-  function tap(chKey, node) {
-    var s = ports(chKey);
+  function tap(chKey, node, outNode) {
+    var s = ports(chKey, outNode);
     try { node.disconnect(appMaster); } catch (e) {}
     node.connect(s.inp);
     applyCh(chKey);
@@ -125,7 +130,7 @@ var FX = (function () {
      knob turned before that module ever played takes effect the moment it does. */
   function applyCh(chKey) {
     var s = chans[chKey]; if (!s || !AC) return;
-    var dry = 1;
+    var dry = 1, k = scale[chKey] == null ? 1 : scale[chKey];
     for (var i = 0; i < units.length; i++) {
       var u = units[i], a = (amt[u.key][chKey] || 0) / 100;
       if (u.applyAmt) { u.applyAmt(chKey, a); continue; }        // insert unit: owns its own gains
@@ -133,11 +138,16 @@ var FX = (function () {
       var r = u.route(chKey, a);                                  // -> {dry, snd}
       if (r.dry !== null && r.dry !== undefined) dry = Math.min(dry, r.dry);
       var g = s.snd[u.key];
-      if (g) g.gain.setTargetAtTime(r.snd, AC.currentTime, .02);
+      if (g) g.gain.setTargetAtTime(r.snd * k, AC.currentTime, .02);
     }
     s.dry.gain.setTargetAtTime(dry, AC.currentTime, .02);
   }
   function applyAll() { for (var k in chans) applyCh(k); }
+
+  /* Scale a channel's sends without touching its stored amounts (never persisted):
+     a fader that sits AFTER the tap — TENFACE's bus volume — must still silence the
+     channel's DRIVE/REV, which leave from the tap and never pass through it. */
+  function sendScale(chKey, k) { scale[chKey] = k; applyCh(chKey); }
 
   function getAmt(uKey, chKey) { var m = amt[uKey]; return m && m[chKey] != null ? m[chKey] : 0; }
   function setAmt(uKey, chKey, v) {
@@ -314,7 +324,7 @@ var FX = (function () {
 
   return {
     register: register, unit: unit, state: state, persist: persist,
-    tap: tap, ports: ports, out: out, applyCh: applyCh, applyAll: applyAll,
+    tap: tap, ports: ports, out: out, applyCh: applyCh, applyAll: applyAll, sendScale: sendScale,
     amt: getAmt, setAmt: setAmt, knob: knob, knobOf: knobOf, chKeys: chKeys,
     rack: rack, rackOf: function (uKey) { return racks[uKey] || null; }, mount: mount, MASTER: MASTER,
     _chans: chans, _units: units
