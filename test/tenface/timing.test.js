@@ -108,16 +108,40 @@ test('a request landing in an already-emitted bar waits for the next bar line', 
   assert.ok(b.filter((e) => e.t < 4 - 1e-9).every((e) => e.v === 1 && e.step > 0));
 });
 
-test('the bar line follows BPM changes (accumulated, not t0 + k*bar)', () => {
+/* The bar line must be where a rate-1 lane's own step 0 lands, whatever the BPM did
+   mid-bar; otherwise a switch after a tempo nudge flams or chops the downbeat. */
+function stepZeroAfter(bpms, from) {
+  const s = defaults(); s.slots[0].lanes[0].steps[0] = 1;
+  const c = makeClock(s, 0); let out = [];
+  for (const [t0, t1, bpm] of bpms) { s.bpm = bpm; out = out.concat(c.events(t0, t1)); }
+  return ofLane(out, 0).find((e) => e.t >= from).t;
+}
+for (const bpm of [100, 125, 130]) {
+  test('after a mid-bar BPM change to ' + bpm + ' a switch lands on the lane\'s own step 0', () => {
+    const plan = [[0, 0.5, 120], [0.5, 1, bpm], [1, 8, bpm]];
+    const ref = stepZeroAfter(plan, 1);           // where the unswitched downbeat falls
+    const s = defaults(); s.slots[0].lanes[0].steps[0] = 1; s.slots[1].lanes[0].steps[0] = 2;
+    const c = makeClock(s, 0); let at = null, out = [];
+    c.onSwitch((sl, t) => { at = t; });
+    s.bpm = 120; out = out.concat(c.events(0, 0.5));
+    s.bpm = bpm; out = out.concat(c.events(0.5, 1));
+    c.requestSlot(1, 1);
+    out = out.concat(c.events(1, 8));
+    near(at, ref);
+    const k = ofLane(out, 0).filter((e) => e.t > 0.9);
+    const d = stepDur(bpm, 1);
+    for (let n = 1; n < k.length; n++) assert.ok(k[n].t - k[n - 1].t > d - 1e-9, 'flam at ' + k[n].t);
+    assert.ok(!k.some((e) => e.slot === 0 && Math.abs(e.t - ref) < 1e-9), 'old downbeat sounded at the switch');
+    assert.ok(k.some((e) => e.slot === 1 && Math.abs(e.t - ref) < 1e-9), 'new downbeat missing');
+  });
+}
+test('a BPM change after the request still lands the switch on the downbeat', () => {
+  const ref = stepZeroAfter([[0, 1, 120], [1, 8, 90]], 1);
   const s = defaults(); s.slots[1].lanes[0].steps[0] = 1;
-  const c = makeClock(s, 0);
-  c.events(0, 1);                       // bar 1 at 2.0 (120 bpm)
-  s.bpm = 100;
-  c.events(1, 2.5);                     // passes 2.0; next bar = 2.0 + 16*0.15 = 4.4
-  c.requestSlot(1, 3);
-  const ev = c.events(2.5, 5);
-  const k = ofLane(ev, 0).filter((e) => e.t >= 4);
-  assert.equal(k.length, 1); near(k[0].t, 4.4);
+  const c = makeClock(s, 0); let at = null;
+  c.onSwitch((sl, t) => { at = t; });
+  c.events(0, 1); c.requestSlot(1, 1); s.bpm = 90; c.events(1, 8);
+  near(at, ref);
 });
 
 test('NaN bpm or undefined rate cannot hang events()', () => {

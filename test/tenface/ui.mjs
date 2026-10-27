@@ -123,6 +123,37 @@ try {
   await sleep(300);
   ok('a corrupt save opens TENFACE on the defaults', (await p.ev(`TF.state.bpm === 120 && document.querySelectorAll('.tf-cell').length === 80 && TF.state.slots[0].lanes[0].snd === 'kick'`)) === true);
 
+  /* ── final-review fixes ── */
+  await p.ev(`TF.state.slots[2].lanes[0].fx.verb = 55; TF.state.slots[1].lanes[0].snd = 'rim'; 1`);
+  await p.tap('.tf-slot[data-i="2"]');
+  ok('a slot picked while stopped brings its own sends', (await p.ev(`FX.amt('verb','tf1')`)) === 55);
+  await p.tap('.tf-lbl[data-l="0"]');
+  await p.tap('.tf-slot[data-i="1"]');
+  ok('an open lane panel follows a slot picked while stopped', (await p.ev(`document.querySelector('#tfPanel select.tf-snd').value + ',' + TF.state.slot`)) === 'rim,1');
+  await p.ev(`TF.openPanel(null); 1`);
+
+  await p.tap('#tfPlay');
+  await p.tap('.tf-slot[data-i="3"]');
+  await p.tap('#tfPlay');
+  ok('stop resolves a pending slot: D is current and nothing blinks', (await p.ev(`TF.state.slot === 3 && !document.querySelector('.tf-slot.pending') && document.querySelector('.tf-slot[data-i="3"]').classList.contains('on')`)) === true);
+
+  /* hidden = a 2 s look-ahead, so the gap between the clock taking a switch and its bar line is wide */
+  await p.ev(`TF.state.slots[0].lanes[0].mute = false; TF.state.slot = 3; TF.render();
+              Object.defineProperty(document, 'hidden', { configurable: true, get: function () { return true; } });
+              document.dispatchEvent(new Event('visibilitychange')); 1`);
+  await p.tap('#tfPlay');
+  await p.ev(`TF.state.slots[0].lanes[0].mute = false; document.querySelector('.tf-slot[data-i="0"]').click(); 1`);
+  await until('the clock takes the switch ahead of its bar line', p, `TF.state.slot === 0 && TF._switchAt > AC.currentTime + 0.05`, 4000);
+  await p.ev(`TF.state.slots[0].lanes[0].mute = true; TF.syncLanes(); window.__sa = TF._switchAt; 1`);
+  await until('past the bar line', p, `AC.currentTime > window.__sa + 0.1`, 4000);
+  ok('a mute pressed between the switch and its bar line still silences the lane', (await p.ev(`TF._nodes.lanes[0].gain.value < 0.01`)) === true, await p.ev(`TF._nodes.lanes[0].gain.value`));
+  await p.tap('#tfPlay');
+  await p.ev(`delete document.hidden; document.dispatchEvent(new Event('visibilitychange')); TF.state.slots[0].lanes[0].mute = false; TF.render(); 1`);
+
+  await p.tap('.tf-cell[data-l="4"][data-s="15"]', 30, 0);      /* no settle: inside the 300 ms save debounce */
+  const flushed = await p.ev(`window.dispatchEvent(new Event('pagehide')); JSON.parse(localStorage.getItem('ptf_')).slots[TF.state.slot].lanes[4].steps[15]`);
+  ok('an edit is saved at once when the page is hidden or left', flushed === 1, flushed);
+
   await p.tap('.tf-lbl[data-l="2"]');
   await p.shot(new URL('../../.superpowers/sdd/2026-10-27-tenface-drum-machine/tf-lane.png', import.meta.url).pathname);
   await p.tap('#tfBus');

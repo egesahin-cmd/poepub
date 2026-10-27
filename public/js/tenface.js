@@ -79,10 +79,17 @@ var TF = (function () {
      rewriting times already handed out. */
   function makeClock(state, t0) {
     var ln = [], pending = null, cbs = [], sws = [], i;
-    /* barAt = the first bar line not yet behind the emitted horizon. Accumulated
-       with the bpm in effect, like the lanes' g, so BPM edits move later bars. */
-    var barAt = t0;
-    function barDur() { return ROWS * stepDur(state.bpm, 1); }
+    /* The bar grid is a virtual rate-1, 16-step lane accumulated exactly like the
+       real ones, so a bar line is where a rate-1 lane's step 0 actually falls — a
+       mid-bar BPM change moves both together and a switch never flams the downbeat. */
+    var bar = { idx: 0, g: t0 };
+    function barStep(b) { var d = stepDur(state.bpm, 1); if (!(d > 0 && d < Infinity)) return false; b.g += d; b.idx = (b.idx + 1) % ROWS; return true; }
+    /* the first bar line at or after t that is not yet behind the emitted horizon */
+    function nextBar(t) {
+      var b = { idx: bar.idx, g: bar.g };
+      while (b.idx !== 0 || b.g < t - 1e-9) if (!barStep(b)) return Infinity;
+      return b.g;
+    }
     for (i = 0; i < LANES; i++) ln.push({ idx: 0, g: t0 });
     function lanes() { return state.slots[state.slot].lanes; }
     function advance(j, out, from, stop, byGrid) {
@@ -108,23 +115,23 @@ var TF = (function () {
     return {
       events: function (fromT, toT) {
         var out = [], j;
-        if (pending && pending.at < toT) {
-          for (j = 0; j < LANES; j++) advance(j, out, fromT, pending.at, true);
+        /* resolved now, with the bpm now: a BPM change after the request still lands it on the downbeat */
+        var at = pending ? nextBar(pending.req) : Infinity;
+        if (at < toT) {
+          for (j = 0; j < LANES; j++) advance(j, out, fromT, at, true);
           state.slot = pending.slot;
-          for (j = 0; j < LANES; j++) { ln[j].idx = 0; ln[j].g = pending.at; }
-          for (j = 0; j < sws.length; j++) sws[j](pending.slot, pending.at);
+          for (j = 0; j < LANES; j++) { ln[j].idx = 0; ln[j].g = at; }
+          bar.idx = 0; bar.g = at;
+          for (j = 0; j < sws.length; j++) sws[j](pending.slot, at);
           pending = null;
         }
         for (j = 0; j < LANES; j++) advance(j, out, fromT, toT, false);
-        var bd = barDur();
-        if (bd > 0 && bd < Infinity) while (barAt < toT) barAt += bd;
+        while (bar.g < toT) if (!barStep(bar)) break;
         return out.sort(function (a, b) { return a.t - b.t || a.lane - b.lane; });
       },
-      requestSlot: function (slotIdx, t) {
-        var bd = barDur(), at = barAt;
-        if (bd > 0 && bd < Infinity) while (at < t - 1e-9) at += bd;
-        pending = { slot: slotIdx, at: at };
-      },
+      requestSlot: function (slotIdx, t) { pending = { slot: slotIdx, req: t }; },
+      /* a request still waiting for its bar line, or -1 */
+      get pendingSlot() { return pending ? pending.slot : -1; },
       onStep: function (cb) { cbs.push(cb); },
       /* cb(slot, at): a switch was taken; `at` is its bar line, ahead of the audio clock */
       onSwitch: function (cb) { sws.push(cb); }
@@ -247,7 +254,7 @@ var TF = (function () {
   var state = defaults();
   var nodes = null, run = null, clock = null, worker = null, playing = false;
   var lastT = 0, LA = 0.1, scheduled = 0;
-  var queue = [], shown = [], switched = [];       /* playhead: [lane, step, t] waiting for its t ([-1, slot, t] = a switch); listeners */
+  var queue = [], shown = [], switched = [], stopped = [];       /* playhead: [lane, step, t] waiting for its t ([-1, slot, t] = a switch); listeners */
 
   function graph() {
     if (nodes) return nodes;
@@ -264,10 +271,19 @@ var TF = (function () {
   }
   /* at: a slot switch's bar line — the old slot's last hits keep their gains until
      then. Without it (a UI edit), now. */
+  var switchAt = -1;
   function syncLanes(at) {
     if (!nodes) return;
-    var L = state.slots[state.slot].lanes, t = at == null ? AC.currentTime : Math.max(at, AC.currentTime);
-    for (var j = 0; j < LANES; j++) nodes.lanes[j].gain.setTargetAtTime(L[j].mute ? 0 : v2g(L[j].vol), t, at == null ? 0.02 : 0.005);
+    var L = state.slots[state.slot].lanes, now = AC.currentTime;
+    if (at != null) switchAt = Math.max(at, now);
+    /* An edit between the clock taking a switch and its bar line belongs to the new
+       slot: re-target the bar line, or the switch's own ramp would overwrite it there. */
+    var bar = switchAt > now, t = bar ? switchAt : now;
+    for (var j = 0; j < LANES; j++) {
+      var g = nodes.lanes[j].gain;
+      if (bar && at == null) g.cancelScheduledValues(switchAt);
+      g.setTargetAtTime(L[j].mute ? 0 : v2g(L[j].vol), t, bar ? 0.005 : 0.02);
+    }
   }
   /* The lanes' sends leave from their taps, before the bus fader, so the bus volume
      scales them too, by the same v2g gain the dry gets: 0 -> silent, 100 -> x1, and a
@@ -329,12 +345,15 @@ var TF = (function () {
   }
   function stop() {
     if (!playing) return;
-    playing = false; clock = null; queue.length = 0;
+    var p = clock.pendingSlot;
+    playing = false; clock = null; queue.length = 0; switchAt = -1;
     worker.postMessage('stop');
     var r = run; run = null;
     r.forEach(function (g) { g.gain.setTargetAtTime(0, AC.currentTime, 0.008); });
     setTimeout(function () { r.forEach(function (g) { g.disconnect(); }); }, 250);
     for (var j = 0; j < LANES; j++) for (var c = 0; c < shown.length; c++) shown[c](j, -1);
+    /* a switch still pending lands now; one taken but not yet heard lost its queue entry */
+    for (c = 0; c < stopped.length; c++) stopped[c](p >= 0 ? p : state.slot);
   }
 
   /* ── module ─────────────────────────────────────────────────────────────── */
@@ -351,7 +370,12 @@ var TF = (function () {
   var saveT = null;
   function save() {
     clearTimeout(saveT);
-    saveT = setTimeout(function () { try { localStorage.setItem(STORE, serialize(state)); } catch (e) {} }, 300);
+    saveT = setTimeout(function () { saveT = null; try { localStorage.setItem(STORE, serialize(state)); } catch (e) {} }, 300);
+  }
+  function flush() {
+    if (!saveT) return;
+    clearTimeout(saveT); saveT = null;
+    try { localStorage.setItem(STORE, serialize(state)); } catch (e) {}
   }
   function load() {
     var s = null; try { s = localStorage.getItem(STORE); } catch (e) {}
@@ -376,11 +400,17 @@ var TF = (function () {
   }
 
   function setBpm(v) { state.bpm = Math.max(40, Math.min(240, Math.round(v))); render(); }
+  /* Make slot i current everywhere: lane gains, fx-core's sends, an open panel. */
+  function applySlot(i) {
+    state.slot = i; pendingSlot = -1;
+    syncLanes(); pushFx();
+    if (panel) fillPanel();
+    render();
+  }
   function pickSlot(i) {
     if (i === state.slot && pendingSlot < 0) return;
-    if (playing) { pendingSlot = i; clock.requestSlot(i, AC.currentTime); }   /* lands on the bar line */
-    else { state.slot = i; pendingSlot = -1; syncLanes(); }
-    render();
+    if (playing) { pendingSlot = i; clock.requestSlot(i, AC.currentTime); render(); }   /* lands on the bar line */
+    else applySlot(i);
   }
   function tapCell(c) {
     var j = +c.dataset.l, s = +c.dataset.s, L = lanesNow()[j];
@@ -460,6 +490,10 @@ var TF = (function () {
       for (var k = 0; k < ROWS; k++) col[k].classList.toggle('now', k === s);
     });
     switched.push(function () { pendingSlot = -1; pushFx(); if (panel) fillPanel(); render(); });
+    stopped.push(applySlot);
+    /* the debounce must not lose an edit to a lock or a swipe-away */
+    window.addEventListener('pagehide', flush);
+    document.addEventListener('visibilitychange', function () { if (document.hidden) flush(); });
     render();
   }
 
@@ -570,6 +604,7 @@ var TF = (function () {
     get _la() { return LA; },
     get _horizon() { return lastT; },
     get _nodes() { return nodes; },
+    get _switchAt() { return switchAt; },
     _: { defaults: defaults, cycle: cycle, normalize: normalize, serialize: serialize,
          stepDur: stepDur, swingOffset: swingOffset, makeClock: makeClock,
          KIT: KIT, RATES: RATES, LANES: LANES, SLOTS: SLOTS, ROWS: ROWS, STORE: STORE }
