@@ -172,3 +172,27 @@ test('onSwitch reports the slot and the bar-line time of a switch, once', () => 
   assert.equal(got.length, 1);
   assert.equal(got[0][0], 1); near(got[0][1], 2);
 });
+
+test('a module lane emits one note event at each note start, with its length, and ignores its steps', () => {
+  const s = defaults(), l = s.slots[0].lanes[2];
+  l.mod = 'noise'; l.steps.fill(1); l.notes[1] = 3; l.notes[6] = 1;
+  const ev = ofLane(makeClock(s, 0).events(0, 2), 2);
+  assert.equal(ev.length, 2);
+  assert.equal(ev[0].kind, 'note'); assert.equal(ev[0].len, 3); assert.equal(ev[0].step, 1); near(ev[0].t, 0.125);
+  assert.equal(ev[1].len, 1); assert.equal(ev[1].step, 6);
+  assert.equal(ofLane(makeClock(defaults(), 0).events(0, 1), 0).every((e) => e.kind === 'hit'), true);
+});
+
+test('a note running past a lowered LENGTH is cut at the loop end', () => {
+  const s = defaults(), l = s.slots[0].lanes[0];
+  l.mod = 'riser'; l.notes[12] = 8; l.len = 16;
+  const ev = ofLane(makeClock(s, 0).events(0, 2), 0);
+  assert.equal(ev.length, 1); assert.equal(ev[0].len, 4);
+});
+
+test('a 32-step lane wraps at 32 and plays steps on pages 2', () => {
+  const s = defaults(); kick(s).len = 32; kick(s).steps[0] = 1; kick(s).steps[20] = 2;
+  const ev = ofLane(makeClock(s, 0).events(0, 32 * 0.125 + 0.01), 0);
+  assert.deepEqual(ev.map((e) => e.step), [0, 20, 0]);
+  near(ev[2].t, 4);
+});

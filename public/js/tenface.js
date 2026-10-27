@@ -11,17 +11,22 @@
    ═══════════════════════════════════════════════════════════════════════════ */
 var TF = (function () {
   'use strict';
-  var LANES = 5, SLOTS = 4, ROWS = 16;
+  /* ROWS = one bar of 16ths: the grid page, the bar line, the default length.
+     MAX = the longest pattern (4 pages). NOTE = the longest module note, in rows. */
+  var LANES = 5, SLOTS = 4, ROWS = 16, MAX = 64, NOTE = 16;
   var KIT = ['kick', 'snare', 'ch', 'oh', 'clap', 'rim', 'tom', 'cow', 'click', 'noise', 'sine'];
   var DEF_KIT = ['kick', 'snare', 'ch', 'clap', 'oh'];
   var RATES = [0.5, 2 / 3, 1, 4 / 3, 2, 4];
   var STORE = 'ptf_';
+  var MODS = ['voice', 'multi', 'birdbox', 'noise', 'riser'];   /* modules a lane can gate, by their FX keys */
+  var ENV = { a: 10, d: 200, s: 70, r: 300 };                    /* ms, ms, %, ms */
 
   /* ── pure helpers (unit-tested in Node, see test/tenface/core.test.js) ───── */
 
   function lane(snd) {
     return { snd: snd, vol: 80, tune: 0, dec: 50, tone: 50, rate: 1, len: ROWS, mute: false,
-             fx: { comp: 0, drive: 0, verb: 0 }, steps: new Array(ROWS).fill(0) };
+             fx: { comp: 0, drive: 0, verb: 0 }, steps: new Array(MAX).fill(0),
+             mod: null, notes: new Array(MAX).fill(0), env: { a: ENV.a, d: ENV.d, s: ENV.s, r: ENV.r } };
   }
   function slot() { return { lanes: DEF_KIT.map(lane) }; }
   function defaults() {
@@ -40,17 +45,50 @@ var TF = (function () {
   function fxOf(o, d) { o = obj(o); return { comp: num(o.comp, 0, 100, d.comp), drive: num(o.drive, 0, 100, d.drive), verb: num(o.verb, 0, 100, d.verb) }; }
   function normLane(o, d) {
     o = obj(o);
+    var e = obj(o.env);
     var steps = Array.isArray(o.steps) ? o.steps : [];
     return {
       snd: KIT.indexOf(o.snd) >= 0 ? o.snd : d.snd,
       vol: num(o.vol, 0, 100, d.vol), tune: num(o.tune, -12, 12, d.tune),
       dec: num(o.dec, 0, 100, d.dec), tone: num(o.tone, 0, 100, d.tone),
       rate: RATES.indexOf(o.rate) >= 0 ? o.rate : d.rate,
-      len: int(o.len, 8, ROWS, d.len), mute: typeof o.mute === 'boolean' ? o.mute : d.mute,
+      len: int(o.len, 8, MAX, d.len), mute: typeof o.mute === 'boolean' ? o.mute : d.mute,
       fx: fxOf(o.fx, d.fx),
-      steps: d.steps.map(function (z, i) { var v = steps[i]; return v === 1 || v === 2 ? v : 0; })
+      steps: d.steps.map(function (z, i) { var v = steps[i]; return v === 1 || v === 2 ? v : 0; }),
+      mod: MODS.indexOf(o.mod) >= 0 ? o.mod : null,
+      notes: normNotes(o.notes),
+      env: { a: num(e.a, 0, 2000, ENV.a), d: num(e.d, 0, 2000, ENV.d), s: num(e.s, 0, 100, ENV.s), r: num(e.r, 0, 4000, ENV.r) }
     };
   }
+  /* notes[i] = the length (1..NOTE rows) of a note starting at step i, else 0. A note
+     inside an earlier one is dropped; one running past the last step is cut there. */
+  function normNotes(a) {
+    var out = new Array(MAX).fill(0), end = 0;
+    a = Array.isArray(a) ? a : [];
+    for (var i = 0; i < MAX; i++) {
+      var v = a[i];
+      if (i < end || typeof v !== 'number' || v !== Math.floor(v) || v < 1 || v > NOTE) continue;
+      out[i] = Math.min(v, MAX - i); end = i + out[i];
+    }
+    return out;
+  }
+  /* the start of the note covering step s, or -1 */
+  function noteAt(n, s) {
+    for (var i = s; i >= 0 && i > s - NOTE; i--) if (n[i]) return i + n[i] > s ? i : -1;
+    return -1;
+  }
+  /* Put a note of `len` at s (or resize the one starting there), clamped to NOTE rows,
+     the next note and the lane length. Returns the length placed, 0 if s is inside another note. */
+  function placeNote(n, s, len, laneLen) {
+    var at = noteAt(n, s);
+    if (at >= 0 && at !== s) return 0;
+    var max = Math.min(NOTE, laneLen - s, len);
+    for (var i = s + 1; i < s + max; i++) if (n[i]) { max = i - s; break; }
+    if (max < 1) return 0;
+    n[s] = max;
+    return max;
+  }
+  function deleteNote(n, s) { var at = noteAt(n, s); if (at >= 0) n[at] = 0; }
   function normalize(str) {
     var o;
     try { o = JSON.parse(str); } catch (e) { o = null; }
@@ -58,12 +96,18 @@ var TF = (function () {
     var d = defaults(), slots = Array.isArray(o.slots) ? o.slots : [];
     return {
       bpm: num(o.bpm, 40, 240, d.bpm), swing: num(o.swing, 50, 75, d.swing),
-      busLen: int(o.busLen, 8, ROWS, d.busLen), busVol: num(o.busVol, 0, 100, d.busVol),
+      busLen: int(o.busLen, 8, MAX, d.busLen), busVol: num(o.busVol, 0, 100, d.busVol),
       busFx: fxOf(o.busFx, d.busFx), slot: int(o.slot, 0, SLOTS - 1, d.slot),
       slots: d.slots.map(function (ds, i) {
         var lanes = obj(slots[i]).lanes;
         lanes = Array.isArray(lanes) ? lanes : [];
-        return { lanes: ds.lanes.map(function (dl, j) { return normLane(lanes[j], dl); }) };
+        var seen = {};
+        return { lanes: ds.lanes.map(function (dl, j) {
+          var l = normLane(lanes[j], dl);
+          if (l.mod && seen[l.mod]) l.mod = null;               /* one lane per module */
+          if (l.mod) seen[l.mod] = true;
+          return l;
+        }) };
       })
     };
   }
@@ -103,10 +147,12 @@ var TF = (function () {
         if (!(L.g < stop) || !(byGrid || t < stop)) return;
         if (!byGrid || t < stop) {                  /* swung past the bar line: old slot stays silent */
           for (var c = 0; c < cbs.length; c++) cbs[c](j, L.idx, t);
-          var v = l.steps[L.idx];
+          var v = l.mod ? l.notes[L.idx] : l.steps[L.idx];
           /* slot: the scheduler reads the voice from it — events from before a bar-line
              switch come out of the same call as the new slot's, after state.slot moved */
-          if (v && !l.mute && t >= from) out.push({ lane: j, step: L.idx, t: t, v: v, slot: state.slot });
+          if (v && !l.mute && t >= from) out.push(l.mod
+            ? { lane: j, step: L.idx, t: t, v: v, slot: state.slot, kind: 'note', len: Math.min(v, l.len - L.idx) }
+            : { lane: j, step: L.idx, t: t, v: v, slot: state.slot, kind: 'hit' });
         }
         L.g += d;
         L.idx++;
@@ -302,6 +348,7 @@ var TF = (function () {
       lastT = to;
       for (var i = 0; i < ev.length; i++) {
         var e = ev[i], l = state.slots[e.slot].lanes[e.lane];
+        if (e.kind === 'note') continue;              /* module notes: Task 3 */
         voice(AC, run[e.lane], l.snd, e.t, { tune: l.tune, dec: l.dec, tone: l.tone, accent: e.v === 2 });
         scheduled++;
         if (api._onEvent) api._onEvent(e);
@@ -607,7 +654,8 @@ var TF = (function () {
     get _switchAt() { return switchAt; },
     _: { defaults: defaults, cycle: cycle, normalize: normalize, serialize: serialize,
          stepDur: stepDur, swingOffset: swingOffset, makeClock: makeClock,
-         KIT: KIT, RATES: RATES, LANES: LANES, SLOTS: SLOTS, ROWS: ROWS, STORE: STORE }
+         placeNote: placeNote, noteAt: noteAt, deleteNote: deleteNote,
+         KIT: KIT, RATES: RATES, MODS: MODS, LANES: LANES, SLOTS: SLOTS, ROWS: ROWS, MAX: MAX, STORE: STORE }
   };
   return api;
 })();
