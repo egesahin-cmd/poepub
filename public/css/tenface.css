@@ -1,0 +1,2 @@
+/* TENFACE drum machine — see js/tenface.js */
+#modBurst.active{display:flex;flex-direction:column;position:relative;height:100%;padding:0;overflow:hidden;}

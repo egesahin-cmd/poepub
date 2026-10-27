@@ -268,13 +268,6 @@ input[type=range]::-moz-range-thumb{width:20px;height:20px;border-radius:50%;bac
 .rec-timer{font-size:11px;color:#999;font-variant-numeric:tabular-nums;min-width:56px}
 .save-btn{background:#dfdacc;border-color:#ccc}
 .save-btn:active{background:#d4cfbc}
-/* ═══ BURST UI ═══ */
-#modBurst.active{display:block;position:relative;height:100%;padding:0;overflow:hidden;}
-#buBg{position:absolute;inset:0;z-index:0;}
-#buBird{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:54%;height:54%;object-fit:contain;pointer-events:none;z-index:2;opacity:1;filter:invert(1) brightness(0.88) sepia(0.15);mix-blend-mode:screen;}
-#buControls{display:none;}
-#buHidden{display:none;}
-#buPlayBtn{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:25%;aspect-ratio:1;border-radius:50%;z-index:4;cursor:pointer;}
 /* ═══ BIRDBOX UI ═══ */
 #modBirdbox.active{display:block;position:relative;height:100%;padding:0;overflow:hidden;}
 #bbBg{position:absolute;inset:0;z-index:0;}
@@ -801,6 +794,7 @@ input[type=range]::-moz-range-thumb{width:20px;height:20px;border-radius:50%;bac
 <link rel="stylesheet" href="css/fx.css">
 <link rel="stylesheet" href="css/maths-fm.css">
 <link rel="stylesheet" href="css/link.css">
+<link rel="stylesheet" href="css/tenface.css">
 </head>
 <body>
 <div id="landingOverlay">
@@ -939,31 +933,8 @@ input[type=range]::-moz-range-thumb{width:20px;height:20px;border-radius:50%;bac
   </div>
 </div>
 
-<!-- ═══ BURST ═══ -->
-<div class="mod" id="modBurst">
-  <div id="buBg"></div>
-
-  <img id="buBird" src="tensideddie.svg" alt="">
-  <div id="buPlayBtn" onclick="toggleBurst()"></div>
-  <div id="buControls">
-    <div style="display:flex;flex-direction:column;align-items:center;gap:4px">
-      <button class="pbtn" id="burstPB" onclick="toggleBurst()"><svg id="burstPI" width="20" height="20" viewBox="0 0 24 24"><polygon points="6,3 20,12 6,21" fill="#2d6a4e"/></svg><svg id="burstSI" width="18" height="18" viewBox="0 0 24 24" style="display:none"><rect x="4" y="4" width="16" height="16" rx="2" fill="#ede7d4"/></svg></button>
-      <div class="lbl" id="burstPL">PLAY</div>
-    </div>
-    <div style="display:flex;flex-direction:column;align-items:center;gap:4px">
-      <button class="bsm" onclick="randomizeBurst()" style="width:40px;height:40px;font-size:16px;border-radius:50%">&#8593;</button>
-      <div class="lbl">ROLL</div>
-    </div>
-  </div>
-  <div id="buHidden">
-    <div style="display:flex;gap:5px" id="burstSrcs"></div>
-    <div style="text-align:center"><div class="lbl" style="margin-bottom:2px">SPEED</div><span class="vnum" id="burstSpdV" onclick="tapNum('burstSpdV',33,3300,v=>{burstSpd=v;syncBurst()})">200.00</span><span class="vunit">ms</span></div>
-    <div class="rr"><input type="range" id="burstSpdR" min="0" max="10000" value="5000" oninput="burstSpd=spdS2V(+this.value);syncBurst()"></div>
-    <div style="text-align:center"><div class="lbl" style="margin-bottom:2px">WAVES PER BURST</div><span class="vnum" style="font-size:22px" id="burstWavV" onclick="tapNum('burstWavV',1,10,v=>{burstWaves=Math.round(v)},true)">1</span></div>
-    <div class="rr" style="max-width:170px"><input type="range" min="1" max="10" value="1" oninput="burstWaves=+this.value;document.getElementById('burstWavV').textContent=burstWaves"></div>
-    <div class="rr"><div class="lbl-row lbl"><span>0%</span><span id="burstVolL">VOLUME — 60%</span><span>100%</span></div><input type="range" id="burstVolR" min="0" max="100" value="60" oninput="burstVol=+this.value;document.getElementById('burstVolL').textContent='VOLUME — '+burstVol+'%'"></div>
-  </div>
-</div>
+<!-- ═══ TENFACE (burst) — built by js/tenface.js ═══ -->
+<div class="mod" id="modBurst"></div>
 
 <!-- ═══ NOISE ═══ -->
 <div class="mod" id="modNoise">
@@ -1377,7 +1348,7 @@ function switchTab(t){
   document.querySelector('.content').style.overflow=(t==='birdbox'||t==='burst'||t==='noise'||t==='multi'||t==='mixer')?'hidden':'';
   if(t==='birdbox'&&!bbInitialized){bbInitialized=true;randomizeBirdbox();}
   if(t==='riser'&&!rsInitialized){rsInitialized=true;}
-  if(t==='burst'&&!buInitialized){buInitialized=true;initBurstRandom();}
+  if(t==='burst'&&!buInitialized){buInitialized=true;TF.mount();}
   if(t==='noise'&&!nsInitialized){nsInitialized=true;randomizeNoise();}
   if(t==='mixer'){syncMixerUI();}
   if(t==='scores'&&!scoresInit){scoresInit=true;renderScores();}
@@ -1935,99 +1906,6 @@ function toggleSweep(){
     }
     swpRAF=requestAnimationFrame(tick);
   }swpTickFn=tick;tick();
-}
-
-/* ═══════ BURST ═══════ */
-const BSRC=['sine','click','noise','snare','kick'];
-const BURST_DICE=[1/3,1/2.5,1/2,1/1.666,1/1.5,1.5,1.666,2,2.5,3];
-let burstSrc='sine',burstSpd=200,burstWaves=1,burstVol=100;
-let buPx=[1,6,6],buPxIdx=0;
-let burstPlaying=false,burstTimer=null;
-function initBSrc(){const c=document.getElementById('burstSrcs');
-  const BICO={sine:'<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M2 12c2-6 4-6 5 0s3 6 5 0 3-6 5 0 3 6 5 0"/></svg>',
-  click:'<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="4" y1="12" x2="9" y2="12"/><polyline points="9 12 10 4 12 20 14 4 15 12"/><line x1="15" y1="12" x2="20" y2="12"/></svg>',
-  noise:'<svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><rect x="1" y="1" width="6" height="1.5" rx=".3"/><rect x="10" y="1" width="4" height="1.5" rx=".3"/><rect x="17" y="1" width="5" height="1.5" rx=".3"/><rect x="3" y="3.5" width="8" height="1.5" rx=".3"/><rect x="14" y="3.5" width="3" height="1.5" rx=".3"/><rect x="19" y="3.5" width="4" height="1.5" rx=".3"/><rect x="1" y="6" width="4" height="1.5" rx=".3"/><rect x="7" y="6" width="6" height="1.5" rx=".3"/><rect x="16" y="6" width="7" height="1.5" rx=".3"/><rect x="2" y="8.5" width="5" height="1.5" rx=".3"/><rect x="9" y="8.5" width="3" height="1.5" rx=".3"/><rect x="15" y="8.5" width="5" height="1.5" rx=".3"/><rect x="1" y="11" width="7" height="1.5" rx=".3"/><rect x="11" y="11" width="4" height="1.5" rx=".3"/><rect x="18" y="11" width="5" height="1.5" rx=".3"/><rect x="3" y="13.5" width="4" height="1.5" rx=".3"/><rect x="10" y="13.5" width="6" height="1.5" rx=".3"/><rect x="19" y="13.5" width="3" height="1.5" rx=".3"/><rect x="1" y="16" width="5" height="1.5" rx=".3"/><rect x="8" y="16" width="3" height="1.5" rx=".3"/><rect x="14" y="16" width="6" height="1.5" rx=".3"/><rect x="2" y="18.5" width="6" height="1.5" rx=".3"/><rect x="11" y="18.5" width="4" height="1.5" rx=".3"/><rect x="17" y="18.5" width="5" height="1.5" rx=".3"/><rect x="1" y="21" width="3" height="1.5" rx=".3"/><rect x="7" y="21" width="7" height="1.5" rx=".3"/><rect x="17" y="21" width="6" height="1.5" rx=".3"/></svg>',
-  snare:'<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><line x1="5" y1="5" x2="19" y2="19"/><line x1="19" y1="5" x2="5" y2="19"/></svg>',
-  kick:'<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="4"/></svg>'};
-  BSRC.forEach(s=>{const b=document.createElement('button');b.className='wbtn'+(s==='sine'?' on':'');b.dataset.src=s;b.innerHTML=BICO[s];b.onclick=()=>{burstSrc=s;document.querySelectorAll('#burstSrcs .wbtn').forEach(x=>x.classList.toggle('on',x.dataset.src===s));};c.appendChild(b);});}
-function syncBurst(){burstSpd=r2(Math.max(1,Math.min(3300,burstSpd)));document.getElementById('burstSpdV').textContent=burstSpd.toFixed(2);document.getElementById('burstSpdR').value=spdV2S(burstSpd);}
-function playBurstOnce(time){
-  const c=AC;if(!c)return;const g=c.createGain();g.gain.value=v2g(burstVol);g.connect(appMaster);
-  if(burstSrc==='snare'){
-    var sd=0.08,sOsc=c.createOscillator(),sOG=c.createGain();
-    sOsc.type='sine';sOsc.frequency.setValueAtTime(180,time);sOsc.frequency.exponentialRampToValueAtTime(80,time+sd);
-    sOG.gain.setValueAtTime(1,time);sOG.gain.exponentialRampToValueAtTime(0.01,time+sd);
-    sOsc.connect(sOG);sOG.connect(g);sOsc.start(time);sOsc.stop(time+sd);
-    var sNL=Math.ceil(c.sampleRate*0.03),sNB=c.createBuffer(1,sNL,c.sampleRate),sND=sNB.getChannelData(0);
-    for(var i=0;i<sNL;i++)sND[i]=Math.random()*2-1;
-    var sNS=c.createBufferSource(),sHP=c.createBiquadFilter(),sNG=c.createGain();
-    sNS.buffer=sNB;sHP.type='highpass';sHP.frequency.value=1000;
-    sNG.gain.setValueAtTime(0.7,time);sNG.gain.exponentialRampToValueAtTime(0.01,time+0.03);
-    sNS.connect(sHP);sHP.connect(sNG);sNG.connect(g);sNS.start(time);
-    g.gain.setTargetAtTime(0,time+sd+.005,.002);
-  }else if(burstSrc==='kick'){
-    var kd=0.15,kOsc=c.createOscillator(),kOG=c.createGain();
-    kOsc.type='sine';kOsc.frequency.setValueAtTime(150,time);kOsc.frequency.exponentialRampToValueAtTime(40,time+kd);
-    kOG.gain.setValueAtTime(1,time);kOG.gain.exponentialRampToValueAtTime(0.01,time+kd);
-    kOsc.connect(kOG);kOG.connect(g);kOsc.start(time);kOsc.stop(time+kd);
-    g.gain.setTargetAtTime(0,time+kd+.005,.002);
-  }else{
-    var wd=burstSrc==='noise'?.005:burstSrc==='click'?.001:1/800;
-    for(let w=0;w<burstWaves;w++){
-      if(burstSrc==='noise'){const s=c.createBufferSource();const b=c.createBuffer(1,Math.ceil(c.sampleRate*wd),c.sampleRate);const d=b.getChannelData(0);for(let i=0;i<d.length;i++)d[i]=Math.random()*2-1;s.buffer=b;s.connect(g);s.start(time+w*wd);}
-      else if(burstSrc==='click'){const s=c.createBufferSource();const b=c.createBuffer(1,Math.ceil(c.sampleRate*.001),c.sampleRate);const d=b.getChannelData(0);d[0]=1.696;d[1]=-1.696;s.buffer=b;s.connect(g);s.start(time+w*.0015);}
-      else{const o=c.createOscillator();o.type='sine';o.frequency.value=800;o.connect(g);o.start(time+w*wd);o.stop(time+w*wd+wd);}
-    }
-    g.gain.setTargetAtTime(0,time+wd*burstWaves+.005,.002);
-  }
-}
-function burstSched(){
-  if(!burstPlaying||!AC)return;
-  playBurstOnce(AC.currentTime+.01);burstTimer=setTimeout(burstSched,Math.max(1,burstSpd));
-}
-function toggleBurst(){getAC();if(burstPlaying){burstPlaying=false;if(burstTimer)clearTimeout(burstTimer);setPB('burst',false);showBuBirdFlash();appAutoRecalc();return;}burstPlaying=true;setPB('burst',true);showBuBirdFlash();burstSched();appAutoRecalc();}
-
-/* ═══════ BURST VISUAL ═══════ */
-function updateBuBackground(){
-  var p1=buPx[0],p2=p1+buPx[1],p3=p2+buPx[2];
-  var g='repeating-linear-gradient(-90deg,'
-    +'black,'
-    +'#ede7d4 '+p1+'px,'
-    +'#ede7d4 '+p2+'px,'
-    +'#ede7d4 '+p3+'px)';
-  var el=document.getElementById('buBg');
-  if(el)el.style.background=g;
-}
-function showBuBirdFlash(){
-  var bird=document.getElementById('buBird');
-  if(!bird)return;
-  if(burstPlaying){
-    bird.style.transition='filter 0.6s ease';
-    bird.style.filter='brightness(1)';
-    bird.style.mixBlendMode='multiply';
-  }else{
-    bird.style.transition='none';
-    bird.style.filter='invert(1) brightness(0.88) sepia(0.15)';
-    bird.style.mixBlendMode='screen';
-  }
-}
-function randomizeBurst(){
-  var op=bbRand(BURST_DICE);
-  burstSpd=r2(Math.max(33,Math.min(3300,burstSpd*op)));
-  burstWaves=Math.max(1,Math.min(10,Math.round(burstWaves*op)));
-  buPx[buPxIdx]=Math.max(1,Math.min(60,r2(buPx[buPxIdx]*op)));
-  buPxIdx=(buPxIdx+1)%3;
-  syncBurst();
-  document.getElementById('burstWavV').textContent=burstWaves;
-  updateBuBackground();
-}
-function initBurstRandom(){
-  burstSpd=r2(330+Math.random()*(990-330));
-  burstWaves=3+Math.floor(Math.random()*4);
-  buPx=[1,6,6];buPxIdx=0;
-  syncBurst();
-  document.getElementById('burstWavV').textContent=burstWaves;
-  updateBuBackground();
 }
 
 /* ═══════ NOISE ═══════ */
@@ -4306,15 +4184,6 @@ function toggleRiser(){
     var dx=Math.abs(dxRaw);
     if(dy>80&&dy>dx*1.5&&document.getElementById('modBirdbox').classList.contains('active'))randomizeBirdbox();
     if(dy>80&&dy>dx*1.5&&document.getElementById('modNoise').classList.contains('active')&&document.getElementById('nsStage').contains(e.changedTouches[0].target))randomizeNoise();
-    if(document.getElementById('modBurst').classList.contains('active')){
-      if(dy>80&&dy>dx*1.5){randomizeBurst();}
-      else if(dx>60&&dx>Math.abs(dy)*1.5){
-        var srcIdx=BSRC.indexOf(burstSrc);
-        if(dxRaw>0)srcIdx=(srcIdx+1)%BSRC.length;else srcIdx=(srcIdx-1+BSRC.length)%BSRC.length;
-        burstSrc=BSRC[srcIdx];
-        document.querySelectorAll('#burstSrcs .wbtn').forEach(function(x){x.classList.toggle('on',x.dataset.src===burstSrc);});
-      }
-    }
   },{passive:true});
 })();
 (function(){
@@ -6424,27 +6293,8 @@ function vtSpkUiLoad(){
 }
 
 
-(function(){
-  var mod=document.getElementById('modBurst');
-  mod.addEventListener('click',function(e){
-    if(window.matchMedia('(hover:none) and (pointer:coarse)').matches)return;
-    if(e.target.closest('#buPlayBtn'))return;
-    randomizeBurst();
-  });
-})();
-document.addEventListener('keydown',function(e){
-  if(!document.getElementById('modBurst').classList.contains('active'))return;
-  if(e.key==='ArrowLeft'||e.key==='ArrowRight'){
-    e.preventDefault();
-    var srcIdx=BSRC.indexOf(burstSrc);
-    if(e.key==='ArrowRight')srcIdx=(srcIdx+1)%BSRC.length;else srcIdx=(srcIdx-1+BSRC.length)%BSRC.length;
-    burstSrc=BSRC[srcIdx];
-    document.querySelectorAll('#burstSrcs .wbtn').forEach(function(x){x.classList.toggle('on',x.dataset.src===burstSrc);});
-  }
-});
 
 /* ═══════ INIT ═══════ */
-initBSrc();syncBurst();
 syncRsW();
 initSwpTypeSel('rsPitchTypeSel','linear',function(t){rsPitchType=t;});
 initSwpTypeSel('rsVolTypeSel','linear',function(t){rsVolType=t;});
@@ -6510,6 +6360,7 @@ switchTab('birdbox');
 <script src="js/fx-drive.js"></script>
 <script src="js/fx-comp.js"></script>
 <script src="js/fx-verb.js"></script>
+<script src="js/tenface.js"></script>
 <script src="js/maths-fm.js"></script>
 <script src="js/link-core.js"></script>
 <script src="js/link-table.js"></script>
