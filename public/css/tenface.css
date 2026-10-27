@@ -39,7 +39,12 @@
 .tf-lbl.muted{color:rgba(0,0,0,.3) !important;text-decoration:line-through}
 .tf-mute{height:26px;font-size:10px;border-top:1px solid var(--tf-line) !important}
 .tf-mute.on{background:var(--tf-green) !important;color:#ede7d4 !important}
-.tf-busbar{display:flex;justify-content:flex-end;padding:4px 8px 6px;flex-shrink:0}
+.tf-busbar{display:flex;justify-content:space-between;align-items:center;padding:4px 8px 6px;flex-shrink:0}
+.tf-pages{display:flex;gap:3px}
+.tf-page{width:28px;height:28px;font-size:11px;border:1px solid #000 !important;padding:0}
+.tf-page.on{background:#000 !important;color:#ede7d4 !important}
+.tf-page.now{box-shadow:inset 0 -4px 0 var(--tf-green)}
+.tf-page.dis{opacity:.25;pointer-events:none}
 .tf-bus{height:28px;padding:0 14px;font-size:11px;letter-spacing:2px;border:1.5px solid #000 !important}
 .tf-bus.open{background:#000 !important;color:#ede7d4 !important}
 

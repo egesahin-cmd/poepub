@@ -2,6 +2,8 @@
 // Real (trusted) touches at 390x844 with the phone pointer branch on.
 //   node test/tenface/ui.mjs
 import { rig, sleep } from '../link/rig.mjs';
+import { mkdirSync } from 'node:fs';
+mkdirSync(new URL('../../.superpowers/shots/', import.meta.url).pathname, { recursive: true });
 
 const { startServer, openBrowser, page, ok, until, finish } = rig({ port: 3082, debugPort: 9396 });
 
@@ -75,7 +77,7 @@ try {
   ok('BUS opens the bus panel', (await p.ev(`TF.panel && TF.panel.kind === 'bus'`)) === true);
 
   await p.ev(`TF.openPanel(null); 1`);
-  await p.shot(new URL('../../.superpowers/sdd/2026-10-27-tenface-drum-machine/tf-grid.png', import.meta.url).pathname);
+  await p.shot(new URL('../../.superpowers/shots/tf-grid.png', import.meta.url).pathname);
 
   /* ── panels ── */
   await p.tap('.tf-lbl[data-l="1"]');
@@ -154,10 +156,51 @@ try {
   const flushed = await p.ev(`window.dispatchEvent(new Event('pagehide')); JSON.parse(localStorage.getItem('ptf_')).slots[TF.state.slot].lanes[4].steps[15]`);
   ok('an edit is saved at once when the page is hidden or left', flushed === 1, flushed);
 
+  /* ── pages: up to 64 steps, 16 rows a page ── */
+  await p.ev(`TF.openPanel(null); TF.setBusLen(16); 1`);
+  const pages = () => p.ev(`(function(){ var b = [].slice.call(document.querySelectorAll('.tf-page')), bus = document.getElementById('tfBus').getBoundingClientRect();
+    return { n: b.length, txt: b.map(function(x){ return x.textContent; }).join(''),
+             left: b.every(function(x){ var q = x.getBoundingClientRect(); return q.width > 0 && q.right < innerWidth / 2 && Math.abs((q.top + q.bottom) / 2 - (bus.top + bus.bottom) / 2) < 4; }),
+             dis: b.map(function(x){ return x.classList.contains('dis') ? 1 : 0; }).join(''), on: b.map(function(x){ return x.classList.contains('on') ? 1 : 0; }).join(''),
+             now: b.map(function(x){ return x.classList.contains('now') ? 1 : 0; }).join(''), first: document.querySelector('.tf-idx').textContent }; })()`);
+  let pg = await pages();
+  ok('4 page buttons 1-4 sit bottom-left, level with BUS', pg.n === 4 && pg.txt === '1234' && pg.left, pg);
+  ok('at LENGTH 16 only page 1 is enabled, and shown', pg.dis === '0111' && pg.on === '1000', pg);
+  await p.ev(`TF.setBusLen(70); 1`);
+  ok('bus LENGTH goes up to 64', (await p.ev(`TF.state.busLen + ',' + TF.state.slots[TF.state.slot].lanes[0].len`)) === '64,64');
+  await p.ev(`TF.setBusLen(40); 1`);
+  ok('LENGTH 40 enables pages 1-3', (await pages()).dis === '0001');
+  await p.tap('.tf-page[data-p="1"]');
+  pg = await pages();
+  ok('a tap on page 2 shows steps 17-32', pg.on === '0100' && pg.first === '17', pg);
+  await p.tap('.tf-cell[data-l="3"][data-s="5"]');
+  ok('a tap on page 2 row 6 writes step 22', (await p.ev(`[TF.state.slots[TF.state.slot].lanes[3].steps[21], document.querySelector('.tf-cell[data-l="3"][data-s="5"]').dataset.v].join()`)) === '1,1');
+  ok('rows past LENGTH 40 on page 3 are off', (await p.ev(`(function(){ document.querySelector('.tf-page[data-p="2"]').click(); var r = document.querySelector('.tf-cell[data-l="0"][data-s="8"]').classList.contains('off') && !document.querySelector('.tf-cell[data-l="0"][data-s="7"]').classList.contains('off'); return r; })()`)) === true);
+  await p.tap('.tf-lbl[data-l="1"]');
+  for (let i = 0; i < 3; i++) await p.tap('#tfPanel .tf-len-up', 40, 60);
+  ok('the lane LENGTH buttons go past 16', (await p.ev(`TF.state.slots[TF.state.slot].lanes[1].len`)) === 43);
+  await p.ev(`TF.openPanel(null); TF.setBusLen(32); TF.state.bpm = 240; TF.render(); 1`);
+  await p.tap('.tf-page[data-p="0"]');
+  await p.tap('#tfPlay');
+  await until('playing, the view follows the playhead to page 2', p, `TF.view === 1 && document.querySelector('.tf-page[data-p="1"]').classList.contains('now')`, 3000);
+  await until('and back to page 1 when the pattern wraps', p, `TF.view === 0`, 3000);
+  await p.tap('.tf-page[data-p="1"]', 30, 0);
+  await sleep(2300);
+  ok('after a tap on another page the view stays there for a whole loop', (await p.ev(`TF.view === 1 && TF.follow === false`)) === true, await p.ev(`[TF.view, TF.follow, TF.playPage]`));
+  await until('the playhead reaches page 2', p, `TF.playPage === 1`, 3000);
+  await p.tap('.tf-page[data-p="1"]', 30, 0);
+  ok('a tap on the playing page resumes following', (await p.ev(`TF.follow`)) === true);
+  await until('following again', p, `TF.view === 0`, 3000);
+  await p.tap('#tfPlay');
+  pg = await pages();
+  ok('stopped: no page is marked as playing', pg.now === '0000', pg);
+  await p.ev(`TF.state.bpm = 120; TF.setBusLen(16); TF.render(); 1`);
+  ok('lowering LENGTH below the page on screen brings the view back to page 1', (await p.ev(`TF.view`)) === 0);
+
   await p.tap('.tf-lbl[data-l="2"]');
-  await p.shot(new URL('../../.superpowers/sdd/2026-10-27-tenface-drum-machine/tf-lane.png', import.meta.url).pathname);
+  await p.shot(new URL('../../.superpowers/shots/tf-lane.png', import.meta.url).pathname);
   await p.tap('#tfBus');
-  await p.shot(new URL('../../.superpowers/sdd/2026-10-27-tenface-drum-machine/tf-bus.png', import.meta.url).pathname);
+  await p.shot(new URL('../../.superpowers/shots/tf-bus.png', import.meta.url).pathname);
   ok('no uncaught exceptions', p.errors.length === 0, p.errors);
   finish();
 } catch (e) {

@@ -410,6 +410,9 @@ var TF = (function () {
      repaints it from state, so anything that edits state just calls render(). */
   var NAMES = { kick: 'KICK', snare: 'SNARE', ch: 'C.HAT', oh: 'O.HAT', clap: 'CLAP', rim: 'RIM', tom: 'TOM', cow: 'COW', click: 'CLICK', noise: 'NOISE', sine: 'SINE' };
   var el = {}, panel = null, pendingSlot = -1, mounted = false;
+  /* pages: the grid shows steps view*16 .. view*16+15. While `follow`, the view moves
+     with the lead lane's playhead (playPage); a tap on another page stops that. */
+  var view = 0, follow = true, playPage = -1, heard = [];
   function h(tag, cls, txt) { var e = document.createElement(tag); if (cls) e.className = cls; if (txt != null) e.textContent = txt; return e; }
   function lanesNow() { return state.slots[state.slot].lanes; }
 
@@ -441,7 +444,7 @@ var TF = (function () {
   function setBusFx(u, v) { state.busFx[u] = v; FX.setAmt(u, 'tenface', v); save(); }
   function setSwing(v) { state.swing = Math.max(50, Math.min(75, Math.round(v))); save(); }
   function setBusLen(v) {
-    state.busLen = Math.max(8, Math.min(ROWS, Math.round(v)));
+    state.busLen = Math.max(8, Math.min(MAX, Math.round(v)));
     lanesNow().forEach(function (L) { L.len = state.busLen; });   /* then any lane may differ again */
     render();
   }
@@ -460,15 +463,34 @@ var TF = (function () {
     else applySlot(i);
   }
   function tapCell(c) {
-    var j = +c.dataset.l, s = +c.dataset.s, L = lanesNow()[j];
+    var j = +c.dataset.l, s = view * ROWS + +c.dataset.s, L = lanesNow()[j];
     if (s >= L.len) return;
     L.steps[s] = cycle(L.steps[s]);
     paintCell(c, L);
   }
   function paintCell(c, L) {
-    var s = +c.dataset.s;
+    var s = view * ROWS + +c.dataset.s;
     c.dataset.v = L.steps[s];
     c.classList.toggle('off', s >= L.len);
+  }
+
+  /* the lane whose playhead turns the pages: the longest, the leftmost on a tie */
+  function lead() {
+    var L = lanesNow(), k = 0;
+    for (var j = 1; j < LANES; j++) if (L[j].len > L[k].len) k = j;
+    return k;
+  }
+  function pages() { var m = 0; lanesNow().forEach(function (L) { m = Math.max(m, L.len); }); return Math.ceil(m / ROWS); }
+  function pickPage(p) {
+    if (p >= pages()) return;
+    view = p; follow = playing && p === playPage;
+    render();
+  }
+  function paintHeads() {
+    for (var j = 0; j < LANES; j++) {
+      var s = heard[j], row = s >= 0 && Math.floor(s / ROWS) === view ? s % ROWS : -1;
+      for (var k = 0; k < ROWS; k++) el.cells[j][k].classList.toggle('now', k === row);
+    }
   }
 
   function mount() {
@@ -478,7 +500,7 @@ var TF = (function () {
 
     var strip = h('div', 'tf-strip');
     el.play = h('button', 'tf-play'); el.play.id = 'tfPlay';
-    el.play.onclick = function () { if (playing) stop(); else play(); render(); };
+    el.play.onclick = function () { if (playing) stop(); else { follow = true; play(); } render(); };
     var tempo = h('div', 'tf-tempo');
     var dn = h('button', 'tf-step', '−'); dn.id = 'tfBpmDn'; dn.onclick = function () { setBpm(state.bpm - 1); };
     var up = h('button', 'tf-step', '+'); up.id = 'tfBpmUp'; up.onclick = function () { setBpm(state.bpm + 1); };
@@ -494,7 +516,8 @@ var TF = (function () {
     el.grid = h('div', 'tf-grid');
     el.cells = [];
     for (var s = 0; s < ROWS; s++) {
-      el.grid.appendChild(h('div', 'tf-idx' + (s % 4 ? '' : ' beat'), String(s + 1)));
+      el.idx = el.idx || [];
+      el.grid.appendChild(el.idx[s] = h('div', 'tf-idx' + (s % 4 ? '' : ' beat'), String(s + 1)));
       for (var j = 0; j < LANES; j++) {
         var c = h('div', 'tf-cell' + (s % 4 ? '' : ' beat')); c.dataset.l = j; c.dataset.s = s;
         el.grid.appendChild(c); (el.cells[j] = el.cells[j] || [])[s] = c;
@@ -519,6 +542,11 @@ var TF = (function () {
       col.append(l, m); foot.appendChild(col); el.lbls[j] = l; el.mutes[j] = m;
     })(j);
     var bar = h('div', 'tf-busbar');
+    el.pages = h('div', 'tf-pages');
+    [0, 1, 2, 3].forEach(function (p) {
+      var b = h('button', 'tf-page', String(p + 1)); b.dataset.p = p; b.onclick = function () { pickPage(p); }; el.pages.appendChild(b);
+    });
+    bar.appendChild(el.pages);
     el.bus = h('button', 'tf-bus', 'BUS'); el.bus.id = 'tfBus';
     el.bus.onclick = function () { openPanel(panel && panel.kind === 'bus' ? null : 'bus'); };
     bar.appendChild(el.bus);
@@ -533,8 +561,17 @@ var TF = (function () {
     if (nodes) { setBusVol(state.busVol); syncLanes(); }
 
     api.onPlayhead(function (j, s) {
-      var col = el.cells[j];
-      for (var k = 0; k < ROWS; k++) col[k].classList.toggle('now', k === s);
+      heard[j] = s;
+      if (j === lead()) {
+        var p = s < 0 ? -1 : Math.floor(s / ROWS);
+        if (p !== playPage) {
+          playPage = p;
+          if (follow && p >= 0 && p !== view) { view = p; render(); return; }
+          paintPages();
+        }
+      }
+      var col = el.cells[j], row = s >= 0 && Math.floor(s / ROWS) === view ? s % ROWS : -1;
+      for (var k = 0; k < ROWS; k++) col[k].classList.toggle('now', k === row);
     });
     switched.push(function () { pendingSlot = -1; pushFx(); if (panel) fillPanel(); render(); });
     stopped.push(applySlot);
@@ -595,12 +632,12 @@ var TF = (function () {
       len.appendChild(h('span', 'tf-cap', 'LENGTH'));
       var dn = h('button', 'tf-step tf-len-dn', '−'), up = h('button', 'tf-step tf-len-up', '+'), val = h('span', 'tf-len', String(L.len));
       dn.onclick = function () { L.len = Math.max(8, L.len - 1); val.textContent = L.len; render(); };
-      up.onclick = function () { L.len = Math.min(ROWS, L.len + 1); val.textContent = L.len; render(); };
+      up.onclick = function () { L.len = Math.min(MAX, L.len + 1); val.textContent = L.len; render(); };
       len.append(dn, val, up);
     } else {
       row('tf-head').appendChild(h('span', 'tf-title', 'DRUM BUS'));
       var a = row();
-      knob(a, 'LENGTH', 'len', state.busLen, 8, ROWS, String, setBusLen);
+      knob(a, 'LENGTH', 'len', state.busLen, 8, MAX, String, setBusLen);
       knob(a, 'SWING', 'swing', state.swing, 50, 75, pct, setSwing);
       var b2 = row();
       knob(b2, 'COMP', 'comp', state.busFx.comp, 0, 100, pct, function (v) { setBusFx('comp', v); });
@@ -615,9 +652,20 @@ var TF = (function () {
     }
   }
 
+  function paintPages() {
+    var n = pages();
+    [].forEach.call(el.pages.children, function (b, p) {
+      b.classList.toggle('on', p === view);
+      b.classList.toggle('now', playing && p === playPage);
+      b.classList.toggle('dis', p >= n);
+    });
+  }
   function render() {
     if (!mounted) return;
     var L = lanesNow();
+    if (view >= pages()) view = 0;                    /* LENGTH lowered under the page on screen */
+    for (var r = 0; r < ROWS; r++) el.idx[r].textContent = view * ROWS + r + 1;
+    paintPages();
     el.play.classList.toggle('on', playing);
     el.play.textContent = playing ? '■' : '▶';
     var b = document.getElementById('tfBpm'); if (b) b.textContent = state.bpm;
@@ -633,7 +681,8 @@ var TF = (function () {
       el.mutes[j].classList.toggle('on', L[j].mute);
     }
     el.bus.classList.toggle('open', !!panel && panel.kind === 'bus');
-    if (!playing) for (j = 0; j < LANES; j++) for (s = 0; s < ROWS; s++) el.cells[j][s].classList.remove('now');
+    if (!playing) { heard = []; playPage = -1; paintPages(); }
+    paintHeads();
     save();                                          /* every edit ends in a repaint */
   }
 
@@ -641,6 +690,7 @@ var TF = (function () {
     mount: mount, voice: voice, play: play, stop: stop, setBusVol: setBusVol, syncLanes: function () { syncLanes(); },
     render: render, openPanel: openPanel, setBusLen: setBusLen, setSwing: setSwing, setLaneFx: setLaneFx, setBusFx: setBusFx,
     get panel() { return panel; },
+    get view() { return view; }, get follow() { return follow; }, get playPage() { return playPage; },
     /* playhead: cb(lane, step) when that step is HEARD (rAF, audio clock); step -1 on stop */
     onPlayhead: function (cb) { shown.push(cb); },
     get playing() { return playing; },
