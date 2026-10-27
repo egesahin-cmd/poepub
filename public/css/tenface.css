@@ -46,3 +46,16 @@
 /* settings sheet over the lower grid (filled by the panels) */
 .tf-panel{display:none}
 .tf-panel.open{display:block;position:absolute;left:0;right:0;bottom:96px;max-height:55%;overflow:auto;background:#ede7d4;border-top:1.5px solid #000;z-index:5;padding:10px}
+.tf-panel .tf-row{display:flex;justify-content:space-around;align-items:flex-start;gap:6px;margin:4px 0 10px}
+.tf-panel .tf-head{justify-content:flex-start;align-items:center;gap:12px;margin-bottom:12px}
+.tf-title{font-size:12px;letter-spacing:2px}
+.tf-snd{font-size:12px;letter-spacing:1px;background:#ede7d4;color:#000;border:1.5px solid #000;border-radius:0;padding:4px 6px}
+.tf-panel .fxk-rack:not(.u-comp):not(.u-drive):not(.u-verb){--fxk:#2d6a4e}   /* sends keep their unit's colour */
+.tf-panel .fxk-rack .fxk-top{color:rgba(0,0,0,.55)}
+.tf-panel .fxk-rack .fxk-lbl{color:#000}
+.tf-seg{align-items:center !important;justify-content:flex-start !important}
+.tf-cap{font-size:9px;letter-spacing:1.5px;width:58px;flex-shrink:0}
+.tf-rate{min-width:34px;height:28px;font-size:11px;border:1px solid #000 !important;padding:0 4px}
+.tf-rate.on{background:#000 !important;color:#ede7d4 !important}
+.tf-len{min-width:40px;text-align:center;font-size:14px}
+.tf-busvol{flex:1;accent-color:#000}

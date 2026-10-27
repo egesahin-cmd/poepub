@@ -76,6 +76,57 @@ try {
 
   await p.ev(`TF.openPanel(null); 1`);
   await p.shot(new URL('../../.superpowers/sdd/2026-10-27-tenface-drum-machine/tf-grid.png', import.meta.url).pathname);
+
+  /* ── panels ── */
+  await p.tap('.tf-lbl[data-l="1"]');
+  ok('lane 2 panel shows SOUND snare', (await p.ev(`document.querySelector('#tfPanel.open.lane select.tf-snd').value`)) === 'snare');
+  await p.ev(`var s = document.querySelector('#tfPanel select.tf-snd'); s.value = 'cow'; s.dispatchEvent(new Event('change')); 1`);
+  ok('choosing COW renames the label and the lane plays it', (await p.ev(`[document.querySelector('.tf-lbl[data-l="1"]').textContent, TF.state.slots[TF.state.slot].lanes[1].snd].join()`)) === 'COW,cow');
+  await p.tap('.tf-lbl[data-l="1"]');
+  ok('tapping the same label again closes the panel', (await p.ev(`TF.panel === null && !document.getElementById('tfPanel').classList.contains('open')`)) === true);
+  await p.tap('#tfBus');
+  ok('bus panel has LENGTH, SWING, COMP, DRIVE, REV and a VOLUME slider',
+    (await p.ev(`['len','swing','comp','drive','verb'].every(function(k){ return !!document.querySelector('#tfPanel.bus .tf-k-' + k); }) && !!document.querySelector('#tfPanel.bus input[type=range].tf-busvol')`)) === true);
+  await p.tap('.tf-cell[data-l="0"][data-s="0"]');
+  ok('a tap outside the sheet closes it and writes no step', (await p.ev(`TF.panel === null && TF.state.slots[TF.state.slot].lanes[0].steps[0]`)) === 0);
+
+  await p.ev(`TF.setBusLen(12); 1`);
+  ok('bus LENGTH 12 sets every lane to 12', (await p.ev(`TF.state.slots[TF.state.slot].lanes.map(function(l){return l.len}).join()`)) === '12,12,12,12,12');
+  await p.tap('.tf-lbl[data-l="0"]');
+  for (let i = 0; i < 4; i++) await p.tap('#tfPanel .tf-len-up', 40, 80);
+  ok('the lane panel then sets lane 1 to 16 alone', (await p.ev(`TF.state.slots[TF.state.slot].lanes.map(function(l){return l.len}).join()`)) === '16,12,12,12,12');
+
+  await p.tap('#tfPlay');
+  await p.drag('#tfPanel .tf-k-vol', 0, 220);
+  await sleep(200);
+  ok('VOL knob to 0 silences lane 1', (await p.ev(`[TF.state.slots[TF.state.slot].lanes[0].vol, TF._nodes.lanes[0].gain.value < 0.001]`)).join() === '0,true');
+  await p.tap('#tfPlay');
+  await p.ev(`TF.openPanel(null); 1`);
+
+  /* ── persistence ── */
+  await p.ev(`var L = TF.state.slots[0].lanes; L[0].steps[3] = 2; L[4].snd = 'tom'; TF.setLaneFx(0, 'verb', 40);
+              TF.state.slots[2].lanes[1].steps[9] = 1; TF.state.slots[2].lanes[0].snd = 'rim';
+              TF.state.bpm = 133; TF.setSwing(60); TF.render(); 1`);
+  await sleep(600);
+  await p.load();
+  await p.ev(`try{dismissLanding()}catch(e){}; switchTab('burst'); 1`);
+  await sleep(300);
+  const back = await p.ev(`(function(){ var s = TF.state, L = s.slots[0].lanes; return [s.bpm, s.swing, L[0].steps[3], L[4].snd, L[0].fx.verb, FX.amt('verb','tf1'), s.slots[2].lanes[1].steps[9], document.getElementById('tfBpm').textContent].join(); })()`);
+  ok('after a reload slots A and C, BPM, swing and lane REV are all back', back === '133,60,2,tom,40,40,1,133', back);
+
+  await p.tap('.tf-slot[data-i="2"]');
+  ok('switching to slot C swaps in its own kit', (await p.ev(`document.querySelector('.tf-lbl[data-l="0"]').textContent`)) === 'RIM');
+
+  await p.ev(`localStorage.setItem('ptf_', '{"slots":[null]}'); 1`);
+  await p.load();
+  await p.ev(`try{dismissLanding()}catch(e){}; switchTab('burst'); 1`);
+  await sleep(300);
+  ok('a corrupt save opens TENFACE on the defaults', (await p.ev(`TF.state.bpm === 120 && document.querySelectorAll('.tf-cell').length === 80 && TF.state.slots[0].lanes[0].snd === 'kick'`)) === true);
+
+  await p.tap('.tf-lbl[data-l="2"]');
+  await p.shot(new URL('../../.superpowers/sdd/2026-10-27-tenface-drum-machine/tf-lane.png', import.meta.url).pathname);
+  await p.tap('#tfBus');
+  await p.shot(new URL('../../.superpowers/sdd/2026-10-27-tenface-drum-machine/tf-bus.png', import.meta.url).pathname);
   ok('no uncaught exceptions', p.errors.length === 0, p.errors);
   finish();
 } catch (e) {

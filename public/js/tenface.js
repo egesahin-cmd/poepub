@@ -347,6 +347,34 @@ var TF = (function () {
   function h(tag, cls, txt) { var e = document.createElement(tag); if (cls) e.className = cls; if (txt != null) e.textContent = txt; return e; }
   function lanesNow() { return state.slots[state.slot].lanes; }
 
+  /* ── saving: one key, written 300 ms after the last edit ── */
+  var saveT = null;
+  function save() {
+    clearTimeout(saveT);
+    saveT = setTimeout(function () { try { localStorage.setItem(STORE, serialize(state)); } catch (e) {} }, 300);
+  }
+  function load() {
+    var s = null; try { s = localStorage.getItem(STORE); } catch (e) {}
+    if (s) state = normalize(s);
+  }
+  /* fx-core holds the live send amounts; the slot (lanes) and the state (bus) own them.
+     Push on load and when a switch is heard, so a slot's kit brings its sends with it. */
+  function pushFx() {
+    var L = lanesNow();
+    ['comp', 'drive', 'verb'].forEach(function (u) {
+      for (var j = 0; j < LANES; j++) FX.setAmt(u, 'tf' + (j + 1), L[j].fx[u]);
+      FX.setAmt(u, 'tenface', state.busFx[u]);
+    });
+  }
+  function setLaneFx(j, u, v) { lanesNow()[j].fx[u] = v; FX.setAmt(u, 'tf' + (j + 1), v); save(); }
+  function setBusFx(u, v) { state.busFx[u] = v; FX.setAmt(u, 'tenface', v); save(); }
+  function setSwing(v) { state.swing = Math.max(50, Math.min(75, Math.round(v))); save(); }
+  function setBusLen(v) {
+    state.busLen = Math.max(8, Math.min(ROWS, Math.round(v)));
+    lanesNow().forEach(function (L) { L.len = state.busLen; });   /* then any lane may differ again */
+    render();
+  }
+
   function setBpm(v) { state.bpm = Math.max(40, Math.min(240, Math.round(v))); render(); }
   function pickSlot(i) {
     if (i === state.slot && pendingSlot < 0) return;
@@ -396,7 +424,12 @@ var TF = (function () {
       }
     }
     /* pointerdown, not click: a drum pad answers on the finger, not on its release */
-    el.grid.addEventListener('pointerdown', function (e) { var c = e.target.closest('.tf-cell'); if (c) { e.preventDefault(); tapCell(c); } });
+    el.grid.addEventListener('pointerdown', function (e) {
+      var c = e.target.closest('.tf-cell'); if (!c) return;
+      e.preventDefault();
+      if (panel) { openPanel(null); return; }                      /* a tap outside the sheet only closes it */
+      tapCell(c); save();
+    });
 
     var foot = h('div', 'tf-foot');
     foot.appendChild(h('div', 'tf-idx'));
@@ -415,23 +448,90 @@ var TF = (function () {
 
     el.panel = h('div', 'tf-panel'); el.panel.id = 'tfPanel';
     host.append(strip, el.grid, foot, bar, el.panel);
+    /* The strip is outside the sheet too, but its buttons keep it open: tweaking a
+       lane while starting, re-tempoing or switching slots is the live use. */
+    strip.addEventListener('pointerdown', function (e) { if (panel && !e.target.closest('button,.tf-bpm')) openPanel(null); });
+
+    load(); pushFx();
+    if (nodes) { setBusVol(state.busVol); syncLanes(); }
 
     api.onPlayhead(function (j, s) {
       var col = el.cells[j];
       for (var k = 0; k < ROWS; k++) col[k].classList.toggle('now', k === s);
     });
-    switched.push(function () { pendingSlot = -1; render(); });
+    switched.push(function () { pendingSlot = -1; pushFx(); if (panel) fillPanel(); render(); });
     render();
   }
 
-  /* Task 5 fills the sheet; here it only knows which one is open. */
   function openPanel(kind, lane) {
     panel = kind ? { kind: kind, lane: kind === 'lane' ? lane : null } : null;
     if (el.panel) {
       el.panel.className = 'tf-panel' + (panel ? ' open ' + panel.kind : '');
       el.panel.dataset.lane = panel && panel.kind === 'lane' ? panel.lane : '';
+      fillPanel();
     }
     render();
+  }
+
+  /* The sheet is rebuilt whenever it opens or the slot under it changes: knobs are
+     cheap, and a rebuild can never show the previous lane's or slot's values. */
+  var RATE_TXT = ['½', '⅔', '1', '4/3', '2', '4'];
+  function knob(host, name, cls, v, min, max, fmt, on) {
+    var u = { comp: ' u-comp', drive: ' u-drive', verb: ' u-verb' }[cls] || '';   /* the FX racks' own colours */
+    return FX.knob(host, { name: name, cls: 'tf-k-' + cls + u, value: v, min: min, max: max, readout: 'always', fmt: fmt, onchange: on });
+  }
+  function fillPanel() {
+    var P = el.panel; P.textContent = '';
+    if (!panel) return;
+    var row = function (cls) { var r = h('div', 'tf-row' + (cls ? ' ' + cls : '')); P.appendChild(r); return r; };
+    var pct = function (v) { return v + '%'; };
+    if (panel.kind === 'lane') {
+      var j = panel.lane, L = lanesNow()[j];
+      var head = row('tf-head');
+      head.appendChild(h('span', 'tf-title', 'LANE ' + (j + 1)));
+      var sel = h('select', 'tf-snd');
+      KIT.forEach(function (k) { var o = h('option', null, NAMES[k]); o.value = k; sel.appendChild(o); });
+      sel.value = L.snd;
+      sel.onchange = function () { L.snd = sel.value; render(); };
+      head.appendChild(sel);
+      var shape = row();
+      knob(shape, 'VOL', 'vol', L.vol, 0, 100, pct, function (v) { L.vol = v; syncLanes(); save(); });
+      knob(shape, 'TUNE', 'tune', L.tune, -12, 12, function (v) { return (v > 0 ? '+' : '') + v; }, function (v) { L.tune = v; save(); });
+      knob(shape, 'DECAY', 'dec', L.dec, 0, 100, pct, function (v) { L.dec = v; save(); });
+      knob(shape, 'TONE', 'tone', L.tone, 0, 100, pct, function (v) { L.tone = v; save(); });
+      var fx = row();
+      knob(fx, 'COMP', 'comp', L.fx.comp, 0, 100, pct, function (v) { setLaneFx(j, 'comp', v); });
+      knob(fx, 'DRIVE', 'drive', L.fx.drive, 0, 100, pct, function (v) { setLaneFx(j, 'drive', v); });
+      knob(fx, 'REV', 'verb', L.fx.verb, 0, 100, pct, function (v) { setLaneFx(j, 'verb', v); });
+      var rate = row('tf-seg');
+      rate.appendChild(h('span', 'tf-cap', 'RATE'));
+      RATES.forEach(function (r, i) {
+        var b = h('button', 'tf-rate' + (L.rate === r ? ' on' : ''), RATE_TXT[i]);
+        b.onclick = function () { L.rate = r; fillPanel(); render(); };
+        rate.appendChild(b);
+      });
+      var len = row('tf-seg');
+      len.appendChild(h('span', 'tf-cap', 'LENGTH'));
+      var dn = h('button', 'tf-step tf-len-dn', '−'), up = h('button', 'tf-step tf-len-up', '+'), val = h('span', 'tf-len', String(L.len));
+      dn.onclick = function () { L.len = Math.max(8, L.len - 1); val.textContent = L.len; render(); };
+      up.onclick = function () { L.len = Math.min(ROWS, L.len + 1); val.textContent = L.len; render(); };
+      len.append(dn, val, up);
+    } else {
+      row('tf-head').appendChild(h('span', 'tf-title', 'DRUM BUS'));
+      var a = row();
+      knob(a, 'LENGTH', 'len', state.busLen, 8, ROWS, String, setBusLen);
+      knob(a, 'SWING', 'swing', state.swing, 50, 75, pct, setSwing);
+      var b2 = row();
+      knob(b2, 'COMP', 'comp', state.busFx.comp, 0, 100, pct, function (v) { setBusFx('comp', v); });
+      knob(b2, 'DRIVE', 'drive', state.busFx.drive, 0, 100, pct, function (v) { setBusFx('drive', v); });
+      knob(b2, 'REV', 'verb', state.busFx.verb, 0, 100, pct, function (v) { setBusFx('verb', v); });
+      var vr = row('tf-seg');
+      vr.appendChild(h('span', 'tf-cap', 'VOLUME'));
+      var sl = h('input', 'tf-busvol'); sl.type = 'range'; sl.min = 0; sl.max = 100; sl.value = state.busVol;
+      var sv = h('span', 'tf-len', state.busVol + '%');
+      sl.oninput = function () { setBusVol(+sl.value); sv.textContent = sl.value + '%'; save(); };
+      vr.append(sl, sv);
+    }
   }
 
   function render() {
@@ -453,11 +553,12 @@ var TF = (function () {
     }
     el.bus.classList.toggle('open', !!panel && panel.kind === 'bus');
     if (!playing) for (j = 0; j < LANES; j++) for (s = 0; s < ROWS; s++) el.cells[j][s].classList.remove('now');
+    save();                                          /* every edit ends in a repaint */
   }
 
   var api = {
     mount: mount, voice: voice, play: play, stop: stop, setBusVol: setBusVol, syncLanes: function () { syncLanes(); },
-    render: render, openPanel: openPanel,
+    render: render, openPanel: openPanel, setBusLen: setBusLen, setSwing: setSwing, setLaneFx: setLaneFx, setBusFx: setBusFx,
     get panel() { return panel; },
     /* playhead: cb(lane, step) when that step is HEARD (rAF, audio clock); step -1 on stop */
     onPlayhead: function (cb) { shown.push(cb); },
