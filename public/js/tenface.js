@@ -247,7 +247,7 @@ var TF = (function () {
   var state = defaults();
   var nodes = null, run = null, clock = null, worker = null, playing = false;
   var lastT = 0, LA = 0.1, scheduled = 0;
-  var queue = [], shown = [];                      /* playhead: [lane, step, t] waiting for its t; listeners */
+  var queue = [], shown = [], switched = [];       /* playhead: [lane, step, t] waiting for its t ([-1, slot, t] = a switch); listeners */
 
   function graph() {
     if (nodes) return nodes;
@@ -298,6 +298,7 @@ var TF = (function () {
       var q = queue[i];
       if (q[2] > now) { i++; continue; }
       queue.splice(i, 1);
+      if (q[0] < 0) { for (var k = 0; k < switched.length; k++) switched[k](q[1]); continue; }   /* a slot switch, heard */
       for (var c = 0; c < shown.length; c++) shown[c](q[0], q[1]);
     }
   }
@@ -321,7 +322,7 @@ var TF = (function () {
     run = nodes.lanes.map(function (lg) { var g = c.createGain(); g.connect(lg); return g; });
     clock = makeClock(state, c.currentTime + 0.05);  /* a new clock = every lane from step 0 */
     clock.onStep(function (j, s, t) { if (t >= AC.currentTime) queue.push([j, s, t]); });
-    clock.onSwitch(function (s, at) { syncLanes(at); });
+    clock.onSwitch(function (s, at) { syncLanes(at); queue.push([-1, s, at]); });
     lastT = c.currentTime; playing = true;
     ensureWorker().postMessage('start');
     tick(); requestAnimationFrame(frame);
@@ -338,23 +339,126 @@ var TF = (function () {
 
   /* ── module ─────────────────────────────────────────────────────────────── */
 
-  var mounted = false;
+  /* The screen: a strip (play, BPM, slots), a 16-row tracker grid with one column
+     per lane, lane labels + mutes under it, BUS bottom-right. Built once; render()
+     repaints it from state, so anything that edits state just calls render(). */
+  var NAMES = { kick: 'KICK', snare: 'SNARE', ch: 'C.HAT', oh: 'O.HAT', clap: 'CLAP', rim: 'RIM', tom: 'TOM', cow: 'COW', click: 'CLICK', noise: 'NOISE', sine: 'SINE' };
+  var el = {}, panel = null, pendingSlot = -1, mounted = false;
+  function h(tag, cls, txt) { var e = document.createElement(tag); if (cls) e.className = cls; if (txt != null) e.textContent = txt; return e; }
+  function lanesNow() { return state.slots[state.slot].lanes; }
+
+  function setBpm(v) { state.bpm = Math.max(40, Math.min(240, Math.round(v))); render(); }
+  function pickSlot(i) {
+    if (i === state.slot && pendingSlot < 0) return;
+    if (playing) { pendingSlot = i; clock.requestSlot(i, AC.currentTime); }   /* lands on the bar line */
+    else { state.slot = i; pendingSlot = -1; syncLanes(); }
+    render();
+  }
+  function tapCell(c) {
+    var j = +c.dataset.l, s = +c.dataset.s, L = lanesNow()[j];
+    if (s >= L.len) return;
+    L.steps[s] = cycle(L.steps[s]);
+    paintCell(c, L);
+  }
+  function paintCell(c, L) {
+    var s = +c.dataset.s;
+    c.dataset.v = L.steps[s];
+    c.classList.toggle('off', s >= L.len);
+  }
+
   function mount() {
     if (mounted) return;
     mounted = true;
-    /* TEMP until Task 4: a bare PLAY button and kick on every 4th, for the locked-screen test */
-    var L = state.slots[state.slot].lanes[0];
-    L.steps = L.steps.map(function (z, i) { return i % 4 ? 0 : 1; });
-    var host = document.getElementById('modBurst'), b = document.createElement('button');
-    b.id = 'tfPlay'; b.textContent = 'PLAY';
-    b.style.cssText = 'margin:auto;padding:24px 48px;font:inherit;font-size:20px;background:#ede7d4;border:2px solid #000;color:#000';
-    b.onclick = function () { if (playing) stop(); else play(); b.textContent = playing ? 'STOP' : 'PLAY'; };
-    host.appendChild(b);
-    /* end TEMP */
+    var host = document.getElementById('modBurst');
+
+    var strip = h('div', 'tf-strip');
+    el.play = h('button', 'tf-play'); el.play.id = 'tfPlay';
+    el.play.onclick = function () { if (playing) stop(); else play(); render(); };
+    var tempo = h('div', 'tf-tempo');
+    var dn = h('button', 'tf-step', '−'); dn.id = 'tfBpmDn'; dn.onclick = function () { setBpm(state.bpm - 1); };
+    var up = h('button', 'tf-step', '+'); up.id = 'tfBpmUp'; up.onclick = function () { setBpm(state.bpm + 1); };
+    var bpm = h('span', 'tf-bpm vnum'); bpm.id = 'tfBpm';
+    bpm.onclick = function () { tapNum('tfBpm', 40, 240, setBpm, true); };
+    tempo.append(dn, bpm, h('span', 'tf-unit', 'BPM'), up);
+    el.slots = h('div', 'tf-slots');
+    'ABCD'.split('').forEach(function (n, i) {
+      var b = h('button', 'tf-slot', n); b.dataset.i = i; b.onclick = function () { pickSlot(i); }; el.slots.appendChild(b);
+    });
+    strip.append(el.play, tempo, el.slots);
+
+    el.grid = h('div', 'tf-grid');
+    el.cells = [];
+    for (var s = 0; s < ROWS; s++) {
+      el.grid.appendChild(h('div', 'tf-idx' + (s % 4 ? '' : ' beat'), String(s + 1)));
+      for (var j = 0; j < LANES; j++) {
+        var c = h('div', 'tf-cell' + (s % 4 ? '' : ' beat')); c.dataset.l = j; c.dataset.s = s;
+        el.grid.appendChild(c); (el.cells[j] = el.cells[j] || [])[s] = c;
+      }
+    }
+    /* pointerdown, not click: a drum pad answers on the finger, not on its release */
+    el.grid.addEventListener('pointerdown', function (e) { var c = e.target.closest('.tf-cell'); if (c) { e.preventDefault(); tapCell(c); } });
+
+    var foot = h('div', 'tf-foot');
+    foot.appendChild(h('div', 'tf-idx'));
+    el.lbls = []; el.mutes = [];
+    for (j = 0; j < LANES; j++) (function (j) {
+      var col = h('div', 'tf-lane');
+      var l = h('button', 'tf-lbl'); l.dataset.l = j; l.onclick = function () { openPanel(panel && panel.kind === 'lane' && panel.lane === j ? null : 'lane', j); };
+      var m = h('button', 'tf-mute', 'M'); m.dataset.l = j;
+      m.onclick = function () { var L = lanesNow()[j]; L.mute = !L.mute; syncLanes(); render(); };
+      col.append(l, m); foot.appendChild(col); el.lbls[j] = l; el.mutes[j] = m;
+    })(j);
+    var bar = h('div', 'tf-busbar');
+    el.bus = h('button', 'tf-bus', 'BUS'); el.bus.id = 'tfBus';
+    el.bus.onclick = function () { openPanel(panel && panel.kind === 'bus' ? null : 'bus'); };
+    bar.appendChild(el.bus);
+
+    el.panel = h('div', 'tf-panel'); el.panel.id = 'tfPanel';
+    host.append(strip, el.grid, foot, bar, el.panel);
+
+    api.onPlayhead(function (j, s) {
+      var col = el.cells[j];
+      for (var k = 0; k < ROWS; k++) col[k].classList.toggle('now', k === s);
+    });
+    switched.push(function () { pendingSlot = -1; render(); });
+    render();
+  }
+
+  /* Task 5 fills the sheet; here it only knows which one is open. */
+  function openPanel(kind, lane) {
+    panel = kind ? { kind: kind, lane: kind === 'lane' ? lane : null } : null;
+    if (el.panel) {
+      el.panel.className = 'tf-panel' + (panel ? ' open ' + panel.kind : '');
+      el.panel.dataset.lane = panel && panel.kind === 'lane' ? panel.lane : '';
+    }
+    render();
+  }
+
+  function render() {
+    if (!mounted) return;
+    var L = lanesNow();
+    el.play.classList.toggle('on', playing);
+    el.play.textContent = playing ? '■' : '▶';
+    var b = document.getElementById('tfBpm'); if (b) b.textContent = state.bpm;
+    [].forEach.call(el.slots.children, function (x, i) {
+      x.classList.toggle('on', i === state.slot);
+      x.classList.toggle('pending', i === pendingSlot && pendingSlot !== state.slot);
+    });
+    for (var j = 0; j < LANES; j++) {
+      for (var s = 0; s < ROWS; s++) paintCell(el.cells[j][s], L[j]);
+      el.lbls[j].textContent = NAMES[L[j].snd] || L[j].snd.toUpperCase();
+      el.lbls[j].classList.toggle('muted', L[j].mute);
+      el.lbls[j].classList.toggle('open', !!panel && panel.kind === 'lane' && panel.lane === j);
+      el.mutes[j].classList.toggle('on', L[j].mute);
+    }
+    el.bus.classList.toggle('open', !!panel && panel.kind === 'bus');
+    if (!playing) for (j = 0; j < LANES; j++) for (s = 0; s < ROWS; s++) el.cells[j][s].classList.remove('now');
   }
 
   var api = {
     mount: mount, voice: voice, play: play, stop: stop, setBusVol: setBusVol, syncLanes: function () { syncLanes(); },
+    render: render, openPanel: openPanel,
+    get panel() { return panel; },
     /* playhead: cb(lane, step) when that step is HEARD (rAF, audio clock); step -1 on stop */
     onPlayhead: function (cb) { shown.push(cb); },
     get playing() { return playing; },

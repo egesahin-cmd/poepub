@@ -1,2 +1,48 @@
 /* TENFACE drum machine — see js/tenface.js */
-#modBurst.active{display:flex;flex-direction:column;position:relative;height:100%;padding:0;overflow:hidden;}
+#modBurst.active{display:flex;flex-direction:column;gap:0;position:relative;height:100%;padding:0;overflow:hidden;background:#ede7d4;color:#000;
+  --tf-idx:22px;--tf-line:rgba(0,0,0,.18);--tf-green:#2d6a4e;user-select:none;-webkit-user-select:none;touch-action:manipulation}
+#modBurst>*{align-self:stretch;width:100%;box-sizing:border-box}   /* .mod centres its children; the grid must span */
+#modBurst button{font-family:'DM Mono',monospace;color:#000;background:transparent;border:none;cursor:pointer;-webkit-tap-highlight-color:transparent}
+
+/* strip: play, BPM, slots */
+.tf-strip{display:flex;align-items:center;gap:10px;padding:6px 10px;height:46px;flex-shrink:0;border-bottom:1px solid #000}
+.tf-play{width:34px;height:34px;border:1.5px solid #000 !important;border-radius:50%;font-size:13px;line-height:1;padding:0}
+.tf-play.on{background:#000 !important;color:#ede7d4 !important}
+.tf-tempo{display:flex;align-items:center;gap:4px;flex:1;justify-content:center}
+.tf-step{width:28px;height:28px;font-size:16px;padding:0}
+.tf-bpm{font-size:20px;min-width:44px;text-align:center;cursor:pointer;color:#000}
+.tf-unit{font-size:9px;letter-spacing:1.5px}
+.tf-slots{display:flex;gap:3px}
+.tf-slot{width:26px;height:26px;font-size:11px;letter-spacing:0;border:1px solid #000 !important;padding:0}
+.tf-slot.on{background:#000 !important;color:#ede7d4 !important}
+.tf-slot.pending{animation:tfBlink .5s steps(1) infinite}
+@keyframes tfBlink{50%{background:var(--tf-green);color:#ede7d4}}
+
+/* the tracker grid: rows = steps, columns = lanes */
+.tf-grid{flex:1;min-height:0;display:grid;grid-template-columns:var(--tf-idx) repeat(5,1fr);grid-template-rows:repeat(16,1fr)}
+.tf-idx{font-size:8px;display:flex;align-items:center;justify-content:center;color:rgba(0,0,0,.45);border-bottom:1px solid var(--tf-line)}
+.tf-idx.beat{color:#000}
+.tf-cell{position:relative;border-left:1px solid var(--tf-line);border-bottom:1px solid var(--tf-line)}
+.tf-cell.beat{border-top:1px solid rgba(0,0,0,.45)}
+.tf-cell::after{content:'';position:absolute;inset:28% 30%;border-radius:2px}
+.tf-cell[data-v="1"]::after{background:var(--tf-green)}
+.tf-cell[data-v="2"]::after{background:#000;inset:16% 20%;box-shadow:0 0 0 2px var(--tf-green)}
+.tf-cell.now{background:rgba(0,0,0,.13)}
+.tf-cell.off{background:repeating-linear-gradient(-45deg,transparent 0 4px,rgba(0,0,0,.07) 4px 5px)}
+.tf-cell.off::after{opacity:.25}
+
+/* lane labels + mutes */
+.tf-foot{display:grid;grid-template-columns:var(--tf-idx) repeat(5,1fr);flex-shrink:0;border-top:1px solid #000}
+.tf-lane{display:flex;flex-direction:column;border-left:1px solid var(--tf-line)}
+.tf-lbl{height:32px;font-size:10px;letter-spacing:1px;padding:0 2px;white-space:nowrap;overflow:hidden}
+.tf-lbl.open{background:#000 !important;color:#ede7d4 !important}
+.tf-lbl.muted{color:rgba(0,0,0,.3) !important;text-decoration:line-through}
+.tf-mute{height:26px;font-size:10px;border-top:1px solid var(--tf-line) !important}
+.tf-mute.on{background:var(--tf-green) !important;color:#ede7d4 !important}
+.tf-busbar{display:flex;justify-content:flex-end;padding:4px 8px 6px;flex-shrink:0}
+.tf-bus{height:28px;padding:0 14px;font-size:11px;letter-spacing:2px;border:1.5px solid #000 !important}
+.tf-bus.open{background:#000 !important;color:#ede7d4 !important}
+
+/* settings sheet over the lower grid (filled by the panels) */
+.tf-panel{display:none}
+.tf-panel.open{display:block;position:absolute;left:0;right:0;bottom:96px;max-height:55%;overflow:auto;background:#ede7d4;border-top:1.5px solid #000;z-index:5;padding:10px}
