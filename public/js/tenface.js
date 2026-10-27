@@ -97,7 +97,9 @@ var TF = (function () {
         if (!byGrid || t < stop) {                  /* swung past the bar line: old slot stays silent */
           for (var c = 0; c < cbs.length; c++) cbs[c](j, L.idx, t);
           var v = l.steps[L.idx];
-          if (v && !l.mute && t >= from) out.push({ lane: j, step: L.idx, t: t, v: v });
+          /* slot: the scheduler reads the voice from it — events from before a bar-line
+             switch come out of the same call as the new slot's, after state.slot moved */
+          if (v && !l.mute && t >= from) out.push({ lane: j, step: L.idx, t: t, v: v, slot: state.slot });
         }
         L.g += d;
         L.idx++;
@@ -126,19 +128,240 @@ var TF = (function () {
     };
   }
 
+  /* ── voices ─────────────────────────────────────────────────────────────
+     voice(ctx, dest, snd, t, {tune, dec, tone, accent}) schedules one hit. Takes any
+     BaseAudioContext, so the tests render it offline. tune = semitones (pitch, or the
+     filter for the hats), dec 0..100 scales the envelope 0.25x..4x around 50, tone
+     0..100 is a per-voice brightness. click / noise / sine keep the old BURST sounds:
+     click ignores all three, noise and sine take only what they had (length, pitch). */
+  var LVL = 0.5;                                   /* plain hit; accent = x2 (+6 dB) still peaks <= ~1 */
+  var noiseBufs = typeof WeakMap === 'function' ? new WeakMap() : null;
+  var hats = [];                                   /* ringing open hats: {ctx, t, end, h} */
+
+  /* One fixed 1 s noise buffer per context: a hit allocates nothing, and every hit
+     is identical, like a sample — so an accent is exactly +6 dB. */
+  function noise(ctx) {
+    var b = noiseBufs && noiseBufs.get(ctx);
+    if (b) return b;
+    var n = ctx.sampleRate, x = 22222, d;
+    b = ctx.createBuffer(1, n, ctx.sampleRate); d = b.getChannelData(0);
+    for (var i = 0; i < n; i++) { x = (Math.imul(x, 1664525) + 1013904223) >>> 0; d[i] = x / 2147483648 - 1; }
+    if (noiseBufs) noiseBufs.set(ctx, b);
+    return b;
+  }
+  function nsrc(ctx, t, dur) { var s = ctx.createBufferSource(); s.buffer = noise(ctx); s.start(t); s.stop(t + dur + 0.02); return s; }
+  function osc(ctx, type, f, t, dur) { var o = ctx.createOscillator(); o.type = type; o.frequency.setValueAtTime(f, t); o.start(t); o.stop(t + dur + 0.02); return o; }
+  function filt(ctx, type, f, q) { var b = ctx.createBiquadFilter(); b.type = type; b.frequency.value = Math.min(f, ctx.sampleRate * 0.45); if (q) b.Q.value = q; return b; }
+  function decay(ctx, t, peak, dur) { var g = ctx.createGain(); g.gain.setValueAtTime(peak, t); g.gain.exponentialRampToValueAtTime(0.001, t + dur); return g; }
+  function chain() { for (var i = 1; i < arguments.length; i++) arguments[i - 1].connect(arguments[i]); return arguments[arguments.length - 1]; }
+
+  function voice(ctx, dest, snd, t, o) {
+    o = o || {};
+    var tn = Math.pow(2, (o.tune || 0) / 12);
+    var ds = Math.pow(2, ((o.dec == null ? 50 : o.dec) - 50) / 25);
+    var tone = (o.tone == null ? 50 : o.tone) / 100;
+    var out = ctx.createGain(), g, f, d, h = null, k;
+    out.gain.value = LVL * (o.accent ? 2 : 1);
+    out.connect(dest);
+    switch (snd) {
+      case 'kick':                                 /* old BURST kick: sine 150 -> 40 Hz; tone = sweep depth */
+        d = 0.25 * ds; f = 40 * tn;
+        var ko = osc(ctx, 'sine', f * (2 + 3.5 * tone), t, d);
+        ko.frequency.exponentialRampToValueAtTime(f, t + Math.min(d, 0.15));
+        chain(ko, decay(ctx, t, 1, d), out);
+        break;
+      case 'snare':                                /* old BURST snare: sine 180 -> 80 + high-passed noise; tone = noise HP */
+        d = 0.08 * ds;
+        var so = osc(ctx, 'sine', 180 * tn, t, d);
+        so.frequency.exponentialRampToValueAtTime(80 * tn, t + d);
+        chain(so, decay(ctx, t, 0.6, d), out);
+        chain(nsrc(ctx, t, 0.12 * ds), filt(ctx, 'highpass', 1000 * Math.pow(2, (tone - 0.5) * 4) * tn), decay(ctx, t, 0.5, 0.12 * ds), out);
+        break;
+      case 'ch':
+      case 'oh':
+        d = (snd === 'ch' ? 0.05 : 0.45) * ds;
+        g = chain(nsrc(ctx, t, d), filt(ctx, 'highpass', 8000 * Math.pow(2, (tone - 0.5) * 1.5) * tn), decay(ctx, t, 0.85, d));
+        hats = hats.filter(function (x) { return x.end > t || x.ctx !== ctx; });
+        if (snd === 'ch') {
+          g.connect(out);
+          /* a closed hat chokes every open hat still ringing in this context, from any lane */
+          hats.forEach(function (x) { if (x.ctx === ctx && x.t < t) x.h.choke(t); });
+        } else {
+          k = ctx.createGain(); chain(g, k, out);     /* separate choke gain: no cancel of a ramp in flight */
+          h = { choke: function (at) { k.gain.setTargetAtTime(0, at, 0.004); } };
+          hats.push({ ctx: ctx, t: t, end: t + d, h: h });
+        }
+        break;
+      case 'clap':                                 /* three quick slaps, then the room; tone = band centre */
+        g = ctx.createGain(); k = g.gain; d = 0.15 * ds;
+        k.setValueAtTime(0, t);
+        for (var i = 0; i < 3; i++) { k.setValueAtTime(1, t + i * 0.01); k.exponentialRampToValueAtTime(0.1, t + i * 0.01 + 0.009); }
+        k.setValueAtTime(0.7, t + 0.03); k.exponentialRampToValueAtTime(0.001, t + 0.03 + d);
+        k = ctx.createGain(); k.gain.value = 3;          /* the narrow band loses most of the noise's level */
+        chain(nsrc(ctx, t, 0.03 + d), filt(ctx, 'bandpass', 1200 * Math.pow(2, (tone - 0.5) * 2) * tn, 1.2), g, k, out);
+        break;
+      case 'rim':                                  /* tone = how much of the high partial */
+        d = 0.03 * ds; g = decay(ctx, t, 1, d); g.connect(out);
+        k = ctx.createGain(); k.gain.value = 0.3 + 0.6 * tone; chain(osc(ctx, 'triangle', 1700 * tn, t, d), k, g);
+        k = ctx.createGain(); k.gain.value = 0.6; chain(osc(ctx, 'sine', 480 * tn, t, d), k, g);
+        break;
+      case 'tom':                                  /* tone = pitch-drop depth */
+        d = 0.4 * ds; f = 110 * tn;
+        var to = osc(ctx, 'sine', f * (1 + tone), t, d);
+        to.frequency.exponentialRampToValueAtTime(f, t + 0.08);
+        chain(to, decay(ctx, t, 1, d), out);
+        break;
+      case 'cow':                                  /* two squares through a band; tone = band centre */
+        d = 0.35 * ds;
+        g = ctx.createGain(); g.gain.setValueAtTime(0.7, t); g.gain.exponentialRampToValueAtTime(0.25, t + 0.02); g.gain.exponentialRampToValueAtTime(0.001, t + 0.02 + d);
+        var bp = filt(ctx, 'bandpass', 2640 * Math.pow(2, (tone - 0.5) * 2) * tn, 1);
+        chain(osc(ctx, 'square', 540 * tn, t, d), bp); chain(osc(ctx, 'square', 800 * tn, t, d), bp);
+        chain(bp, g, out);
+        break;
+      case 'click': {                              /* old BURST click: a 2-sample impulse; at accent, its old level */
+        var cb = ctx.createBuffer(1, Math.ceil(ctx.sampleRate * 0.001), ctx.sampleRate), cs = ctx.createBufferSource();
+        cb.getChannelData(0)[0] = 1.696; cb.getChannelData(0)[1] = -1.696;
+        cs.buffer = cb; cs.connect(out); cs.start(t);
+        break;
+      }
+      case 'noise':                                /* old BURST noise: a raw 5 ms burst; dec = length */
+        d = 0.005 * ds; g = ctx.createGain(); g.gain.setValueAtTime(1, t); g.gain.setValueAtTime(0, t + d);
+        chain(nsrc(ctx, t, d), g, out);
+        break;
+      default:                                     /* sine: old BURST blip, one 800 Hz cycle; tune = pitch, dec = cycles */
+        f = 800 * tn; k = ctx.createOscillator(); k.frequency.value = f;
+        k.connect(out); k.start(t); k.stop(t + Math.max(1, Math.round(ds)) / f);
+    }
+    return h;
+  }
+
+  /* ── engine (browser only: nothing below runs at require time) ────────────
+       voice -> run[j] -> lane[j] (vol, mute) -> FX 'tfN' -+- dry -> busIn -> bus (busVol) -> FX 'tenface' -> master
+                                                          +- sends -> DRIVE/REV returns (x busVol via FX.sendScale)
+     run[j] is made per play: stop() ramps it to 0 and drops it, so hits already
+     queued in the look-ahead (up to 2 s when hidden) never sound. */
+  var state = defaults();
+  var nodes = null, run = null, clock = null, worker = null, playing = false;
+  var lastT = 0, LA = 0.1, scheduled = 0;
+  var queue = [], shown = [];                      /* playhead: [lane, step, t] waiting for its t; listeners */
+
+  function graph() {
+    if (nodes) return nodes;
+    var c = getAC();
+    nodes = { busIn: c.createGain(), bus: c.createGain(), lanes: [] };
+    nodes.busIn.connect(nodes.bus);
+    FX.tap('tenface', nodes.bus);
+    for (var j = 0; j < LANES; j++) {
+      nodes.lanes.push(c.createGain());
+      FX.tap('tf' + (j + 1), nodes.lanes[j], nodes.busIn);
+    }
+    setBusVol(state.busVol); syncLanes();
+    return nodes;
+  }
+  function syncLanes() {
+    if (!nodes) return;
+    var L = state.slots[state.slot].lanes;
+    for (var j = 0; j < LANES; j++) nodes.lanes[j].gain.setTargetAtTime(L[j].mute ? 0 : v2g(L[j].vol), AC.currentTime, 0.02);
+  }
+  /* The lanes' sends leave from their taps, before the bus fader, so the bus volume
+     scales them too, by the same v2g gain the dry gets: 0 -> silent, 100 -> x1, and a
+     lane's wet/dry balance stays put. FX.sendScale never touches the stored amounts. */
+  function setBusVol(v) {
+    state.busVol = v;
+    for (var j = 1; j <= LANES; j++) FX.sendScale('tf' + j, v2g(v));
+    if (nodes) nodes.bus.gain.setTargetAtTime(v2g(v), AC.currentTime, 0.02);
+  }
+
+  function tick() {
+    if (!playing) return;
+    var now = AC.currentTime, to = now + LA;
+    if (to > lastT) {
+      var sl = state.slot, ev = clock.events(Math.max(lastT, now), to);  /* from >= now: after a freeze, late hits are dropped, not piled up */
+      lastT = to;
+      if (state.slot !== sl) syncLanes();           /* bar-line switch: the new slot's vol/mute, up to LA early */
+      for (var i = 0; i < ev.length; i++) {
+        var e = ev[i], l = state.slots[e.slot].lanes[e.lane];
+        voice(AC, run[e.lane], l.snd, e.t, { tune: l.tune, dec: l.dec, tone: l.tone, accent: e.v === 2 });
+        scheduled++;
+        if (api._onEvent) api._onEvent(e);
+      }
+    }
+    if (queue.length > 256) show(now);              /* hidden: rAF is not draining it */
+  }
+  function show(now) {
+    for (var i = 0; i < queue.length; ) {
+      var q = queue[i];
+      if (q[2] > now) { i++; continue; }
+      queue.splice(i, 1);
+      for (var c = 0; c < shown.length; c++) shown[c](q[0], q[1]);
+    }
+  }
+  function frame() { if (!playing) return; show(AC.currentTime); requestAnimationFrame(frame); }
+
+  function ensureWorker() {
+    if (worker) return worker;
+    /* page timers are throttled (or stopped) in the background; a Worker's are not */
+    var src = "var iv=null;onmessage=function(e){clearInterval(iv);iv=null;if(e.data==='start')iv=setInterval(function(){postMessage(0);},25);};";
+    worker = new Worker(URL.createObjectURL(new Blob([src], { type: 'text/javascript' })));
+    worker.onmessage = tick;
+    /* hidden: queue ~2 s so a suspended main thread still has audio in the context */
+    document.addEventListener('visibilitychange', function () { LA = document.hidden ? 2 : 0.1; tick(); });
+    LA = document.hidden ? 2 : 0.1;
+    return worker;
+  }
+
+  function play() {
+    if (playing) return;
+    var c = getAC(); graph();
+    run = nodes.lanes.map(function (lg) { var g = c.createGain(); g.connect(lg); return g; });
+    clock = makeClock(state, c.currentTime + 0.05);  /* a new clock = every lane from step 0 */
+    clock.onStep(function (j, s, t) { if (t >= AC.currentTime) queue.push([j, s, t]); });
+    lastT = c.currentTime; playing = true;
+    ensureWorker().postMessage('start');
+    tick(); requestAnimationFrame(frame);
+  }
+  function stop() {
+    if (!playing) return;
+    playing = false; clock = null; queue.length = 0;
+    worker.postMessage('stop');
+    var r = run; run = null;
+    r.forEach(function (g) { g.gain.setTargetAtTime(0, AC.currentTime, 0.008); });
+    setTimeout(function () { r.forEach(function (g) { g.disconnect(); }); }, 250);
+    for (var j = 0; j < LANES; j++) for (var c = 0; c < shown.length; c++) shown[c](j, -1);
+  }
+
   /* ── module ─────────────────────────────────────────────────────────────── */
 
   var mounted = false;
   function mount() {
     if (mounted) return;
     mounted = true;
+    /* TEMP until Task 4: a bare PLAY button and kick on every 4th, for the locked-screen test */
+    var L = state.slots[state.slot].lanes[0];
+    L.steps = L.steps.map(function (z, i) { return i % 4 ? 0 : 1; });
+    var host = document.getElementById('modBurst'), b = document.createElement('button');
+    b.id = 'tfPlay'; b.textContent = 'PLAY';
+    b.style.cssText = 'margin:auto;padding:24px 48px;font:inherit;font-size:20px;background:#ede7d4;border:2px solid #000;color:#000';
+    b.onclick = function () { if (playing) stop(); else play(); b.textContent = playing ? 'STOP' : 'PLAY'; };
+    host.appendChild(b);
+    /* end TEMP */
   }
 
-  return {
-    mount: mount,
+  var api = {
+    mount: mount, voice: voice, play: play, stop: stop, setBusVol: setBusVol, syncLanes: syncLanes,
+    /* playhead: cb(lane, step) when that step is HEARD (rAF, audio clock); step -1 on stop */
+    onPlayhead: function (cb) { shown.push(cb); },
+    get playing() { return playing; },
+    get state() { return state; },
+    get clock() { return clock; },
+    _onEvent: null,
+    get _scheduledCount() { return scheduled; },
+    get _la() { return LA; },
+    get _horizon() { return lastT; },
     _: { defaults: defaults, cycle: cycle, normalize: normalize, serialize: serialize,
          stepDur: stepDur, swingOffset: swingOffset, makeClock: makeClock,
          KIT: KIT, RATES: RATES, LANES: LANES, SLOTS: SLOTS, ROWS: ROWS, STORE: STORE }
   };
+  return api;
 })();
 if (typeof module !== 'undefined' && module.exports) module.exports = TF;

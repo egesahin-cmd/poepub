@@ -8,7 +8,8 @@
     "dev": "npx nodemon server.js",
     "test": "node --test test/link/*.test.js",
     "test:link": "node test/link/e2e.mjs && node test/link/ui.mjs && node test/link/rows.mjs",
-    "test:tf": "node --test test/tenface/*.test.js"
+    "test:tf": "node --test test/tenface/*.test.js",
+    "test:tf:browser": "node test/tenface/audio.mjs"
   },
   "dependencies": {
     "express": "^4.18.2",
