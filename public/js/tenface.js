@@ -397,7 +397,7 @@ var TF = (function () {
      does, so the button, the app autogain and LINK all stay true. While a module is
      switched on by TENFACE it is `owned`; one switched on by hand is never touched. */
   var MOD = {
-    voice: { name: 'VOICE', color: '#d9a0d5',             /* no power: "on" = always voice */
+    voice: { name: 'VOICE', color: '#d9a0d5', settle: 0.6, /* no power: "on" = always voice; its voicing fades ~0.25 s */
       isOn: function () { return vtInitialized && VT.getAlwaysVoice(); },
       on: function () { if (!vtInitialized) { vtInitialized = true; vtInit(); } if (!VT.getAlwaysVoice()) vtToggleAlwaysVoice(); },
       off: function () { if (vtInitialized && VT.getAlwaysVoice()) vtToggleAlwaysVoice(); } },
@@ -416,13 +416,18 @@ var TF = (function () {
   function gate(k) { return k === 'riser' ? rsGateNode().gain : FX.ports(k).inp.gain; }
   /* Every gate move is a setTargetAtTime: Chrome drops a setValueAtTime queued behind
      a setTargetAtTime that is still running, and the gate then stays shut for good.
+     The exceptions start from cancelScheduledValues(0), which leaves nothing running:
+     picking a module up (the gate is at 0 in the quantum the module starts in) and
+     reopening it after release, done by a timer and a plain .value write: a module
+     that is off leaves its gate node silent, and Chrome does not run a silent node's
+     timeline, so a reopen scheduled for later never lands.
      Envelope segments are setTargetAtTime approaches (time constant = segment / 3), so a
      retrigger or a note shorter than A+D carries on from wherever the gate is, click-free. */
   function noteOn(k, t, tOff, env) {
     var m = MOD[k], g = gate(k), now = AC.currentTime;
     if (!(k in owned)) {
       if (m.isOn()) return;                           /* hand wins */
-      g.cancelScheduledValues(now); g.setTargetAtTime(0, now, 0.003);
+      g.cancelScheduledValues(0); g.setValueAtTime(0, now);
       owned[k] = null;
     }
     if (!m.isOn()) m.on();                            /* also after a hand switched it off mid-run */
@@ -434,14 +439,20 @@ var TF = (function () {
     g.setTargetAtTime(0, tOff, Math.max(r, 0.006) / 3);
     owned[k] = setTimeout(function () { release(k); }, (tOff + r - now) * 1000 + 50);
   }
-  /* Switch an owned module off. Its own stop may ramp (MATHS, BIRDBOX), so the gate
-     stays shut a moment longer before it goes back to 1 for the module's buttons. */
+  /* Switch an owned module off: shut the gate fast, then (still owned, so a note in
+     between just takes it back) switch it off. Its own stop may ramp or fade (MATHS,
+     BIRDBOX, VOICE), so the gate stays shut `settle` longer before it goes back to 1. */
   function release(k) {
     if (!(k in owned)) return;
-    clearTimeout(owned[k]); delete owned[k];
-    MOD[k].off();
     var g = gate(k), now = AC.currentTime;
-    g.cancelScheduledValues(now); g.setTargetAtTime(1, now + 0.2, 0.005);
+    clearTimeout(owned[k]);
+    g.cancelScheduledValues(now); g.setTargetAtTime(0, now, 0.005);
+    owned[k] = setTimeout(function () {
+      delete owned[k];
+      MOD[k].off();
+      g.cancelScheduledValues(0); g.value = 0;
+      setTimeout(function () { if (!(k in owned)) { g.cancelScheduledValues(0); g.value = 1; } }, (MOD[k].settle || 0.2) * 1000);
+    }, 40);
   }
 
   function stop() {
@@ -451,10 +462,7 @@ var TF = (function () {
     worker.postMessage('stop');
     var r = run; run = null;
     r.forEach(function (g) { g.gain.setTargetAtTime(0, AC.currentTime, 0.008); });
-    Object.keys(owned).forEach(function (k) {
-      clearTimeout(owned[k]); owned[k] = setTimeout(function () { release(k); }, 60);
-      var g = gate(k); g.cancelScheduledValues(AC.currentTime); g.setTargetAtTime(0, AC.currentTime, 0.008);
-    });
+    Object.keys(owned).forEach(release);
     setTimeout(function () { r.forEach(function (g) { g.disconnect(); }); }, 250);
     for (var j = 0; j < LANES; j++) for (var c = 0; c < shown.length; c++) shown[c](j, -1);
     /* a switch still pending lands now; one taken but not yet heard lost its queue entry */
@@ -545,11 +553,11 @@ var TF = (function () {
     if (s >= L.len) return;
     var at = noteAt(L.notes, s);
     if (at < 0 && !placeNote(L.notes, s, 1, L.len)) return;
-    drag = { j: j, start: at < 0 ? s : at, row: s, old: at >= 0, moved: false };
+    drag = { j: j, L: L, start: at < 0 ? s : at, row: s, old: at >= 0, moved: false };   /* L: a slot switch mid-drag must not move the note */
     paintLane(j);
   }
   function noteMove(y) {
-    var L = lanesNow()[drag.j], top = el.cells[drag.j][0].getBoundingClientRect(), row = Math.floor((y - top.top) / top.height);
+    var L = drag.L, top = el.cells[drag.j][0].getBoundingClientRect(), row = Math.floor((y - top.top) / top.height);
     if (row < ROWS) { clearTimeout(flipT); flipT = null; }
     else if (!flipT && view + 1 < pages())            /* held under the last row: next page */
       flipT = setTimeout(function () { flipT = null; if (!drag) return; view++; follow = false; render(); noteMove(y); }, 350);
@@ -559,9 +567,9 @@ var TF = (function () {
     placeNote(L.notes, drag.start, Math.max(1, s - drag.start + 1), L.len);
     paintLane(drag.j);
   }
-  function noteUp() {
+  function noteUp(cancelled) {
     clearTimeout(flipT); flipT = null;
-    if (drag.old && !drag.moved) deleteNote(lanesNow()[drag.j].notes, drag.start);
+    if (drag.old && !drag.moved && !cancelled) deleteNote(drag.L.notes, drag.start);
     drag = null;
     render();
   }
@@ -626,7 +634,7 @@ var TF = (function () {
     });
     el.grid.addEventListener('pointermove', function (e) { if (drag) noteMove(e.clientY); });
     el.grid.addEventListener('pointerup', function () { if (drag) noteUp(); });
-    el.grid.addEventListener('pointercancel', function () { if (drag) noteUp(); });
+    el.grid.addEventListener('pointercancel', function () { if (drag) noteUp(true); });   /* a swipe-away is not a tap */
 
     var foot = h('div', 'tf-foot');
     foot.appendChild(h('div', 'tf-idx'));
@@ -635,7 +643,11 @@ var TF = (function () {
       var col = h('div', 'tf-lane');
       var l = h('button', 'tf-lbl'); l.dataset.l = j; l.onclick = function () { openPanel(panel && panel.kind === 'lane' && panel.lane === j ? null : 'lane', j); };
       var m = h('button', 'tf-mute', 'M'); m.dataset.l = j;
-      m.onclick = function () { var L = lanesNow()[j]; L.mute = !L.mute; syncLanes(); render(); };
+      m.onclick = function () {
+        var L = lanesNow()[j]; L.mute = !L.mute; syncLanes();
+        if (L.mute && L.mod) release(L.mod);          /* a module lane's note is cut like a drum lane's hit */
+        render();
+      };
       col.append(l, m); foot.appendChild(col); el.lbls[j] = l; el.mutes[j] = m;
     })(j);
     var bar = h('div', 'tf-busbar');
@@ -663,7 +675,7 @@ var TF = (function () {
         var p = s < 0 ? -1 : Math.floor(s / ROWS);
         if (p !== playPage) {
           playPage = p;
-          if (follow && p >= 0 && p !== view) { view = p; render(); return; }
+          if (follow && !drag && p >= 0 && p !== view) { view = p; render(); return; }
           paintPages();
         }
       }

@@ -240,6 +240,30 @@ try {
   await p.ev(`TF.setBusLen(32); 1`);
   await p.drag('.tf-cell[data-l="2"][data-s="13"]', 0, rowH * 4.5, 60);
   ok('dragging past the last row flips to page 2 and keeps extending', (await p.ev(`[TF.view, TF.state.slots[0].lanes[2].notes[13] > 3].join()`)) === '1,true', await p.ev(`[TF.view, TF.state.slots[0].lanes[2].notes[13]].join()`));
+  /* synthetic pointers on lane 2's cells (rig has no touchcancel) */
+  const PT = `window.__pt = function (type, row, dy) { var c = document.querySelector('.tf-cell[data-l="2"][data-s="' + row + '"]'), r = c.getBoundingClientRect();
+    c.dispatchEvent(new PointerEvent(type, { bubbles: true, pointerId: 7, pointerType: 'touch', clientX: r.left + r.width / 2, clientY: r.top + r.height / 2 + (dy || 0) })); }; 1`;
+  await p.ev(PT);
+  await p.tap('.tf-page[data-p="0"]');
+  await p.ev(`__pt('pointerdown', 4); __pt('pointercancel', 4); 1`);
+  ok('a cancelled press on a note keeps the note', (await p.ev(`TF.state.slots[0].lanes[2].notes[4]`)) === 2);
+  await p.ev(`TF.state.slots[1].lanes[2].mod = null; TF.state.slots[1].lanes[2].notes.fill(0); __pt('pointerdown', 9); 1`);
+  await p.tap('.tf-slot[data-i="1"]');
+  await p.ev(`__pt('pointermove', 9, ${rowH} * 2); __pt('pointerup', 11); 1`);
+  ok('a slot switch mid-drag: the note is drawn in the slot it was started in',
+    (await p.ev(`[TF.state.slots[0].lanes[2].notes[9], TF.state.slots[1].lanes[2].notes.join('').replace(/0/g, '')].join()`)) === '3,', await p.ev(`[TF.state.slots[0].lanes[2].notes[9], TF.state.slots[1].lanes[2].notes.join('')].join()`));
+  await p.tap('.tf-slot[data-i="0"]');
+  await p.ev(`TF.state.bpm = 240; TF.render(); 1`);
+  await p.tap('#tfPlay');
+  await until('following on page 1', p, `TF.playPage === 0 && TF.view === 0`, 3000);
+  await p.ev(`__pt('pointerdown', 13); 1`);
+  await until('the playhead crosses to page 2', p, `TF.playPage === 1`, 3000);
+  const held = await p.ev(`[TF.view, TF.state.slots[0].lanes[2].notes[13]].join()`);
+  await p.ev(`__pt('pointerup', 13); 1`);
+  await p.tap('#tfPlay');
+  await p.ev(`TF.state.bpm = 120; TF.render(); 1`);
+  ok('follow never turns the page under a finger drawing a note', held.split(',')[0] === '0', held);
+
   await p.tap('.tf-page[data-p="0"]');
   await p.shot(new URL('../../.superpowers/shots/tf-notes.png', import.meta.url).pathname);
   await p.tap('.tf-lbl[data-l="2"]');

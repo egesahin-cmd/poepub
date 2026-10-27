@@ -228,7 +228,7 @@ try {
     var r = await sample(g, function () { return swpPlaying; }, 1.9);
     var max = function (q) { return Math.max.apply(null, q.map(function (x) { return x[1]; })); };
     return { was: was, pre: r.at(r.e0 - 0.03)[1], peak1: max(r.span(0, 0.3)), sus: r.at(r.e0 + 0.45)[1], peak2: max(r.span(0.5, 0.75)), sus2: r.at(r.e0 + 0.95)[1],
-             rel: r.at(r.e0 + 1.17)[1], onAll: r.span(0.02, 0.98).every(function (x) { return x[2]; }), offAfter: !r.at(r.e0 + 1.85)[2], gateBack: await byHand(toggleSweep, g) };`);
+             rel: r.at(r.e0 + 1.17)[1], onAll: r.span(0.02, 0.98).every(function (x) { return x[2]; }), offAfter: !r.at(r.e0 + 1.85)[2], gateBack: (TF.stop(), await new Promise(function (r) { setTimeout(r, 400); }), await byHand(toggleSweep, g)) };`);   /* stop: the next loop's note may already own it */
   ok('BIRDBOX was off before the lane played it', bb.was === false, bb);
   ok('note: the gate is shut just before the note starts', bb.pre < 0.01, bb);
   ok('note: ATTACK 100 ms opens the gate to ~1', bb.peak1 > 0.9, bb);
@@ -271,6 +271,51 @@ try {
     return { on: on, off: off, gates: [await byHand(toggleNoise, FX.ports('noise').inp.gain), await byHand(multiToggle, FX.ports('multi').inp.gain), await byHand(vtToggleAlwaysVoice, FX.ports('voice').inp.gain)] };`);
   ok('NOISE, MATHS and VOICE (always voice) all switch on for a note', nz.on && nz.on.join() === 'true,true,true', nz);
   ok('and off again on stop; on by hand all three gates are open', nz.off.join() === 'false,false,false' && nz.gates.every(function (v) { return v > 0.99; }), nz);
+
+  // ── final review: clicks at hand-over, VOICE settle, mute ──
+  const clk = await run(p, MODSETUP + `
+    L[0].mod = 'noise'; L[0].env = { a: 50, d: 50, s: 80, r: 300 }; L[0].notes[4] = 2;
+    if (!nsInitialized) { nsInitialized = true; randomizeNoise(); }
+    var an = __an(FX._chans.noise ? FX._chans.noise.dry : FX.ports('noise').dry), g = FX.ports('noise').inp.gain, atOff = null;
+    var o = TF.MOD.noise.off; TF.MOD.noise.off = function () { atOff = g.value; o(); };
+    var buf = new Float32Array(an.fftSize), pre = 0, e0 = null;
+    TF._onEvent = function (e) { if (e.kind === 'note' && e0 === null) e0 = e.t; };
+    TF.play();
+    await new Promise(function (r) { (function poll() {
+      if (e0 === null || AC.currentTime < e0 - 0.02) { an.getFloatTimeDomainData(buf); for (var i = 0; i < buf.length; i++) pre = Math.max(pre, Math.abs(buf[i])); }
+      if (e0 !== null && AC.currentTime > e0 + 1.2) r(); else setTimeout(poll, 5); })(); });
+    TF._onEvent = null; TF.MOD.noise.off = o;
+    return { pre: pre, atOff: atOff };`);
+  ok('a module picked up by a note makes no sound before the note', clk.pre < 1e-3, clk);
+  ok('a released module is switched off only once its gate is shut', clk.atOff !== null && clk.atOff < 0.005, clk);
+
+  const vs = await run(p, MODSETUP + `
+    L[4].mod = 'voice'; L[4].env = { a: 10, d: 10, s: 100, r: 50 }; L[4].notes[0] = 2;
+    var g = FX.ports('voice').inp.gain, offAt = null, late = null;
+    var o = TF.MOD.voice.off; TF.MOD.voice.off = function () { offAt = AC.currentTime; o(); };
+    TF.play();
+    while (offAt === null) await new Promise(function (r) { setTimeout(r, 10); });
+    while (AC.currentTime < offAt + 0.3) await new Promise(function (r) { setTimeout(r, 10); });
+    late = g.value; TF.MOD.voice.off = o; TF.stop();
+    return { late: late };`);
+  ok('VOICE: the gate stays shut while its voicing dies away after a note', vs.late < 0.01, vs);
+
+  const mu = await run(p, MODSETUP + `
+    L[3].mod = 'riser'; L[3].env = { a: 10, d: 10, s: 100, r: 1000 }; L[3].notes[0] = 16; L[3].rate = 0.5;
+    var g = rsGateNode().gain, e0 = null;
+    TF._onEvent = function (e) { if (e.kind === 'note' && e0 === null) e0 = e.t; };
+    TF.play();
+    while (e0 === null || AC.currentTime < e0 + 0.3) await new Promise(function (r) { setTimeout(r, 10); });
+    TF._onEvent = null;
+    var before = g.value;
+    document.querySelector('.tf-mute[data-l="3"]').click();
+    await new Promise(function (r) { setTimeout(r, 35); });
+    var shut = g.value;
+    await new Promise(function (r) { setTimeout(r, 250); });
+    var after = [shut, rsPlaying];
+    document.querySelector('.tf-mute[data-l="3"]').click(); TF.stop();
+    return { before: before, after: after };`);
+  ok('M on a module lane cuts its sounding note and switches the module off', mu.before > 0.9 && mu.after[0] < 0.01 && mu.after[1] === false, mu);
 
   ok('no page exceptions', p.errors.length === 0, p.errors);
   finish();
