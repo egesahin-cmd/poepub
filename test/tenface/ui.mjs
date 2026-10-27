@@ -197,6 +197,56 @@ try {
   await p.ev(`TF.state.bpm = 120; TF.setBusLen(16); TF.render(); 1`);
   ok('lowering LENGTH below the page on screen brings the view back to page 1', (await p.ev(`TF.view`)) === 0);
 
+  /* ── module lanes: picker, notes, envelope ── */
+  await p.ev(`TF.openPanel(null); TF.state.slot = 0; TF.state.slots[0].lanes.forEach(function (l) { l.mod = null; l.notes.fill(0); }); TF.render(); 1`);
+  const notes = () => p.ev(`TF.state.slots[0].lanes[2].notes.slice(0, 16).join('')`);
+  const cls = (s) => p.ev(`(function(){ var c = document.querySelector('.tf-cell[data-l="2"][data-s="${s}"]'); return ['n','n0','n1'].filter(function(k){ return c.classList.contains(k); }).join(' '); })()`);
+  await p.tap('.tf-lbl[data-l="2"]');
+  await p.tap('#tfPanel .tf-mod');
+  const list = await p.ev(`[].slice.call(document.querySelectorAll('#tfPanel .tf-mod-opt')).filter(function(o){ return o.dataset.m; }).map(function(o){ return o.dataset.m + ':' + o.style.getPropertyValue('--tf-mc').trim() + ':' + (o.getBoundingClientRect().height > 0); }).join()`);
+  ok('the MODULE picker lists the five modules in their colours', list === 'voice:#d9a0d5:true,multi:#9c342a:true,birdbox:#2d6a4e:true,noise:#000:true,riser:#a0ad95:true', list);
+  await p.tap('#tfPanel .tf-mod-opt[data-m="birdbox"]');
+  const lbl = await p.ev(`(function(){ var l = document.querySelector('.tf-lbl[data-l="2"]'); return [l.textContent, getComputedStyle(l).backgroundColor, TF.state.slots[0].lanes[2].mod, l.getBoundingClientRect().height > 20].join('|'); })()`);
+  ok('picking BIRDBOX names and colours the label, and it stays on screen', lbl === 'BIRDBOX|rgb(45, 106, 78)|birdbox|true', lbl);
+  ok('a module lane panel has the envelope, RATE and LENGTH, and no drum knobs',
+    (await p.ev(`['a','d','s','r'].every(function(k){ return !!document.querySelector('#tfPanel .tf-k-' + k); }) && !document.querySelector('#tfPanel .tf-k-vol') && !document.querySelector('#tfPanel .tf-k-tune') && !document.querySelector('#tfPanel .tf-k-verb') && !!document.querySelector('#tfPanel svg.tf-env path') && !!document.querySelector('#tfPanel .tf-rate') && !!document.querySelector('#tfPanel .tf-len-up')`)) === true);
+  const path0 = await p.ev(`document.querySelector('#tfPanel svg.tf-env path').getAttribute('d')`);
+  await p.drag('#tfPanel .tf-k-a', 0, -80);
+  const env = await p.ev(`[TF.state.slots[0].lanes[2].env.a, document.querySelector('#tfPanel svg.tf-env path').getAttribute('d')]`);
+  ok('the ATTACK knob writes the lane envelope and redraws it', env[0] > 10 && env[1] !== path0, env);
+  await p.shot(new URL('../../.superpowers/shots/tf-env.png', import.meta.url).pathname);
+  await p.tap('.tf-lbl[data-l="3"]');
+  await p.tap('#tfPanel .tf-mod');
+  ok('another lane sees BIRDBOX taken', (await p.ev(`document.querySelector('#tfPanel .tf-mod-opt[data-m="birdbox"]').classList.contains('dis')`)) === true);
+  await p.ev(`document.querySelector('#tfPanel .tf-mod-opt[data-m="birdbox"]').click(); 1`);
+  ok('and cannot pick it', (await p.ev(`TF.state.slots[0].lanes[3].mod`)) === null);
+  await p.ev(`TF.openPanel(null); 1`);
+
+  const rowH = await p.ev(`document.querySelector('.tf-cell[data-l="2"][data-s="0"]').getBoundingClientRect().height`);
+  await p.tap('.tf-cell[data-l="2"][data-s="1"]');
+  ok('a tap on a module lane makes a 1-row note', (await notes()) === '0100000000000000' && (await cls(1)) === 'n n0 n1', [await notes(), await cls(1)]);
+  await p.drag('.tf-cell[data-l="2"][data-s="4"]', 0, rowH * 2);
+  ok('a drag down 2 rows from an empty cell draws a 3-row note', (await notes()) === '0100300000000000' && (await cls(5)) === 'n' && (await cls(6)) === 'n n1', [await notes(), await cls(5), await cls(6)]);
+  await p.drag('.tf-cell[data-l="2"][data-s="5"]', 0, rowH * 3);
+  ok('dragging inside a note resizes it from its end', (await notes()) === '0100500000000000', await notes());
+  await p.drag('.tf-cell[data-l="2"][data-s="1"]', 0, rowH * 6);
+  ok('a note stops at the next one', (await notes()) === '0300500000000000', await notes());
+  await p.drag('.tf-cell[data-l="2"][data-s="8"]', 0, -rowH * 3);
+  ok('dragging up shortens it', (await notes()) === '0300200000000000', await notes());
+  await p.tap('.tf-cell[data-l="2"][data-s="2"]');
+  ok('a tap on a note deletes it', (await notes()) === '0000200000000000', await notes());
+  await p.tap('.tf-cell[data-l="0"][data-s="9"]');
+  ok('drum lanes still cycle hits', (await p.ev(`TF.state.slots[0].lanes[0].steps[9]`)) === 1);
+  await p.ev(`TF.setBusLen(32); 1`);
+  await p.drag('.tf-cell[data-l="2"][data-s="13"]', 0, rowH * 4.5, 60);
+  ok('dragging past the last row flips to page 2 and keeps extending', (await p.ev(`[TF.view, TF.state.slots[0].lanes[2].notes[13] > 3].join()`)) === '1,true', await p.ev(`[TF.view, TF.state.slots[0].lanes[2].notes[13]].join()`));
+  await p.tap('.tf-page[data-p="0"]');
+  await p.shot(new URL('../../.superpowers/shots/tf-notes.png', import.meta.url).pathname);
+  await p.tap('.tf-lbl[data-l="2"]');
+  await p.ev(`var s = document.querySelector('#tfPanel select.tf-snd'); s.value = 'ch'; s.dispatchEvent(new Event('change')); 1`);
+  ok('picking a SOUND makes it a drum lane again, notes kept', (await p.ev(`[TF.state.slots[0].lanes[2].mod, TF.state.slots[0].lanes[2].notes[4], document.querySelector('.tf-lbl[data-l="2"]').textContent].join()`)) === ',2,C.HAT');
+  await p.ev(`TF.openPanel(null); TF.setBusLen(16); 1`);
+
   await p.tap('.tf-lbl[data-l="2"]');
   await p.shot(new URL('../../.superpowers/shots/tf-lane.png', import.meta.url).pathname);
   await p.tap('#tfBus');

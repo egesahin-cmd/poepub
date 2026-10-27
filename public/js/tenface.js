@@ -527,9 +527,43 @@ var TF = (function () {
     paintCell(c, L);
   }
   function paintCell(c, L) {
-    var s = view * ROWS + +c.dataset.s;
-    c.dataset.v = L.steps[s];
+    var s = view * ROWS + +c.dataset.s, at = L.mod ? noteAt(L.notes, s) : -1;
+    c.dataset.v = L.mod ? 0 : L.steps[s];
     c.classList.toggle('off', s >= L.len);
+    c.classList.toggle('n', at >= 0);                 /* a module note: start, body, end */
+    c.classList.toggle('n0', at === s);
+    c.classList.toggle('n1', at >= 0 && at + L.notes[at] - 1 === s);
+  }
+  function paintLane(j) { var L = lanesNow()[j]; for (var r = 0; r < ROWS; r++) paintCell(el.cells[j][r], L); }
+
+  /* Module lanes: a press on an empty cell places a 1-row note, a press on a note grabs
+     it; dragging sets where it ends (a finger held under the grid turns the page), and
+     a press on a note that never moves deletes it. */
+  var drag = null, flipT = null;
+  function notePress(c) {
+    var j = +c.dataset.l, s = view * ROWS + +c.dataset.s, L = lanesNow()[j];
+    if (s >= L.len) return;
+    var at = noteAt(L.notes, s);
+    if (at < 0 && !placeNote(L.notes, s, 1, L.len)) return;
+    drag = { j: j, start: at < 0 ? s : at, row: s, old: at >= 0, moved: false };
+    paintLane(j);
+  }
+  function noteMove(y) {
+    var L = lanesNow()[drag.j], top = el.cells[drag.j][0].getBoundingClientRect(), row = Math.floor((y - top.top) / top.height);
+    if (row < ROWS) { clearTimeout(flipT); flipT = null; }
+    else if (!flipT && view + 1 < pages())            /* held under the last row: next page */
+      flipT = setTimeout(function () { flipT = null; if (!drag) return; view++; follow = false; render(); noteMove(y); }, 350);
+    var s = view * ROWS + Math.min(row, ROWS - 1);
+    if (s === drag.row) return;
+    drag.row = s; drag.moved = true;
+    placeNote(L.notes, drag.start, Math.max(1, s - drag.start + 1), L.len);
+    paintLane(drag.j);
+  }
+  function noteUp() {
+    clearTimeout(flipT); flipT = null;
+    if (drag.old && !drag.moved) deleteNote(lanesNow()[drag.j].notes, drag.start);
+    drag = null;
+    render();
   }
 
   /* the lane whose playhead turns the pages: the longest, the leftmost on a tie */
@@ -586,8 +620,13 @@ var TF = (function () {
       var c = e.target.closest('.tf-cell'); if (!c) return;
       e.preventDefault();
       if (panel) { openPanel(null); return; }                      /* a tap outside the sheet only closes it */
-      tapCell(c); save();
+      if (!lanesNow()[+c.dataset.l].mod) { tapCell(c); save(); return; }
+      try { el.grid.setPointerCapture(e.pointerId); } catch (x) {}
+      notePress(c);
     });
+    el.grid.addEventListener('pointermove', function (e) { if (drag) noteMove(e.clientY); });
+    el.grid.addEventListener('pointerup', function () { if (drag) noteUp(); });
+    el.grid.addEventListener('pointercancel', function () { if (drag) noteUp(); });
 
     var foot = h('div', 'tf-foot');
     foot.appendChild(h('div', 'tf-idx'));
@@ -668,8 +707,11 @@ var TF = (function () {
       var sel = h('select', 'tf-snd');
       KIT.forEach(function (k) { var o = h('option', null, NAMES[k]); o.value = k; sel.appendChild(o); });
       sel.value = L.snd;
-      sel.onchange = function () { L.snd = sel.value; render(); };
+      sel.onchange = function () { L.snd = sel.value; L.mod = null; fillPanel(); render(); };
+      if (L.mod) sel.classList.add('dim');            /* still there: picking a sound leaves the module */
       head.appendChild(sel);
+      modPicker(head, j, L);
+      if (L.mod) { envPanel(row, L); timing(row, L); return; }
       var shape = row();
       knob(shape, 'VOL', 'vol', L.vol, 0, 100, pct, function (v) { L.vol = v; syncLanes(); save(); });
       knob(shape, 'TUNE', 'tune', L.tune, -12, 12, function (v) { return (v > 0 ? '+' : '') + v; }, function (v) { L.tune = v; save(); });
@@ -679,35 +721,81 @@ var TF = (function () {
       knob(fx, 'COMP', 'comp', L.fx.comp, 0, 100, pct, function (v) { setLaneFx(j, 'comp', v); });
       knob(fx, 'DRIVE', 'drive', L.fx.drive, 0, 100, pct, function (v) { setLaneFx(j, 'drive', v); });
       knob(fx, 'REV', 'verb', L.fx.verb, 0, 100, pct, function (v) { setLaneFx(j, 'verb', v); });
-      var rate = row('tf-seg');
-      rate.appendChild(h('span', 'tf-cap', 'RATE'));
-      RATES.forEach(function (r, i) {
-        var b = h('button', 'tf-rate' + (L.rate === r ? ' on' : ''), RATE_TXT[i]);
-        b.onclick = function () { L.rate = r; fillPanel(); render(); };
-        rate.appendChild(b);
-      });
-      var len = row('tf-seg');
-      len.appendChild(h('span', 'tf-cap', 'LENGTH'));
-      var dn = h('button', 'tf-step tf-len-dn', '−'), up = h('button', 'tf-step tf-len-up', '+'), val = h('span', 'tf-len', String(L.len));
-      dn.onclick = function () { L.len = Math.max(8, L.len - 1); val.textContent = L.len; render(); };
-      up.onclick = function () { L.len = Math.min(MAX, L.len + 1); val.textContent = L.len; render(); };
-      len.append(dn, val, up);
+      timing(row, L);
     } else {
-      row('tf-head').appendChild(h('span', 'tf-title', 'DRUM BUS'));
-      var a = row();
-      knob(a, 'LENGTH', 'len', state.busLen, 8, MAX, String, setBusLen);
-      knob(a, 'SWING', 'swing', state.swing, 50, 75, pct, setSwing);
-      var b2 = row();
-      knob(b2, 'COMP', 'comp', state.busFx.comp, 0, 100, pct, function (v) { setBusFx('comp', v); });
-      knob(b2, 'DRIVE', 'drive', state.busFx.drive, 0, 100, pct, function (v) { setBusFx('drive', v); });
-      knob(b2, 'REV', 'verb', state.busFx.verb, 0, 100, pct, function (v) { setBusFx('verb', v); });
-      var vr = row('tf-seg');
-      vr.appendChild(h('span', 'tf-cap', 'VOLUME'));
-      var sl = h('input', 'tf-busvol'); sl.type = 'range'; sl.min = 0; sl.max = 100; sl.value = state.busVol;
-      var sv = h('span', 'tf-len', state.busVol + '%');
-      sl.oninput = function () { setBusVol(+sl.value); sv.textContent = sl.value + '%'; save(); };
-      vr.append(sl, sv);
+      busPanel(row, pct);
     }
+  }
+  /* RATE and LENGTH: the pattern's, so drum and module lanes both have them */
+  function timing(row, L) {
+    var rate = row('tf-seg');
+    rate.appendChild(h('span', 'tf-cap', 'RATE'));
+    RATES.forEach(function (r, i) {
+      var b = h('button', 'tf-rate' + (L.rate === r ? ' on' : ''), RATE_TXT[i]);
+      b.onclick = function () { L.rate = r; fillPanel(); render(); };
+      rate.appendChild(b);
+    });
+    var len = row('tf-seg');
+    len.appendChild(h('span', 'tf-cap', 'LENGTH'));
+    var dn = h('button', 'tf-step tf-len-dn', '−'), up = h('button', 'tf-step tf-len-up', '+'), val = h('span', 'tf-len', String(L.len));
+    dn.onclick = function () { L.len = Math.max(8, L.len - 1); val.textContent = L.len; render(); };
+    up.onclick = function () { L.len = Math.min(MAX, L.len + 1); val.textContent = L.len; render(); };
+    len.append(dn, val, up);
+  }
+  /* A custom list, not a <select>: iOS draws its own picker and drops option colours. */
+  function modPicker(head, j, L) {
+    var wrap = h('div', 'tf-modw'), b = h('button', 'tf-mod', L.mod ? MOD[L.mod].name : 'MODULE ▾');
+    if (L.mod) { b.classList.add('set'); b.style.setProperty('--tf-mc', MOD[L.mod].color); }
+    var list = h('div', 'tf-mod-list');
+    var taken = lanesNow().map(function (x, i) { return i === j ? null : x.mod; });
+    [''].concat(MODS).forEach(function (m) {
+      var o = h('button', 'tf-mod-opt', m ? MOD[m].name : 'NONE'); o.dataset.m = m;
+      if (m) o.style.setProperty('--tf-mc', MOD[m].color);
+      if (m && taken.indexOf(m) >= 0) o.classList.add('dis');
+      if ((L.mod || '') === m) o.classList.add('on');
+      o.onclick = function () {
+        if (o.classList.contains('dis')) return;
+        L.mod = m || null; fillPanel(); render();
+      };
+      list.appendChild(o);
+    });
+    b.onclick = function () { wrap.classList.toggle('open'); };
+    wrap.append(b, list); head.appendChild(wrap);
+  }
+  /* ATTACK / DECAY / SUSTAIN / RELEASE, drawn above its knobs */
+  function envPanel(row, L) {
+    var ms = function (v) { return v < 1000 ? v + 'ms' : (v / 1000).toFixed(1) + 's'; };
+    var svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg'), path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+    svg.setAttribute('class', 'tf-env'); svg.setAttribute('viewBox', '0 0 200 50'); svg.setAttribute('preserveAspectRatio', 'none');
+    svg.style.setProperty('--tf-mc', MOD[L.mod].color);
+    svg.appendChild(path); row('tf-envrow').appendChild(svg);
+    function draw() {
+      var e = L.env, hold = 600, k = 196 / (e.a + e.d + hold + e.r || 1), y = 48 - 44 * e.s / 100, x1 = 2 + e.a * k, x2 = x1 + e.d * k, x3 = x2 + hold * k;
+      path.setAttribute('d', 'M2 48 L' + x1.toFixed(1) + ' 4 L' + x2.toFixed(1) + ' ' + y.toFixed(1) + ' L' + x3.toFixed(1) + ' ' + y.toFixed(1) + ' L198 48');
+    }
+    draw();
+    var r = row();
+    var set = function (k) { return function (v) { L.env[k] = v; draw(); save(); }; };
+    knob(r, 'ATTACK', 'a', L.env.a, 0, 2000, ms, set('a'));
+    knob(r, 'DECAY', 'd', L.env.d, 0, 2000, ms, set('d'));
+    knob(r, 'SUSTAIN', 's', L.env.s, 0, 100, function (v) { return v + '%'; }, set('s'));
+    knob(r, 'RELEASE', 'r', L.env.r, 0, 4000, ms, set('r'));
+  }
+  function busPanel(row, pct) {
+    row('tf-head').appendChild(h('span', 'tf-title', 'DRUM BUS'));
+    var a = row();
+    knob(a, 'LENGTH', 'len', state.busLen, 8, MAX, String, setBusLen);
+    knob(a, 'SWING', 'swing', state.swing, 50, 75, pct, setSwing);
+    var b2 = row();
+    knob(b2, 'COMP', 'comp', state.busFx.comp, 0, 100, pct, function (v) { setBusFx('comp', v); });
+    knob(b2, 'DRIVE', 'drive', state.busFx.drive, 0, 100, pct, function (v) { setBusFx('drive', v); });
+    knob(b2, 'REV', 'verb', state.busFx.verb, 0, 100, pct, function (v) { setBusFx('verb', v); });
+    var vr = row('tf-seg');
+    vr.appendChild(h('span', 'tf-cap', 'VOLUME'));
+    var sl = h('input', 'tf-busvol'); sl.type = 'range'; sl.min = 0; sl.max = 100; sl.value = state.busVol;
+    var sv = h('span', 'tf-len', state.busVol + '%');
+    sl.oninput = function () { setBusVol(+sl.value); sv.textContent = sl.value + '%'; save(); };
+    vr.append(sl, sv);
   }
 
   function paintPages() {
@@ -733,7 +821,11 @@ var TF = (function () {
     });
     for (var j = 0; j < LANES; j++) {
       for (var s = 0; s < ROWS; s++) paintCell(el.cells[j][s], L[j]);
-      el.lbls[j].textContent = NAMES[L[j].snd] || L[j].snd.toUpperCase();
+      var m = L[j].mod ? MOD[L[j].mod] : null;
+      el.lbls[j].textContent = m ? m.name : NAMES[L[j].snd] || L[j].snd.toUpperCase();
+      el.lbls[j].classList.toggle('tf-m', !!m);
+      el.cells[j].forEach(function (c) { c.style.setProperty('--tf-mc', m ? m.color : ''); });
+      el.lbls[j].style.setProperty('--tf-mc', m ? m.color : '');
       el.lbls[j].classList.toggle('muted', L[j].mute);
       el.lbls[j].classList.toggle('open', !!panel && panel.kind === 'lane' && panel.lane === j);
       el.mutes[j].classList.toggle('on', L[j].mute);

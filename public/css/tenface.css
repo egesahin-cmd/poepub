@@ -54,6 +54,7 @@
 .tf-panel .tf-row{display:flex;justify-content:space-around;align-items:flex-start;gap:6px;margin:4px 0 10px}
 .tf-panel .tf-head{justify-content:flex-start;align-items:center;gap:12px;margin-bottom:12px}
 .tf-title{font-size:12px;letter-spacing:2px}
+.tf-snd.dim{opacity:.35}
 .tf-snd{font-size:12px;letter-spacing:1px;background:#ede7d4;color:#000;border:1.5px solid #000;border-radius:0;padding:4px 6px}
 .tf-panel .fxk-rack:not(.u-comp):not(.u-drive):not(.u-verb){--fxk:#2d6a4e}   /* sends keep their unit's colour */
 .tf-panel .fxk-rack .fxk-top{color:rgba(0,0,0,.55)}
@@ -64,3 +65,32 @@
 .tf-rate.on{background:#000 !important;color:#ede7d4 !important}
 .tf-len{min-width:40px;text-align:center;font-size:14px}
 .tf-busvol{flex:1;accent-color:#000}
+
+/* module lanes: notes are one bar in the module's colour (--tf-mc), a grip on the last row */
+.tf-grid{touch-action:none}
+.tf-cell.n::after{inset:0 22% -1px;border-radius:0;background:var(--tf-mc);opacity:.85}   /* -1px: over the row line */
+.tf-cell.n0::after{top:12%;border-top-left-radius:3px;border-top-right-radius:3px}
+.tf-cell.n1::after{bottom:12%;border-bottom-left-radius:3px;border-bottom-right-radius:3px;
+  background:linear-gradient(transparent calc(100% - 5px),rgba(237,231,212,.7) calc(100% - 5px) calc(100% - 3px),transparent calc(100% - 3px)) ,var(--tf-mc)}
+.tf-cell.n.off::after{opacity:.25}
+.tf-lbl.tf-m{color:var(--tf-mc) !important;box-shadow:inset 0 -4px 0 var(--tf-mc)}
+.tf-lbl.tf-m.open{background:var(--tf-mc) !important;color:#ede7d4 !important}
+
+/* the MODULE picker: a button and a colour-coded list under it */
+.tf-modw{position:relative}
+.tf-mod{font-size:12px;letter-spacing:1px;border:1.5px solid #000 !important;padding:4px 8px;height:auto}
+.tf-mod.set{background:var(--tf-mc) !important;border-color:var(--tf-mc) !important;color:#ede7d4 !important}
+.tf-mod-list{display:none;position:absolute;top:100%;left:0;z-index:6;min-width:120px;background:#ede7d4;border:1.5px solid #000;flex-direction:column}
+.tf-modw.open .tf-mod-list{display:flex}
+.tf-mod-opt{text-align:left;font-size:12px;letter-spacing:1px;padding:8px 10px 8px 26px !important;position:relative;border-bottom:1px solid var(--tf-line) !important}
+.tf-mod-opt::before{content:'';position:absolute;left:8px;top:50%;width:11px;height:11px;margin-top:-6px;background:var(--tf-mc,transparent);border:1px solid #000}
+.tf-mod-opt[data-m]{color:var(--tf-mc,#000) !important}
+.tf-mod-opt[data-m=""]{color:#000 !important}
+.tf-mod-opt[data-m="noise"]{color:#000 !important}
+.tf-mod-opt.on{text-decoration:underline}
+.tf-mod-opt.dis{opacity:.3;cursor:default}
+
+/* the envelope drawing */
+.tf-envrow{margin:0 0 4px !important}
+.tf-env{width:100%;height:46px;display:block}
+.tf-env path{fill:none;stroke:var(--tf-mc);stroke-width:2;vector-effect:non-scaling-stroke;stroke-linejoin:round}
