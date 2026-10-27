@@ -78,7 +78,7 @@ var TF = (function () {
      t0 + n*dur) lets BPM/rate edits take effect on the next step without
      rewriting times already handed out. */
   function makeClock(state, t0) {
-    var ln = [], pending = null, cbs = [], i;
+    var ln = [], pending = null, cbs = [], sws = [], i;
     /* barAt = the first bar line not yet behind the emitted horizon. Accumulated
        with the bpm in effect, like the lanes' g, so BPM edits move later bars. */
     var barAt = t0;
@@ -112,6 +112,7 @@ var TF = (function () {
           for (j = 0; j < LANES; j++) advance(j, out, fromT, pending.at, true);
           state.slot = pending.slot;
           for (j = 0; j < LANES; j++) { ln[j].idx = 0; ln[j].g = pending.at; }
+          for (j = 0; j < sws.length; j++) sws[j](pending.slot, pending.at);
           pending = null;
         }
         for (j = 0; j < LANES; j++) advance(j, out, fromT, toT, false);
@@ -124,7 +125,9 @@ var TF = (function () {
         if (bd > 0 && bd < Infinity) while (at < t - 1e-9) at += bd;
         pending = { slot: slotIdx, at: at };
       },
-      onStep: function (cb) { cbs.push(cb); }
+      onStep: function (cb) { cbs.push(cb); },
+      /* cb(slot, at): a switch was taken; `at` is its bar line, ahead of the audio clock */
+      onSwitch: function (cb) { sws.push(cb); }
     };
   }
 
@@ -149,7 +152,8 @@ var TF = (function () {
     if (noiseBufs) noiseBufs.set(ctx, b);
     return b;
   }
-  function nsrc(ctx, t, dur) { var s = ctx.createBufferSource(); s.buffer = noise(ctx); s.start(t); s.stop(t + dur + 0.02); return s; }
+  /* looped: an open hat at DECAY 100 rings ~1.8 s, longer than the 1 s buffer */
+  function nsrc(ctx, t, dur) { var s = ctx.createBufferSource(); s.buffer = noise(ctx); s.loop = true; s.start(t); s.stop(t + dur + 0.02); return s; }
   function osc(ctx, type, f, t, dur) { var o = ctx.createOscillator(); o.type = type; o.frequency.setValueAtTime(f, t); o.start(t); o.stop(t + dur + 0.02); return o; }
   function filt(ctx, type, f, q) { var b = ctx.createBiquadFilter(); b.type = type; b.frequency.value = Math.min(f, ctx.sampleRate * 0.45); if (q) b.Q.value = q; return b; }
   function decay(ctx, t, peak, dur) { var g = ctx.createGain(); g.gain.setValueAtTime(peak, t); g.gain.exponentialRampToValueAtTime(0.001, t + dur); return g; }
@@ -258,10 +262,12 @@ var TF = (function () {
     setBusVol(state.busVol); syncLanes();
     return nodes;
   }
-  function syncLanes() {
+  /* at: a slot switch's bar line — the old slot's last hits keep their gains until
+     then. Without it (a UI edit), now. */
+  function syncLanes(at) {
     if (!nodes) return;
-    var L = state.slots[state.slot].lanes;
-    for (var j = 0; j < LANES; j++) nodes.lanes[j].gain.setTargetAtTime(L[j].mute ? 0 : v2g(L[j].vol), AC.currentTime, 0.02);
+    var L = state.slots[state.slot].lanes, t = at == null ? AC.currentTime : Math.max(at, AC.currentTime);
+    for (var j = 0; j < LANES; j++) nodes.lanes[j].gain.setTargetAtTime(L[j].mute ? 0 : v2g(L[j].vol), t, at == null ? 0.02 : 0.005);
   }
   /* The lanes' sends leave from their taps, before the bus fader, so the bus volume
      scales them too, by the same v2g gain the dry gets: 0 -> silent, 100 -> x1, and a
@@ -276,9 +282,8 @@ var TF = (function () {
     if (!playing) return;
     var now = AC.currentTime, to = now + LA;
     if (to > lastT) {
-      var sl = state.slot, ev = clock.events(Math.max(lastT, now), to);  /* from >= now: after a freeze, late hits are dropped, not piled up */
+      var ev = clock.events(Math.max(lastT, now), to);  /* from >= now: after a freeze, late hits are dropped, not piled up */
       lastT = to;
-      if (state.slot !== sl) syncLanes();           /* bar-line switch: the new slot's vol/mute, up to LA early */
       for (var i = 0; i < ev.length; i++) {
         var e = ev[i], l = state.slots[e.slot].lanes[e.lane];
         voice(AC, run[e.lane], l.snd, e.t, { tune: l.tune, dec: l.dec, tone: l.tone, accent: e.v === 2 });
@@ -312,10 +317,11 @@ var TF = (function () {
 
   function play() {
     if (playing) return;
-    var c = getAC(); graph();
+    var c = getAC(); graph(); syncLanes();          /* vol/mute may have been edited while stopped */
     run = nodes.lanes.map(function (lg) { var g = c.createGain(); g.connect(lg); return g; });
     clock = makeClock(state, c.currentTime + 0.05);  /* a new clock = every lane from step 0 */
     clock.onStep(function (j, s, t) { if (t >= AC.currentTime) queue.push([j, s, t]); });
+    clock.onSwitch(function (s, at) { syncLanes(at); });
     lastT = c.currentTime; playing = true;
     ensureWorker().postMessage('start');
     tick(); requestAnimationFrame(frame);
@@ -348,7 +354,7 @@ var TF = (function () {
   }
 
   var api = {
-    mount: mount, voice: voice, play: play, stop: stop, setBusVol: setBusVol, syncLanes: syncLanes,
+    mount: mount, voice: voice, play: play, stop: stop, setBusVol: setBusVol, syncLanes: function () { syncLanes(); },
     /* playhead: cb(lane, step) when that step is HEARD (rAF, audio clock); step -1 on stop */
     onPlayhead: function (cb) { shown.push(cb); },
     get playing() { return playing; },
@@ -358,6 +364,7 @@ var TF = (function () {
     get _scheduledCount() { return scheduled; },
     get _la() { return LA; },
     get _horizon() { return lastT; },
+    get _nodes() { return nodes; },
     _: { defaults: defaults, cycle: cycle, normalize: normalize, serialize: serialize,
          stepDur: stepDur, swingOffset: swingOffset, makeClock: makeClock,
          KIT: KIT, RATES: RATES, LANES: LANES, SLOTS: SLOTS, ROWS: ROWS, STORE: STORE }

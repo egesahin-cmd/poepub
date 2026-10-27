@@ -138,3 +138,13 @@ test('no old-slot event is emitted at or after the bar line, even when swung pas
   assert.ok(ofLane(ev, 0).every((e) => e.t < 2 - 1e-9));
   assert.equal(ofLane(ev, 1).length, 1);
 });
+
+test('onSwitch reports the slot and the bar-line time of a switch, once', () => {
+  const s = defaults(), got = [];
+  const c = makeClock(s, 0);
+  c.onSwitch((slot, at) => got.push([slot, at]));
+  c.events(0, 1.9); c.requestSlot(1, 1.85);
+  c.events(1.9, 2.1); c.events(2.1, 4.5);
+  assert.equal(got.length, 1);
+  assert.equal(got[0][0], 1); near(got[0][1], 2);
+});

@@ -20,8 +20,8 @@ async function run(p, body, ms = 20000) {
 
 /* Page helpers: render a voice offline, and the peak an analyser sees over a time span. */
 const HELPERS = `
-window.__render = async function (hits) {
-  var c = new OfflineAudioContext(1, 48000, 48000);
+window.__render = async function (hits, secs) {
+  var c = new OfflineAudioContext(1, 48000 * (secs || 1), 48000);
   hits.forEach(function (h) { TF.voice(c, c.destination, h.snd, h.t || 0, h.o || {}); });
   return (await c.startRendering()).getChannelData(0);
 };
@@ -74,6 +74,11 @@ try {
     var b = __rms(await __render([{ snd: 'oh' }, { snd: 'ch', t: 0.05 }]), 4800, 14400);
     return b / a;`);
   ok('a closed hat chokes the open hat (RMS 100..300 ms < 10%)', choke < 0.1, choke);
+
+  const longOh = await run(p, `
+    var d = await __render([{ snd: 'oh', o: { dec: 100 } }], 2.5);
+    return [__rms(d, 45600, 48000), __rms(d, 48000, 50400)];`);
+  ok('oh at DECAY 100 has no cliff at 1.0 s (RMS 0.95..1.0 vs 1.0..1.05 within 2x)', longOh[1] > longOh[0] * 0.5 && longOh[1] > 1e-4, longOh);
 
   // ── routing: a trusted tap on PLAY starts the AudioContext ──
   const hasBtn = (await p.ev(`!!document.getElementById('tfPlay')`)) === true;
@@ -173,6 +178,31 @@ try {
     return { first: first, peak: peak };`);
   ok('play again: lanes restart at step 0', again.first && again.first[0] === 0 && again.first[4] === 0, again);
   ok('play again: the bus sounds again', again.peak > 0.01, again);
+
+  // ── a slot switch changes lane vol/mute AT the bar line, not up to LA early ──
+  const sw = await run(p, `
+    var S = TF.state, a = S.slots[0].lanes[0], b = S.slots[1].lanes[0];
+    S.slot = 0; a.vol = 100; a.mute = false; a.steps = a.steps.map(function (z, i) { return i === 15 ? 1 : 0; });
+    b.vol = 100; b.mute = true;
+    var hitT = null, samples = [];
+    TF._onEvent = function (e) {                  /* request the switch inside the look-ahead, right after the old hit is queued */
+      if (hitT === null && e.lane === 0 && e.step === 15 && e.slot === 0) { hitT = e.t; TF.clock.requestSlot(1, AC.currentTime); }
+    };
+    TF.play();
+    var g = TF._nodes.lanes[0].gain;
+    await new Promise(function (r) {
+      (function poll() {
+        samples.push([AC.currentTime, g.value]);
+        if (hitT !== null && AC.currentTime > hitT + 0.45) r(); else setTimeout(poll, 4);
+      })();
+    });
+    TF._onEvent = null; TF.stop(); S.slot = 0; b.mute = false;
+    var bar = hitT + 0.125;
+    var pre = samples.filter(function (x) { return x[0] >= hitT - 0.05 && x[0] < bar - 0.01; }).map(function (x) { return x[1]; });
+    var post = samples.filter(function (x) { return x[0] > bar + 0.1; }).map(function (x) { return x[1]; });
+    return { pre: Math.min.apply(null, pre), post: Math.max.apply(null, post), npre: pre.length, npost: post.length, slot: TF.state.slot };`);
+  ok('slot switch: the old slot\'s last hit before the bar keeps the old lane gain', sw.npre > 3 && sw.pre > 0.9, sw);
+  ok('slot switch: after the bar the new slot\'s mute silences the lane', sw.npost > 3 && sw.post < 0.01, sw);
 
   ok('no page exceptions', p.errors.length === 0, p.errors);
   finish();
