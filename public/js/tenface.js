@@ -69,6 +69,52 @@ var TF = (function () {
   }
   function serialize(s) { return JSON.stringify(s); }
 
+  /* ── timing: the clock reads `state` live, so UI edits land on a step's next pass ── */
+
+  function stepDur(bpm, rate) { return 60 / bpm / 4 / rate; }
+  function swingOffset(i, bpm, rate, swing) { return i % 2 ? (swing - 50) / 50 * stepDur(bpm, rate) : 0; }
+
+  /* Per lane: {idx, g} = next step and its UNSWUNG time. Accumulating g (not
+     t0 + n*dur) lets BPM/rate edits take effect on the next step without
+     rewriting times already handed out. */
+  function makeClock(state, t0) {
+    var ln = [], pending = null, cbs = [], i;
+    for (i = 0; i < LANES; i++) ln.push({ idx: 0, g: t0 });
+    function lanes() { return state.slots[state.slot].lanes; }
+    function advance(j, out, from, stop, byGrid) {
+      var L = ln[j], l = lanes()[j], t;
+      for (;;) {
+        l = lanes()[j];
+        if (L.idx >= l.len) L.idx = 0;               /* len was lowered under us */
+        t = L.g + swingOffset(L.idx, state.bpm, l.rate, state.swing);
+        if ((byGrid ? L.g : t) >= stop) return;
+        for (var c = 0; c < cbs.length; c++) cbs[c](j, L.idx, t);
+        var v = l.steps[L.idx];
+        if (v && !l.mute && t >= from) out.push({ lane: j, step: L.idx, t: t, v: v });
+        L.g += stepDur(state.bpm, l.rate);
+        L.idx++;
+      }
+    }
+    return {
+      events: function (fromT, toT) {
+        var out = [], j;
+        if (pending && pending.at < toT) {
+          for (j = 0; j < LANES; j++) advance(j, out, fromT, pending.at, true);
+          state.slot = pending.slot;
+          for (j = 0; j < LANES; j++) { ln[j].idx = 0; ln[j].g = pending.at; }
+          pending = null;
+        }
+        for (j = 0; j < LANES; j++) advance(j, out, fromT, toT, false);
+        return out.sort(function (a, b) { return a.t - b.t || a.lane - b.lane; });
+      },
+      requestSlot: function (slotIdx, t) {
+        var bar = ROWS * stepDur(state.bpm, 1);
+        pending = { slot: slotIdx, at: t0 + Math.ceil((t - t0) / bar - 1e-9) * bar };
+      },
+      onStep: function (cb) { cbs.push(cb); }
+    };
+  }
+
   /* ── module ─────────────────────────────────────────────────────────────── */
 
   var mounted = false;
@@ -80,6 +126,7 @@ var TF = (function () {
   return {
     mount: mount,
     _: { defaults: defaults, cycle: cycle, normalize: normalize, serialize: serialize,
+         stepDur: stepDur, swingOffset: swingOffset, makeClock: makeClock,
          KIT: KIT, RATES: RATES, LANES: LANES, SLOTS: SLOTS, ROWS: ROWS, STORE: STORE }
   };
 })();
