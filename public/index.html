@@ -4152,6 +4152,9 @@ function syncRiserUI(){
   setSwpTypeSel('rsVolTypeSel',rsVolType);
   rsVolRenderDir();rsPitchRenderDir();
 }
+/* TONE GEN has no FX channel; this fixed gain is the one TENFACE's module lanes gate it with. */
+let rsGate=null;
+function rsGateNode(){if(!rsGate){rsGate=getAC().createGain();rsGate.connect(appMaster);}return rsGate;}
 function toggleRiser(){
   const c=getAC();
   if(rsPlaying){
@@ -4162,7 +4165,7 @@ function toggleRiser(){
     if(rsMGn){rsMGn.disconnect();rsMGn=null;}
     setPB('rs',false);appAutoRecalc();return;
   }
-  rsMGn=c.createGain();rsMGn.gain.value=v2g(rsMVol);rsMGn.connect(appMaster);
+  rsMGn=c.createGain();rsMGn.gain.value=v2g(rsMVol);rsMGn.connect(rsGateNode());
   rsSigGn=c.createGain();rsSigGn.gain.value=rsVolSweepOn?0:1;rsSigGn.connect(rsMGn);
   rsOsc=c.createOscillator();rsOsc.type=WF[rsWv];rsOsc.frequency.value=rsFreq;
   rsOsc.connect(rsSigGn);rsOsc.start();

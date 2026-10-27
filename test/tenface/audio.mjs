@@ -204,6 +204,74 @@ try {
   ok('slot switch: the old slot\'s last hit before the bar keeps the old lane gain', sw.npre > 3 && sw.pre > 0.9, sw);
   ok('slot switch: after the bar the new slot\'s mute silences the lane', sw.npost > 3 && sw.post < 0.01, sw);
 
+  // ── module lanes: a note gates the module through its FX input with the lane's envelope ──
+  const MODSETUP = `
+    TF.stop(); await new Promise(function (r) { setTimeout(r, 400); });
+    var S = TF.state; S.slot = 0; S.bpm = 120; S.swing = 50;
+    var L = S.slots[0].lanes;
+    L.forEach(function (l) { l.steps.fill(0); l.mod = null; l.notes.fill(0); l.mute = false; l.len = 16; l.rate = 1; });
+    /* a silent node's AudioParam does not advance in Chrome, so read a gate the way a
+       user meets it: switch the module on by hand, let it play, read, switch it off */
+    var byHand = async function (toggle, g) { toggle(); await new Promise(function (r) { setTimeout(r, 150); }); var v = g.value; toggle(); return v; };
+    var sample = async function (g, isOn, until) {
+      var e0 = null, out = [];
+      TF._onEvent = function (e) { if (e.kind === 'note' && e0 === null) e0 = e.t; };
+      TF.play();
+      await new Promise(function (r) { (function poll() { out.push([AC.currentTime, g.value, isOn()]); if (e0 !== null && AC.currentTime > e0 + until) r(); else setTimeout(poll, 8); })(); });
+      TF._onEvent = null;
+      return { e0: e0, s: out, at: function (x) { var b = null; out.forEach(function (q) { if (!b || Math.abs(q[0] - x) < Math.abs(b[0] - x)) b = q; }); return b; },
+               span: function (a, z) { return out.filter(function (q) { return q[0] >= e0 + a && q[0] <= e0 + z; }); } };
+    };`;
+  const bb = await run(p, MODSETUP + `
+    L[2].mod = 'birdbox'; L[2].env = { a: 100, d: 100, s: 50, r: 200 }; L[2].notes[0] = 4; L[2].notes[4] = 4;   /* 2 x 0.5 s, back to back */
+    var g = FX.ports('birdbox').inp.gain, was = swpPlaying;
+    var r = await sample(g, function () { return swpPlaying; }, 1.9);
+    var max = function (q) { return Math.max.apply(null, q.map(function (x) { return x[1]; })); };
+    return { was: was, pre: r.at(r.e0 - 0.03)[1], peak1: max(r.span(0, 0.3)), sus: r.at(r.e0 + 0.45)[1], peak2: max(r.span(0.5, 0.75)), sus2: r.at(r.e0 + 0.95)[1],
+             rel: r.at(r.e0 + 1.17)[1], onAll: r.span(0.02, 0.98).every(function (x) { return x[2]; }), offAfter: !r.at(r.e0 + 1.85)[2], gateBack: await byHand(toggleSweep, g) };`);
+  ok('BIRDBOX was off before the lane played it', bb.was === false, bb);
+  ok('note: the gate is shut just before the note starts', bb.pre < 0.01, bb);
+  ok('note: ATTACK 100 ms opens the gate to ~1', bb.peak1 > 0.9, bb);
+  ok('note: DECAY falls to SUSTAIN 50%', Math.abs(bb.sus - 0.5) < 0.05, bb);
+  ok('a back-to-back note re-attacks to ~1 and holds SUSTAIN', bb.peak2 > 0.9 && Math.abs(bb.sus2 - 0.5) < 0.05, bb);
+  ok('RELEASE 200 ms: the gate is nearly shut 170 ms after the last note ends', bb.rel < 0.1, bb);
+  ok('the module stays on through back-to-back notes (no stutter)', bb.onAll === true, bb);
+  ok('after the release the module is off, and on by hand its gate is open (1)', bb.offAfter && bb.gateBack > 0.99, bb);
+
+  const hand = await run(p, MODSETUP + `
+    L[2].mod = 'birdbox'; L[2].notes[0] = 2;
+    toggleSweep();                                       /* on by hand */
+    var g = FX.ports('birdbox').inp.gain;
+    var r = await sample(g, function () { return swpPlaying; }, 0.6);
+    var low = Math.min.apply(null, r.s.map(function (x) { return x[1]; }));
+    TF.stop(); await new Promise(function (r) { setTimeout(r, 500); });
+    var still = swpPlaying; if (swpPlaying) toggleSweep();
+    return { low: low, still: still };`);
+  ok('hand wins: a module on by hand ignores the lane, gate untouched', hand.low > 0.99, hand);
+  ok('hand wins: stop leaves a module that was on by hand on', hand.still === true, hand);
+
+  const mid = await run(p, MODSETUP + `
+    L[3].mod = 'riser'; L[3].env = { a: 10, d: 10, s: 100, r: 100 }; L[3].notes[0] = 16;
+    if (typeof rsGateNode !== 'function') throw new Error('rsGateNode missing');
+    var g = rsGateNode().gain;
+    var r = await sample(g, function () { return rsPlaying; }, 0.5);
+    var during = r.at(r.e0 + 0.45);
+    TF.stop(); await new Promise(function (r) { setTimeout(r, 600); });
+    return { during: during, after: [rsPlaying, await byHand(toggleRiser, g)] };`);
+  ok('TONE GEN: a note switches it on and opens its own gate', mid.during && mid.during[2] === true && mid.during[1] > 0.95, mid);
+  ok('stop mid-note: the module goes off, and on by hand its gate is open', mid.after[0] === false && mid.after[1] > 0.99, mid);
+
+  const nz = await run(p, MODSETUP + `
+    L[0].mod = 'noise'; L[1].mod = 'multi'; L[4].mod = 'voice';
+    L[0].notes[0] = 2; L[1].notes[0] = 2; L[4].notes[0] = 2;
+    var r = await sample(FX.ports('noise').inp.gain, function () { return [nOn, multiPlaying, VT.getAlwaysVoice()]; }, 0.15);
+    var on = r.at(r.e0 + 0.12)[2];
+    TF.stop(); await new Promise(function (r) { setTimeout(r, 600); });
+    var off = [nOn, multiPlaying, VT.getAlwaysVoice()];
+    return { on: on, off: off, gates: [await byHand(toggleNoise, FX.ports('noise').inp.gain), await byHand(multiToggle, FX.ports('multi').inp.gain), await byHand(vtToggleAlwaysVoice, FX.ports('voice').inp.gain)] };`);
+  ok('NOISE, MATHS and VOICE (always voice) all switch on for a note', nz.on && nz.on.join() === 'true,true,true', nz);
+  ok('and off again on stop; on by hand all three gates are open', nz.off.join() === 'false,false,false' && nz.gates.every(function (v) { return v > 0.99; }), nz);
+
   ok('no page exceptions', p.errors.length === 0, p.errors);
   finish();
 } catch (e) {

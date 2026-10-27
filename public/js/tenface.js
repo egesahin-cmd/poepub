@@ -348,8 +348,8 @@ var TF = (function () {
       lastT = to;
       for (var i = 0; i < ev.length; i++) {
         var e = ev[i], l = state.slots[e.slot].lanes[e.lane];
-        if (e.kind === 'note') continue;              /* module notes: Task 3 */
-        voice(AC, run[e.lane], l.snd, e.t, { tune: l.tune, dec: l.dec, tone: l.tone, accent: e.v === 2 });
+        if (e.kind === 'note') noteOn(l.mod, e.t, e.t + e.len * stepDur(state.bpm, l.rate), l.env);
+        else voice(AC, run[e.lane], l.snd, e.t, { tune: l.tune, dec: l.dec, tone: l.tone, accent: e.v === 2 });
         scheduled++;
         if (api._onEvent) api._onEvent(e);
       }
@@ -390,6 +390,60 @@ var TF = (function () {
     ensureWorker().postMessage('start');
     tick(); requestAnimationFrame(frame);
   }
+  /* ── module lanes ─────────────────────────────────────────────────────────
+     A note opens the module's GATE: the input gain of its FX channel, which no module
+     code writes (TONE GEN has no channel, so index.html gives it rsGateNode()). The
+     module itself is switched on and off by its own handler, exactly as its button
+     does, so the button, the app autogain and LINK all stay true. While a module is
+     switched on by TENFACE it is `owned`; one switched on by hand is never touched. */
+  var MOD = {
+    voice: { name: 'VOICE', color: '#d9a0d5',             /* no power: "on" = always voice */
+      isOn: function () { return vtInitialized && VT.getAlwaysVoice(); },
+      on: function () { if (!vtInitialized) { vtInitialized = true; vtInit(); } if (!VT.getAlwaysVoice()) vtToggleAlwaysVoice(); },
+      off: function () { if (vtInitialized && VT.getAlwaysVoice()) vtToggleAlwaysVoice(); } },
+    multi: { name: 'MATHS', color: '#9c342a',
+      isOn: function () { return multiPlaying; }, on: function () { if (!multiPlaying) multiToggle(); }, off: function () { if (multiPlaying) multiToggle(); } },
+    birdbox: { name: 'BIRDBOX', color: '#2d6a4e',
+      isOn: function () { return swpPlaying; }, on: function () { if (!swpPlaying) toggleSweep(); }, off: function () { if (swpPlaying) toggleSweep(); } },
+    noise: { name: 'NOISE', color: '#000',                /* the first roll, as LINK does: else a frozen spectrum */
+      isOn: function () { return nOn; },
+      on: function () { if (nOn) return; if (!nsInitialized) { nsInitialized = true; randomizeNoise(); } toggleNoise(); },
+      off: function () { if (nOn) toggleNoise(); } },
+    riser: { name: 'TONE GEN', color: '#a0ad95',
+      isOn: function () { return rsPlaying; }, on: function () { if (!rsPlaying) toggleRiser(); }, off: function () { if (rsPlaying) toggleRiser(); } }
+  };
+  var owned = {};                                     /* module -> its off-timer */
+  function gate(k) { return k === 'riser' ? rsGateNode().gain : FX.ports(k).inp.gain; }
+  /* Every gate move is a setTargetAtTime: Chrome drops a setValueAtTime queued behind
+     a setTargetAtTime that is still running, and the gate then stays shut for good.
+     Envelope segments are setTargetAtTime approaches (time constant = segment / 3), so a
+     retrigger or a note shorter than A+D carries on from wherever the gate is, click-free. */
+  function noteOn(k, t, tOff, env) {
+    var m = MOD[k], g = gate(k), now = AC.currentTime;
+    if (!(k in owned)) {
+      if (m.isOn()) return;                           /* hand wins */
+      g.cancelScheduledValues(now); g.setTargetAtTime(0, now, 0.003);
+      owned[k] = null;
+    }
+    if (!m.isOn()) m.on();                            /* also after a hand switched it off mid-run */
+    clearTimeout(owned[k]);
+    var a = env.a / 1000, d = env.d / 1000, r = env.r / 1000;
+    g.cancelScheduledValues(t);
+    g.setTargetAtTime(1, t, Math.max(a, 0.006) / 3);
+    if (t + a < tOff) g.setTargetAtTime(env.s / 100, t + a, Math.max(d, 0.006) / 3);
+    g.setTargetAtTime(0, tOff, Math.max(r, 0.006) / 3);
+    owned[k] = setTimeout(function () { release(k); }, (tOff + r - now) * 1000 + 50);
+  }
+  /* Switch an owned module off. Its own stop may ramp (MATHS, BIRDBOX), so the gate
+     stays shut a moment longer before it goes back to 1 for the module's buttons. */
+  function release(k) {
+    if (!(k in owned)) return;
+    clearTimeout(owned[k]); delete owned[k];
+    MOD[k].off();
+    var g = gate(k), now = AC.currentTime;
+    g.cancelScheduledValues(now); g.setTargetAtTime(1, now + 0.2, 0.005);
+  }
+
   function stop() {
     if (!playing) return;
     var p = clock.pendingSlot;
@@ -397,6 +451,10 @@ var TF = (function () {
     worker.postMessage('stop');
     var r = run; run = null;
     r.forEach(function (g) { g.gain.setTargetAtTime(0, AC.currentTime, 0.008); });
+    Object.keys(owned).forEach(function (k) {
+      clearTimeout(owned[k]); owned[k] = setTimeout(function () { release(k); }, 60);
+      var g = gate(k); g.cancelScheduledValues(AC.currentTime); g.setTargetAtTime(0, AC.currentTime, 0.008);
+    });
     setTimeout(function () { r.forEach(function (g) { g.disconnect(); }); }, 250);
     for (var j = 0; j < LANES; j++) for (var c = 0; c < shown.length; c++) shown[c](j, -1);
     /* a switch still pending lands now; one taken but not yet heard lost its queue entry */
@@ -687,7 +745,7 @@ var TF = (function () {
   }
 
   var api = {
-    mount: mount, voice: voice, play: play, stop: stop, setBusVol: setBusVol, syncLanes: function () { syncLanes(); },
+    mount: mount, voice: voice, MOD: MOD, play: play, stop: stop, setBusVol: setBusVol, syncLanes: function () { syncLanes(); },
     render: render, openPanel: openPanel, setBusLen: setBusLen, setSwing: setSwing, setLaneFx: setLaneFx, setBusFx: setBusFx,
     get panel() { return panel; },
     get view() { return view; }, get follow() { return follow; }, get playPage() { return playPage; },
