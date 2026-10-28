@@ -657,12 +657,6 @@ input[type=range]::-moz-range-thumb{width:20px;height:20px;border-radius:50%;bac
 /* ═══ VOICE (Pink Trombone) ═══ */
 #modVoice.active{display:flex;flex-direction:column;align-items:center;gap:10px}
 #vtCanvasWrap{position:relative;width:100%;max-width:480px;aspect-ratio:600/730;overflow:visible;background:#ede7d4;touch-action:none;margin-top:20px}
-/* The tract is by far the tallest thing in this module, and SPEAK adds a text
-   field and a transport row beneath it. Bound the diagram against viewport
-   height so it gives up a little size instead of pushing the controls under the
-   fold — the same trade the --mu-* density tokens make elsewhere. Width is what
-   drives height here (aspect-ratio), so the cap has to be on max-width. */
-@supports (height:1svh){#vtCanvasWrap{max-width:min(480px,44svh);margin-top:clamp(6px,2svh,20px)}}
 #vtCanvasWrap canvas{position:absolute;top:0;left:0;width:100%;height:100%}
 #vtBackCanvas{z-index:0}
 #vtTractCanvas{z-index:1}
@@ -819,7 +813,7 @@ input[type=range]::-moz-range-thumb{width:20px;height:20px;border-radius:50%;bac
     <button class="plus-btn" onclick="togglePlusMenu(event)">+</button>
     <div class="plus-menu" id="plusMenu">
       <button onclick="switchTab('riser')">TONE GEN</button>
-      <button onclick="switchTab('burst')">TENFACE</button>
+      <button onclick="switchTab('burst')">TRACKER</button>
       <button onclick="switchTab('mixer')">MIXER</button>
       <button onclick="switchTab('call')">GROUP CALL</button>
       <button onclick="switchTab('archive')">ARCHIVE</button>
@@ -933,7 +927,7 @@ input[type=range]::-moz-range-thumb{width:20px;height:20px;border-radius:50%;bac
   </div>
 </div>
 
-<!-- ═══ TENFACE (burst) — built by js/tenface.js ═══ -->
+<!-- ═══ TRACKER (burst) — built by js/tenface.js ═══ -->
 <div class="mod" id="modBurst"></div>
 
 <!-- ═══ NOISE ═══ -->
@@ -4152,7 +4146,7 @@ function syncRiserUI(){
   setSwpTypeSel('rsVolTypeSel',rsVolType);
   rsVolRenderDir();rsPitchRenderDir();
 }
-/* TONE GEN has no FX channel; this fixed gain is the one TENFACE's module lanes gate it with. */
+/* TONE GEN has no FX channel; this fixed gain is the one TRACKER's module lanes gate it with. */
 let rsGate=null;
 function rsGateNode(){if(!rsGate){rsGate=getAC().createGain();rsGate.connect(appMaster);}return rsGate;}
 function toggleRiser(){
@@ -4262,6 +4256,9 @@ var VT=(function(){
 var backCanvas,backCtx,tractCanvas,tractCtx;
 var sampleRate,time=0;
 var alwaysVoice=false,autoWobble=false,ototune=false,free=false;
+/* LINK slave: the pitch strip is played by the master. Its touch arrives in canvas coordinates
+   (the same on every screen) and stands in for the phone's own; fingers on the strip are ignored. */
+var glotRemote=false,glotTouch={alive:false,x:0,y:0};
 /* SPEAK: set while a compiled gesture program is driving the tract. Declared up
    here because Glottis.handleTouches/finishBlock both have to defer to it. */
 var spkOn=false,spkBuf=null,spkN=0,spkStep=1,spkT0=0,spkEndCb=null,spkSlots=null;
@@ -4466,8 +4463,9 @@ var Glottis={
     return clamp(this.keyboardLeft+s*this.keyboardWidth/VT_OTO_SEMIS,this.keyboardLeft,this.keyboardLeft+this.keyboardWidth);
   },
   handleTouches:function(){
+    if(glotRemote)this.touch=glotTouch.alive?glotTouch:0;
     if(this.touch!=0&&!this.touch.alive)this.touch=0;
-    if(this.touch==0){for(var j=0;j<UI.touchesWithMouse.length;j++){
+    if(this.touch==0&&!glotRemote){for(var j=0;j<UI.touchesWithMouse.length;j++){
       var touch=UI.touchesWithMouse[j];if(!touch.alive)continue;if(touch.y<this.keyboardTop)continue;this.touch=touch;}}
     /* While SPEAK owns the voice the strip is PITCH ONLY: it sets the base the
        NEXT phrase will start from, and writes nothing else. The full branch
@@ -5125,10 +5123,14 @@ return{
   setAlwaysVoice:function(v){alwaysVoice=v;},setAutoWobble:function(v){autoWobble=v;},
   setOtotune:function(v){ototune=v;if(!vtOtoSet.length)vtOtoBuild();Glottis.handleTouches();vtRedrawBack();},
   setFree:function(v){free=v;Glottis.handleTouches();},
+  setGlottisRemote:function(on){glotRemote=!!on;if(!on)glotTouch.alive=false;Glottis.touch=0;Glottis.handleTouches();},
+  setGlottisTouch:function(x,y){if(x==null)glotTouch.alive=false;else{glotTouch.alive=true;glotTouch.x=x;glotTouch.y=y;}Glottis.handleTouches();},
+  getGlottisTouch:function(){var t=glotRemote?glotTouch:Glottis.touch;return t&&t.alive?[Math.round(t.x*10)/10,Math.round(t.y*10)/10]:null;},
   redrawBack:function(){vtScheduleBack();},
   getAlwaysVoice:function(){return alwaysVoice;},getAutoWobble:function(){return autoWobble;},
   getOtotune:function(){return ototune;},
   getFree:function(){return free;},
+  glottis:function(){return{f:Glottis.UIFrequency,ten:Glottis.UITenseness,on:Glottis.isTouched};},   // read-only, for tests
   /* ── SPEAK ── the only way in for the sequencer above this IIFE. */
   spkBegin:function(buf,n){
     if(!buf||n<2)return false;

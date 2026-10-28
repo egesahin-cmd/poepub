@@ -1,5 +1,5 @@
 /* ═══════════════════════════════════════════════════════════════════════════
-   LINK UI — the join sheets, the master button, the slave pair, the fade, the lock.
+   LINK UI — the join sheets, the master button, the slave badge, the slave view, the lock.
 
    Only /masterctrl and /slaves wake it. At the plain address nothing here runs,
    no socket is opened and poepub is exactly as before.
@@ -18,7 +18,7 @@
     '<path class="lk-arc" d="M5.3 2.3a3.9 3.9 0 0 0 0 5.4M10.7 2.3a3.9 3.9 0 0 1 0 5.4" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/>' +
     '<path class="lk-arc lk-arc2" d="M3 .7a6.4 6.4 0 0 0 0 8.6M13 .7a6.4 6.4 0 0 1 0 8.6" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/></svg>';
 
-  var app = null, bar = null, badge = null, exitBtn = null, veil = null, ring = null;
+  var app = null, bar = null, badge = null;
   var locked = false, keyUsed = '', sig = '', wakeLock = null, heard = false;
 
   function el(tag, id, cls, html) {
@@ -61,7 +61,7 @@
      preventDefault-ed, so pages still scroll. Synthetic events pass: setters dispatch `input`.
      CSS alone cannot do this — pointer-events:auto is set in ~15 places and the swipe-to-roll
      listeners sit on the document. */
-  var PASS = '.tabs,#vtCanvasWrap,#lkExit,#scoreTab,#scorePanelWrap';
+  var PASS = '.tabs,#vtCanvasWrap,#scoreTab,#scorePanelWrap';
   ['pointerdown', 'pointermove', 'mousedown', 'mousemove', 'click', 'dblclick', 'contextmenu',
    'touchstart', 'touchmove', 'keydown', 'keyup', 'input', 'change'].forEach(function (t) {
     window.addEventListener(t, function (e) {
@@ -109,37 +109,29 @@
       qr(i.room);
     } else {
       app.classList.add('lk-slave');
-      veil = app.appendChild(el('div', 'lkVeil'));
-      ring = document.getElementById('bbFrame').appendChild(el('div', 'lkRing'));
-      exitBtn = bar.appendChild(el('div', 'lkExit', '', '<span>EXIT</span><span>SLAVE</span><span>MODE</span>'));
-      bindExit();
       locked = true; guard(true);
+      /* Of the "+" pages a slave keeps only SCORES and QR (the other entries are hidden too) */
+      var cur = document.querySelector('.mod.active');
+      if (cur && OFF.indexOf(cur.id.slice(3).toLowerCase()) >= 0) switchTab('voice');
+      /* TRACKER is the slave's own sequencer: silent, or it fights the master over the modules */
+      if (typeof TF !== 'undefined' && TF.playing) { TF.stop(); TF.render(); }
     }
     /* No pull-to-refresh mid-show, on either side: the lock leaves scrolling alive, so a slave
        dragging down at the top of a page would otherwise reload it. */
     document.documentElement.style.overscrollBehavior = 'none';
     screenOn(); paint();
   }
-  /* Everything keeps playing; the phone is a normal poepub again. */
+  /* Everything keeps playing; the phone is a normal poepub again. A slave gets here only when the
+     room ends or refuses it: there is no exit button, a slave leaves by closing the page. */
   function leave() {
     LINK.stop();
     locked = false; guard(false); screenOff();
     app.classList.remove('lk-slave');
-    [bar, veil, ring].forEach(function (x) { if (x && x.parentNode) x.parentNode.removeChild(x); });
-    bar = badge = exitBtn = veil = ring = null; sig = '';
+    if (typeof VT !== 'undefined') VT.setGlottisRemote(false);
+    if (bar && bar.parentNode) bar.parentNode.removeChild(bar);
+    bar = badge = null; sig = '';
     document.documentElement.style.overscrollBehavior = '';
     try { history.replaceState(null, '', '/'); } catch (_) {}
-  }
-  function bindExit() {
-    var timer = 0;
-    function up() { clearTimeout(timer); if (exitBtn) exitBtn.classList.remove('down'); }
-    exitBtn.addEventListener('pointerdown', function (e) {
-      e.preventDefault(); exitBtn.classList.add('down');
-      timer = setTimeout(leave, 900);
-    });
-    ['pointerup', 'pointercancel', 'pointerleave'].forEach(function (t) { exitBtn.addEventListener(t, up); });
-    /* Android raises its context menu at ~500ms and cancels the pointer with it. */
-    exitBtn.addEventListener('contextmenu', function (e) { e.preventDefault(); });
   }
   /* While master, the QR tab hands out this room instead of the plain address. */
   function qr(room) {
@@ -163,7 +155,7 @@
          : '<div class="lp-instr">YOUR PHONE WILL BE PLAYED<br>BY THE MASTER<br>PUT ON MAX VOLUME<br>KEEP THIS SCREEN OPEN</div>') +
       '<button class="lp-enter" id="lkGo">' + (m ? (saved ? 'RESUME AS MASTER' : 'TAKE CONTROL') : 'JOIN') + '</button>' +
       '<div class="lk-msg" id="lkMsg"></div>' +
-      (m ? '' : '<div class="lk-small">your controls lock while you are in the room.<br>leave any time with EXIT SLAVE MODE.</div>');
+      (m ? '' : '<div class="lk-small">your controls lock while you are in the room.<br>close this page to leave.</div>');
     var roomEl = document.getElementById('lkRoom'), keyEl = document.getElementById('lkKey');
     /* values go in as properties, never through the HTML above */
     roomEl.value = (saved && saved.room) || new URLSearchParams(location.search).get('room') || '';
@@ -183,8 +175,10 @@
   /* A slave changes tabs while rows arrive for tabs that are not showing. Whatever places itself
      from measured rectangles got zeros then, so measure again once the tab is up: the pulse panels
      (onViewportResize), and the MATHS settings panel, which positions itself only as it opens. */
+  var OFF = ['riser', 'burst', 'mixer', 'call', 'archive'];
   var realSwitchTab = switchTab;
   switchTab = function (t) {
+    if (OFF.indexOf(t) >= 0 && LINK.info().role === 'slave') return;
     var out = realSwitchTab.apply(this, arguments);
     if (LINK.info().role === 'slave') {
       onViewportResize();

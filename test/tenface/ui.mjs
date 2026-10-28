@@ -1,4 +1,4 @@
-// TENFACE screen: the tracker grid, the transport strip, lane labels, mute, BUS.
+// TRACKER screen: the tracker grid, the transport strip, lane labels, mute, BUS.
 // Real (trusted) touches at 390x844 with the phone pointer branch on.
 //   node test/tenface/ui.mjs
 import { rig, sleep } from '../link/rig.mjs';
@@ -27,7 +27,7 @@ try {
   ok('80 cells', geo.n === 80, geo.n);
   ok('every cell is what a finger on its centre hits', geo.bad.length === 0, geo.bad);
   ok('grid, labels, mutes and BUS all inside 390x844', geo.cellsIn && geo.lblIn && geo.muteIn && geo.busIn, geo);
-  ok('no scrolling inside TENFACE', geo.scroll === false);
+  ok('no scrolling inside TRACKER', geo.scroll === false);
   ok('BUS sits bottom-right', geo.busBR === true);
   ok('top strip has play, BPM, - / + and four slots', geo.strip === true);
 
@@ -123,7 +123,7 @@ try {
   await p.load();
   await p.ev(`try{dismissLanding()}catch(e){}; switchTab('burst'); 1`);
   await sleep(300);
-  ok('a corrupt save opens TENFACE on the defaults', (await p.ev(`TF.state.bpm === 120 && document.querySelectorAll('.tf-cell').length === 80 && TF.state.slots[0].lanes[0].snd === 'kick'`)) === true);
+  ok('a corrupt save opens TRACKER on the defaults', (await p.ev(`TF.state.bpm === 120 && document.querySelectorAll('.tf-cell').length === 80 && TF.state.slots[0].lanes[0].snd === 'kick'`)) === true);
 
   /* ── final-review fixes ── */
   await p.ev(`TF.state.slots[2].lanes[0].fx.verb = 55; TF.state.slots[1].lanes[0].snd = 'rim'; 1`);

@@ -1,4 +1,4 @@
-/* TENFACE drum machine — see js/tenface.js */
+/* TRACKER drum machine — see js/tenface.js */
 #modBurst.active{display:flex;flex-direction:column;gap:0;position:relative;height:100%;padding:0;overflow:hidden;background:#ede7d4;color:#000;
   --tf-idx:22px;--tf-line:rgba(0,0,0,.18);--tf-green:#2d6a4e;user-select:none;-webkit-user-select:none;touch-action:manipulation}
 #modBurst>*{align-self:stretch;width:100%;box-sizing:border-box}   /* .mod centres its children; the grid must span */

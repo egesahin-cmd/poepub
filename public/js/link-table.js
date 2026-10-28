@@ -342,7 +342,25 @@
   fxUnit('verb', { toggle: 'vrbToggle', type: 'vrbCycleType', mode: 'vrbCycleMode' }, { size: 'Size', decay: 'Decay', tone: 'Tone' });
 
   /* ── VOICE ────────────────────────────────────────────────────────────────── */
-  /* Never a row: the mouth canvas and its pitch strip. They are each phone's own (spec section 8). */
+  /* Never a row: the mouth itself — tongue, lips, nose. Each audience member plays their own
+     (spec section 8). The pitch strip below it is the master's. */
+
+  /* The strip is mirrored as the master's finger, [1, x, y] in canvas coordinates or [0], and played
+     on each slave as a stand-in touch: pitch, tenseness, voicing, OTOTUNE's snap and SPEAK's
+     "the strip moves the next phrase's base" all follow from the one code path. A slave's own
+     fingers on the strip are ignored from the moment it joins. */
+  LINK.on(function (evt) { if (evt === 'joined' && LINK.info().role === 'slave') VT.setGlottisRemote(true); });
+  setting('vt.glot', function () {
+    var t = VT.getGlottisTouch();
+    return t ? [1, t[0], t[1]] : [0];
+  }, function (v) {
+    var role = LINK.info().role;
+    if (role === 'master') return;                     // a master adopting the room keeps its own finger
+    VT.setGlottisRemote(true);
+    /* the engine starts when the master voices, as it does for SPEAK (a slave may never open VOICE) */
+    if (v[0] && role === 'slave' && !vtInitialized) { vtInitialized = true; vtInit(); }
+    if (v[0]) VT.setGlottisTouch(v[1], v[2]); else VT.setGlottisTouch(null);
+  });
 
   /* The four switches live inside the engine, and a phone starts that engine only when its owner
      opens VOICE or the master speaks: it renders audio on the main thread and never stops. Before

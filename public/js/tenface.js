@@ -1,5 +1,5 @@
 /* ═══════════════════════════════════════════════════════════════════════════
-   TENFACE — a 5-lane, 4-slot step sequencer drum machine (under "+").
+   TRACKER — a 5-lane, 4-slot step sequencer drum machine (under "+").
 
    Owns: the drum machine's state, its clock, its voices and its screen. Audio
    leaves through fx-core.js: lanes tf1..tf5 sum into the `tenface` bus, which
@@ -395,7 +395,7 @@ var TF = (function () {
      code writes (TONE GEN has no channel, so index.html gives it rsGateNode()). The
      module itself is switched on and off by its own handler, exactly as its button
      does, so the button, the app autogain and LINK all stay true. While a module is
-     switched on by TENFACE it is `owned`; one switched on by hand is never touched. */
+     switched on by TRACKER it is `owned`; one switched on by hand is never touched. */
   var MOD = {
     voice: { name: 'VOICE', color: '#d9a0d5', settle: 0.6, /* no power: "on" = always voice; its voicing fades ~0.25 s */
       isOn: function () { return vtInitialized && VT.getAlwaysVoice(); },

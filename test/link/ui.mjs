@@ -22,17 +22,30 @@ try {
   await e.ev(`document.getElementById('lkRoom').value = 'twice'; var b = document.getElementById('lkGo'); b.click(); b.click(); 1`);
   await until('JOIN twice still joins', e, `LINK.info().joined === true`);
   await sleep(1500);
-  ok('and builds one set of buttons', (await e.ev(`document.querySelectorAll('#lkBar').length === 1 && document.querySelectorAll('#lkVeil').length === 1 && document.querySelectorAll('#lkRing').length === 1 && document.querySelectorAll('#lkExit').length === 1`)) === true);
+  ok('and builds one set of buttons', (await e.ev(`document.querySelectorAll('#lkBar').length === 1 && document.querySelectorAll('#lkBadge').length === 1`)) === true);
 
   // ── slave joins by the sheet ──
   const s = await page('/slaves?room=UI%20Room');
   ok('the room from the link is filled in', (await s.ev(`document.getElementById('lkRoom').value`)) === 'UI Room');
   ok('the slave sheet offers JOIN and no key field', (await s.ev(`${text('#lkGo')} === 'JOIN' && !document.getElementById('lkKey')`)) === true);
   if (shots) await s.shot(path.join(shots, 'sheet-slave.png'));
+  await s.ev(`switchTab('burst'); TF.play(); 1`);
   await s.tap('#lkGo');
-  await until('JOIN enters slave mode', s, `LINK.info().joined && !!document.querySelector('#lkBar.slave') && !!document.getElementById('lkVeil') && !!document.querySelector('#bbFrame > #lkRing') && document.getElementById('landingOverlay').classList.contains('hidden')`);
+  await until('JOIN enters slave mode', s, `LINK.info().joined && !!document.querySelector('#lkBar.slave') && document.getElementById('landingOverlay').classList.contains('hidden')`);
   ok('the join tap started audio', (await s.ev(`AC ? AC.state : 'none'`)) === 'running', await s.ev(`AC ? AC.state : 'none'`));
   ok('pull-to-refresh is off on a slave', (await s.ev(`document.documentElement.style.overscrollBehavior`)) === 'none', await s.ev(`document.documentElement.style.overscrollBehavior`));
+  ok('no fade and no exit button on a slave', (await s.ev(`!document.getElementById('lkVeil') && !document.getElementById('lkRing') && !document.getElementById('lkExit')`)) === true);
+  const gone = (ids) => s.ev(`${JSON.stringify(ids)}.filter(function(q){ var e = document.querySelector(q); return !e || getComputedStyle(e).display !== 'none'; })`);
+  const shown = (ids) => s.ev(`${JSON.stringify(ids)}.filter(function(q){ var e = document.querySelector(q); return !e || getComputedStyle(e).display === 'none'; })`);
+  const hid = await gone(['#bbFrame', '#bbControls', '#bbHidden', '#bbPlayBtn', '#nsControls', '#nsVsPanel', '#nsSpeedPanel', '#nsVolPanel', '#muContent', '#muStripRow', '.maths-sliders', '#mathsSettings', '#vtBtnRow', '#vtAlwaysVoiceBtn', '#vtSpeakText', '#vtSpeakRow', '#modVoice > .rr']);
+  ok('a slave sees no module controls', hid.length === 0, hid);
+  const plus = await s.ev(`[].filter.call(document.querySelectorAll('#plusMenu button'), function(b){ return getComputedStyle(b).display !== 'none'; }).map(function(b){ return b.textContent; }).join(',')`);
+  ok('the "+" menu offers only SCORES and QR', plus === 'SCORES,QR', plus);
+  const kept = await shown(['#vtCanvasWrap', '#nsRfPanel']);
+  ok('the mouth and the ratio filter strip stay', kept.length === 0, kept);
+  ok('a TRACKER playing when the phone joins as a slave stops and is put away', (await s.ev(`TF.playing === false && document.querySelector('.mod.active').id !== 'modBurst'`)) === true, await s.ev(`[TF.playing, document.querySelector('.mod.active').id].join()`));
+  ok('the other "+" pages cannot be opened on a slave', (await s.ev(`['riser','burst','mixer','call','archive'].some(function(t){ switchTab(t); var a = document.querySelector('.mod.active'); return !!a && a.id.toLowerCase() === 'mod' + t; })`)) === false);
+  ok('the slave button sits at the bottom centre and lets touches through', (await s.ev(`(function(){ var r = document.getElementById('lkBadge').getBoundingClientRect(); return Math.abs(r.left + r.width / 2 - innerWidth / 2) < 2 && innerHeight - r.bottom < 60 && getComputedStyle(document.getElementById('lkBadge')).pointerEvents === 'none'; })()`)) === true);
   await until('with no master yet the slave button reads WAIT', s, `document.getElementById('lkBadge').className === 'wait' && ${text('#lkBadge .lk-lbl')} === 'WAIT'`);
 
   // ── master: a wrong key, then the right one ──
@@ -57,26 +70,32 @@ try {
   await until('a real tap on the master reaches the slave', s, `nOn === true`);
   if (shots) await m.shot(path.join(shots, 'master-noise.png'));
 
-  // ── the slave is locked, except tabs, the mouth and exit ──
+  // ── the slave is locked, except tabs and the mouth ──
   await s.tap('.tab[data-tab="noise"]');
   await until('tabs stay live on a slave', s, `document.querySelector('.tab.active').dataset.tab === 'noise'`);
   if (shots) await s.shot(path.join(shots, 'slave-noise.png'));
-  await s.tap('#nsPlayBtn');
-  ok('locked: tapping NOISE play does nothing', (await s.ev(`nOn`)) === true);
+  await s.tap('#nsBird');
+  ok('locked: tapping the NOISE circle does nothing', (await s.ev(`nOn`)) === true);
+  await s.tap('#nsRfHit');
+  ok('locked: the ratio filter strip does not open', (await s.ev(`document.getElementById('nsRfPanel').classList.contains('rf-open')`)) === false);
+  await m.ev(`nsRfTogglePanel(); 1`);
+  await until('the master opens the ratio filter', s, `document.getElementById('nsRfPanel').classList.contains('rf-open')`);
+  ok('and on the slave it stays shut', (await s.ev(`getComputedStyle(document.querySelector('#nsRfPanel .nsrf-row')).display`)) === 'none');
+  if (shots) await s.shot(path.join(shots, 'slave-noise-rf.png'));
+  await m.ev(`nsRfTogglePanel(); 1`);
   await s.tap('.tab[data-tab="multi"]');
-  await s.tap('#mathsPowerBtn');
-  ok('locked: tapping MATHS SOUND does nothing', (await s.ev(`multiPlaying`)) === false);
+  if (shots) await s.shot(path.join(shots, 'slave-maths.png'));
+  ok('MATHS keeps its operator grid', (await s.ev(`getComputedStyle(document.getElementById('mathsGrid')).display !== 'none' && document.querySelectorAll('#mathsGrid .maths-cell').length > 0`)) === true);
+  await s.tap('#mathsGrid');
+  ok('locked: tapping the MATHS grid does nothing', (await s.ev(`multiPlaying`)) === false);
   await s.tap('.tab[data-tab="birdbox"]');
   if (shots) await s.shot(path.join(shots, 'slave-birdbox.png'));
-  await s.tap('#bbPlayBtn');
+  await s.tap('#bbBird');
   ok('locked: tapping the bird does nothing', (await s.ev(`swpPlaying`)) === false);
   await s.tap('.tab[data-tab="voice"]');
   await s.ev(`window.__touches = 0; document.getElementById('vtTractCanvas').addEventListener('touchstart', function(){ window.__touches++; }); 1`);
   await s.tap('#vtTractCanvas');
   ok('the VOICE mouth canvas is live', (await s.ev(`window.__touches`)) === 1);
-  const oto = await s.ev(`VT.getOtotune()`);
-  await s.tap('#vtOtotuneBtn');
-  ok('locked: the VOICE buttons', (await s.ev(`VT.getOtotune()`)) === oto);
   if (shots) await s.shot(path.join(shots, 'slave-voice.png'));
   ok('a slave leaves no trace in its storage', (await s.ev(`localStorage.setItem('lk_probe', '1'); localStorage.getItem('lk_probe')`)) === null);
 
@@ -84,14 +103,14 @@ try {
   await s.ev(`AC.suspend(); 1`);
   await until('audio stopped: the slave button reads TAP', s, `${text('#lkBadge .lk-lbl')} === 'TAP'`);
   await s.tap('.tab[data-tab="noise"]');
-  await s.tap('#nsPlayBtn');
+  await s.tap('#nsBird');
   await until('any touch resumes it, even on a locked control', s, `AC.state === 'running' && ${text('#lkBadge .lk-lbl')} === 'SLAVE'`);
   ok('and that touch still changed nothing', (await s.ev(`nOn`)) === true);
 
   /* iPhones report 'interrupted', not 'suspended', after a call. Chrome has no such state, so it is staged. */
   await s.ev(`window.__resumed = 0; AC.__resume = AC.resume; AC.resume = function(){ window.__resumed++; return AC.__resume.call(AC); };
     Object.defineProperty(AC, 'state', { configurable: true, get: function(){ return 'interrupted'; } }); 1`);
-  await s.tap('#nsPlayBtn');
+  await s.tap('#nsBird');
   ok('an interrupted context is resumed by a touch too', (await s.ev(`window.__resumed`)) >= 1, await s.ev(`window.__resumed`));
   await s.ev(`delete AC.state; AC.resume = AC.__resume; 1`);
 
@@ -116,19 +135,17 @@ try {
   // ── master lost ──
   await m.ev(`LINK.stop()`);
   await until('master gone: the slave button reads WAIT', s, `document.getElementById('lkBadge').className === 'wait' && ${text('#lkBadge .lk-lbl')} === 'WAIT'`);
-  ok('and the slave is still locked', (await s.ev(`!!document.getElementById('lkVeil') && LINK.info().role === 'slave'`)) === true);
+  ok('and the slave is still locked', (await s.ev(`document.getElementById('app').classList.contains('lk-slave') && LINK.info().role === 'slave'`)) === true);
 
-  // ── exit ──
-  await s.tap('#lkExit', 150);
-  ok('a short tap on EXIT does not exit', (await s.ev(`LINK.info().role`)) === 'slave');
-  await s.tap('#lkExit', 1300);
-  await until('holding EXIT leaves slave mode', s, `LINK.info().role === null && !document.getElementById('lkBar') && !document.getElementById('lkVeil') && !document.getElementById('lkRing') && !document.getElementById('app').classList.contains('lk-slave')`);
-  ok('the address is the plain one again', (await s.ev(`location.pathname + location.search`)) === '/');
-  ok('and pull-to-refresh is back to the browser default', (await s.ev(`document.documentElement.style.overscrollBehavior`)) === '');
+  // ── a slave leaves by closing the page: at the plain address it is a normal poepub ──
+  await s.load('/');
+  ok('the plain address is a normal poepub again', (await s.ev(`LINK.info().role === null && !document.getElementById('lkBar') && !document.getElementById('app').classList.contains('lk-slave')`)) === true);
   ok('storage works again', (await s.ev(`localStorage.setItem('lk_probe', '1'); var v = localStorage.getItem('lk_probe'); localStorage.removeItem('lk_probe'); v`)) === '1');
+  await s.ev(`document.getElementById('landingOverlay').classList.add('hidden'); 1`);
   await s.tap('.tab[data-tab="voice"]');
+  const oto2 = await s.ev(`VT.getOtotune()`);
   await s.tap('#vtOtotuneBtn');
-  ok('controls answer again', (await s.ev(`VT.getOtotune()`)) !== oto);
+  ok('controls answer again', (await s.ev(`VT.getOtotune()`)) !== oto2);
 
   // ── a reloaded master can resume ──
   await m.load();

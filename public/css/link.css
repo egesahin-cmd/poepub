@@ -7,9 +7,9 @@
    One format for all four: a 34x32 rectangle, signal glyph over one short line.
    z 190 keeps them under .tabs (z 200), so the "+" menu still covers them. */
 #lkBar{position:absolute;top:calc(var(--tab-h) + 10px);left:12px;z-index:190;display:flex;align-items:flex-start;gap:5px;pointer-events:none}
-/* slave: four fifths of the way down, centred — over locked controls and well away from the tab
-   bar, so reaching for a tab cannot land on EXIT */
-#lkBar.slave{top:80%;left:50%;transform:translate(-50%,-50%)}
+/* slave: alone at the bottom, centred. It only signals: touches pass through it to the module. */
+#lkBar.slave{top:auto;bottom:max(16px,env(safe-area-inset-bottom));left:50%;transform:translateX(-50%)}
+#lkBar.slave>*{pointer-events:none}
 #lkBar>*{pointer-events:auto;position:relative;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;
   width:34px;height:32px;border-radius:2px;border:1px solid transparent;
   font:500 8px/1 'DM Mono',monospace;letter-spacing:1px;white-space:nowrap;
@@ -34,26 +34,27 @@
 #lkBadge.slave .lk-arc2{animation-delay:.25s}
 #lkBadge.wait{background:#ede7d4;color:#8a6f14;border-color:#ecc735}
 
-/* exit: the same rectangle in black, its three words stacked. Press and hold; the fill is the progress. */
-#lkExit{gap:2px;font-size:7.5px;letter-spacing:.8px;color:#ede7d4;cursor:pointer;-webkit-touch-callout:none;touch-action:none;
-  background:linear-gradient(to right,#6b6558 50%,#000 50%) 100% 0/200% 100% no-repeat}
-#lkExit.down{background-position:0 0;transition:background-position .9s linear}
-#lkExit::before{content:"";position:absolute;left:-3px;right:-10px;top:-10px;bottom:-10px}
-
-/* ── slave fade ──────────────────────────────────────────────────────────────
-   A veil, not opacity or filter on #app: those would re-parent the fixed #mathsMenuLayer.
-   It never covers the tab bar. */
-#lkVeil{position:absolute;left:0;right:0;top:var(--tab-h);bottom:0;z-index:50;background:rgba(237,231,212,.4);pointer-events:none}
-#app.lk-slave #vtCanvasWrap{z-index:60}        /* the mouth stays unfaded and live */
+/* ── slave view ──────────────────────────────────────────────────────────────
+   A slave sees the modules' pictures, not their controls. Nothing is faded. The controls are hidden,
+   not removed: the rows still drive them, and leaving brings them back.
+   BIRDBOX: the bird and the background. NOISE: the picture and the ratio filter strip, which stays
+   shut even when the master opens it. MATHS: the 4x4 grid, at a third of the height. VOICE: the mouth canvas.
+   "+": only SCORES and QR. */
+#app.lk-slave #bbFrame,#app.lk-slave #bbControls,#app.lk-slave #bbHidden,#app.lk-slave #bbPlayBtn,
+#app.lk-slave #nsPlayBtn,#app.lk-slave #nsControls,#app.lk-slave #nsHidden,#app.lk-slave #nsVsPanel,#app.lk-slave #nsSpeedPanel,#app.lk-slave #nsVolPanel,
+#app.lk-slave #nsRfPanel .nsrf-row,#app.lk-slave #nsRfOctNum,
+#app.lk-slave #muContent,#app.lk-slave #muStripRow,#app.lk-slave .maths-sliders,#app.lk-slave #mathsSettings,
+#app.lk-slave #vtBtnRow,#app.lk-slave #vtAlwaysVoiceBtn,#app.lk-slave #vtSpeakText,#app.lk-slave #vtSpeakRow,#app.lk-slave #modVoice>.rr,
+#app.lk-slave #plusMenu button:not([onclick*="'scores'"]):not([onclick*="'qr'"]){display:none!important}
+/* MATHS: the grid's centre sits at one third of the stage's height — centred, then lifted by a sixth
+   (a relative top in % reads the stage's height) */
+#app.lk-slave #muStage{justify-content:center;padding-bottom:var(--fm-pad)}
+#app.lk-slave #modMulti #muCanvasWrap{position:relative;top:-16.667%}
+#app.lk-slave #nsRfPanel.rf-open #nsRfBar{box-shadow:none}
+#app.lk-slave #nsRfPanelBtn.open .mvs-grip i{background:#fff}
 /* Native controls would still react to a touch even though no handler sees it. Touches fall
    through to the page instead, so scrolling keeps working. */
 #app.lk-slave .content input,#app.lk-slave .content textarea,#app.lk-slave .content button{pointer-events:none}
-/* BIRDBOX: no veil. A clear window is left around the bird, 20px inside the slider frame, and
-   everything from there out to the edges of the BIRDBOX area is faded. #lkRing is a child of
-   #bbFrame, so it follows the frame at every screen size; its shadow IS the fade and is clipped
-   by #modBirdbox (overflow:hidden). */
-#app.lk-slave:has(#modBirdbox.active) #lkVeil{display:none}
-#lkRing{position:absolute;left:20px;right:20px;top:20px;bottom:20px;z-index:10;pointer-events:none;box-shadow:0 0 0 2000px rgba(237,231,212,.4)}
 
 /* ── join sheets: the landing card, re-lettered ──────────────────────────── */
 .lk-sheet-tag{display:flex;align-items:center;gap:6px;height:22px;padding:0 9px 0 7px;border-radius:2px;font:500 11px/1 'DM Mono',monospace;letter-spacing:2px}

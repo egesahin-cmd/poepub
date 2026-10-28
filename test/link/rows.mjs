@@ -341,6 +341,22 @@ try {
     'language': `document.getElementById('vtLangBtn').textContent === 'tr'`,
   });
 
+  /* The pitch strip is the master's: its finger is replayed on every slave, whose own strip is ignored. */
+  const strip = (p, type, fx, fy) => p.ev(`(function(){ var c = document.getElementById('vtTractCanvas'), r = c.getBoundingClientRect();
+    var t = new Touch({ identifier: 7, target: c, clientX: r.left + r.width * ${fx}, clientY: r.top + r.height * ${fy}, pageX: r.left + r.width * ${fx}, pageY: r.top + r.height * ${fy} });
+    c.dispatchEvent(new TouchEvent(${JSON.stringify(type)}, { touches: ${JSON.stringify(type)} === 'touchend' ? [] : [t], changedTouches: [t], bubbles: true, cancelable: true })); })(); 1`);
+  const glot = `JSON.stringify(VT.glottis())`;
+  await strip(m, 'touchstart', 0.3, 640 / 730);
+  await strip(m, 'touchmove', 0.62, 650 / 730);
+  await until('the master\'s finger on the pitch strip reaches the room', m, `(function(){ var v = LINK._.read()['vt.glot']; return v[0] === 1 && Math.abs(v[1] - 372) < 1 && Math.abs(v[2] - 650) < 1; })()`);
+  await until('the slave\'s voice follows the master\'s strip', s, `(function(){ var a = VT.glottis(), b = ${await m.ev(glot)}; return a.on && Math.abs(a.f / b.f - 1) < 0.001 && Math.abs(a.ten - b.ten) < 0.001; })()`);
+  await s.ev(`switchTab('voice')`);
+  const own0 = await s.ev(glot);
+  await strip(s, 'touchstart', 0.9, 700 / 730); await strip(s, 'touchend', 0.9, 700 / 730);
+  ok('a slave\'s own finger on the strip changes nothing', (await s.ev(glot)) === own0, [own0, await s.ev(glot)]);
+  await strip(m, 'touchend', 0.62, 650 / 730);
+  await until('the master lets go: the slave\'s strip lets go', s, `VT.glottis().on === false && LINK._.eq(LINK._.rows.filter(function(r){ return r.id === 'vt.glot'; })[0].get(), [0])`);
+
   /* Text is held back while the master types: every keystroke would send the whole text to the room. */
   await m.ev(`document.getElementById('vtSpeakText').focus(); 1`);
   await type(m, 'merhaba dünya, merhaba dünya, merhaba dünya');

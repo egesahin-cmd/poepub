@@ -44,6 +44,7 @@ export const PROBES = {
   'fx.verb.on': [0, 1], 'fx.verb.type': [0, 3, 2], 'fx.verb.mode': ['direct', 'send'], 'fx.verb.size': [10, 52], 'fx.verb.decay': [100, 68], 'fx.verb.tone': [5, 71],
   // stage 5: VOICE and SPEAK
   'vt.oto': [1, 0], 'vt.free': [1, 0], 'vt.wob': [1, 0], 'vt.av': [1, 0],
+  'vt.glot': [[1, 300, 640], [1, 120.5, 660], [0]],
   'vt.spk.text': ['merhaba dünya', 'hello'], 'vt.spk.lang': ['tr', 'en'], 'vt.spk.rate': [0.6, 1.8, 1.44], 'vt.spk.loop': [1, 0],
 };
 // Trigger counters: not state, nothing to round-trip.

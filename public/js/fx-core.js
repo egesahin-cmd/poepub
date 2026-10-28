@@ -20,7 +20,7 @@ var FX = (function () {
   var knobs = {};        // unitKey -> {chKey: knob handle}
   var store = {};        // unitKey -> persisted unit state (units read/write freely)
   var racks = {};        // unitKey -> rack handle, for callers that are not the unit itself (LINK)
-  var scale = {};        // chKey -> multiplier on every send gain (TENFACE bus volume); absent = 1
+  var scale = {};        // chKey -> multiplier on every send gain (TRACKER bus volume); absent = 1
   var MASTER = 'master';
 
   /* ── persistence ─────────────────────────────────────────────────────────
@@ -76,7 +76,7 @@ var FX = (function () {
      on every start) touches exactly one connection and never disturbs the sends.
 
      `outNode` (first call only) sends the dry somewhere other than the master bus:
-     TENFACE's lanes tf1..tf5 sum into its `tenface` bus this way. Sends still go to
+     TRACKER's lanes tf1..tf5 sum into its `tenface` bus this way. Sends still go to
      the global returns. Later calls ignore it — a channel is wired once. */
   function ports(chKey, outNode) {
     var s = chans[chKey];
@@ -145,7 +145,7 @@ var FX = (function () {
   function applyAll() { for (var k in chans) applyCh(k); }
 
   /* Scale a channel's sends without touching its stored amounts (never persisted):
-     a fader that sits AFTER the tap — TENFACE's bus volume — must still silence the
+     a fader that sits AFTER the tap — TRACKER's bus volume — must still silence the
      channel's DRIVE/REV, which leave from the tap and never pass through it. */
   function sendScale(chKey, k) { scale[chKey] = k; applyCh(chKey); }
 

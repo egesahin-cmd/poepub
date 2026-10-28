@@ -1,4 +1,4 @@
-// TENFACE audio: voices (offline renders), lane -> bus routing, bus volume on the sends,
+// TRACKER audio: voices (offline renders), lane -> bus routing, bus volume on the sends,
 // the hidden-page look-ahead, edits inside the look-ahead window, stop and restart.
 //   node test/tenface/audio.mjs
 import { rig, sleep } from '../link/rig.mjs';
@@ -88,7 +88,7 @@ try {
   ok('FX channels tf1 and tenface exist', (await p.ev(`!!(FX._chans.tf1 && FX._chans.tenface)`)) === true);
   ok('lane channels are not in the MIXER', (await p.ev(`FX.chKeys().every(function (k) { return !/^tf|tenface/.test(k); })`)) === true);
   ok('TF.clock is the live clock', (await p.ev(`!!TF.clock && typeof TF.clock.events === 'function'`)) === true);
-  ok('TENFACE does not count as an active module', (await p.ev(`appCountActiveModules()`)) === 0, await p.ev(`appCountActiveModules()`));
+  ok('TRACKER does not count as an active module', (await p.ev(`appCountActiveModules()`)) === 0, await p.ev(`appCountActiveModules()`));
 
   await p.ev(`
     var L = TF.state.slots[TF.state.slot].lanes;
