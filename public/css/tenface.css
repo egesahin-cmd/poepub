@@ -6,6 +6,8 @@
 
 /* strip: play, BPM, slots */
 .tf-strip{display:flex;align-items:center;gap:10px;padding:6px 10px;height:46px;flex-shrink:0;border-bottom:1px solid #000}
+/* a LINK master's badge sits top-left over the module: keep PLAY clear of it */
+#app:has(#lkBar:not(.slave)) .tf-strip{padding-left:58px}
 .tf-play{width:34px;height:34px;border:1.5px solid #000 !important;border-radius:50%;font-size:13px;line-height:1;padding:0}
 .tf-play.on{background:#000 !important;color:#ede7d4 !important}
 .tf-tempo{display:flex;align-items:center;gap:4px;flex:1;justify-content:center}

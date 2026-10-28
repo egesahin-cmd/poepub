@@ -51,6 +51,18 @@ try {
   await m.ev(`toggleNoise()`);
   await until('stop: NOISE stops on the slave', s, `nOn === false`);
 
+  /* TRACKER on the master switches a module on and off per note; the slaves follow those switches */
+  await m.ev(`var L = TF.state.slots[TF.state.slot].lanes; L[2].mod = 'birdbox'; L[2].env = { a: 10, d: 10, s: 100, r: 50 };
+              L[2].notes.fill(0); L[2].notes[0] = 4; TF.state.bpm = 120; switchTab('burst'); 1`);
+  await m.tap('#tfPlay');                                              /* a real tap: the reloaded page's audio is still locked */
+  ok('on a master, TRACKER\'s PLAY is clear of the LINK badge', (await m.ev(`TF.playing`)) === true);
+  await until('TRACKER switches BIRDBOX on: the slave follows', s, `swpPlaying === true`, 3000);
+  await until('TRACKER switches it off after the note: the slave follows', s, `swpPlaying === false`, 3000);
+  await until('the next loop switches it on again on the slave', s, `swpPlaying === true`, 3000);
+  await m.ev(`TF.stop(); 1`);
+  await until('stopping TRACKER switches it off on the slave', s, `swpPlaying === false`, 3000);
+  ok('the slave never runs a TRACKER of its own', (await s.ev(`TF.playing`)) === false);
+
   /* Review focus: a row the slave does not know, and a row whose setter throws. */
   await m.ev(`window.__a = 0; window.__b = 0;
     LINK.row({ id: 'zz.new', kind: 'setting', get: function(){ return window.__a; }, set: function(v){ window.__a = v; } });
