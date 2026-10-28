@@ -1,6 +1,18 @@
 // Probe values for the round-trip check in rows.mjs: for each row, set(p) then get() must equal p.
 // Every registered row must appear here or in EXEMPT, so a new row cannot skip the check.
+/* TRACKER: a slot crosses LINK packed (tenface.js packSlot): per lane
+   [snd, vol, tune, dec, tone, rate, len, mute, mod, [comp, drive, verb], [a, d, s, r], steps[64], notes[64]] */
+const tfLane = (snd, o = {}) => [snd, o.vol ?? 80, 0, 50, 50, o.rate ?? 1, o.len ?? 16, !!o.mute, o.mod ?? null, [0, o.verb ?? 0, 0],
+  o.env ?? [10, 200, 70, 300], Array.from({ length: 64 }, (_, i) => (o.steps || {})[i] || 0), Array.from({ length: 64 }, (_, i) => (o.notes || {})[i] || 0)];
+const tfSlot = (o) => [tfLane('kick', o), tfLane('snare'), tfLane('ch'), tfLane('clap'), tfLane('oh')];
+const tfBusy = [tfLane('cow', { vol: 33, rate: 2, len: 40, mute: true, verb: 25, steps: { 0: 1, 33: 2 } }), tfLane('snare'),
+  tfLane('ch', { mod: 'noise', env: [5, 6, 7, 8], notes: { 2: 5, 20: 16 } }), tfLane('clap'), tfLane('oh')];
+
 export const PROBES = {
+  // TRACKER
+  'tf.bpm': [133, 40, 120], 'tf.swing': [62, 50], 'tf.bus': [[32, 40, 10, 20, 30], [16, 80, 0, 0, 0]],
+  'tf.s0': [tfBusy, tfSlot()], 'tf.s1': [tfBusy, tfSlot()], 'tf.s2': [tfBusy, tfSlot()], 'tf.s3': [tfBusy, tfSlot()],
+  'tf.slot': [2, 0], 'tf.on': [1, 0], 'tf.t0': [5000.5, 0],
   // stage 1
   'rs.on': [1, 0], 'bb.on': [1, 0], 'ns.on': [1, 0], 'mu.on': [1, 0],
   'app.vol': [0, 37, 100],

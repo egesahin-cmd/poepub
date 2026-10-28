@@ -113,6 +113,26 @@ var TF = (function () {
   }
   function serialize(s) { return JSON.stringify(s); }
 
+  /* LINK compares and copies arrays and plain values only, so a slot crosses it packed:
+     one array per lane, in this order. unpackSlot goes through normLane like a load. */
+  var PACK = ['snd', 'vol', 'tune', 'dec', 'tone', 'rate', 'len', 'mute', 'mod'];
+  function packSlot(sl) {
+    return sl.lanes.map(function (l) {
+      return PACK.map(function (k) { return l[k]; }).concat([[l.fx.comp, l.fx.drive, l.fx.verb], [l.env.a, l.env.d, l.env.s, l.env.r], l.steps.slice(), l.notes.slice()]);
+    });
+  }
+  function unpackSlot(p) {
+    p = Array.isArray(p) ? p : [];
+    return { lanes: slot().lanes.map(function (dl, j) {
+      var a = Array.isArray(p[j]) ? p[j] : [], o = {}, n = PACK.length;
+      PACK.forEach(function (k, i) { o[k] = a[i]; });
+      var fx = Array.isArray(a[n]) ? a[n] : [], env = Array.isArray(a[n + 1]) ? a[n + 1] : [];
+      o.fx = { comp: fx[0], drive: fx[1], verb: fx[2] }; o.env = { a: env[0], d: env[1], s: env[2], r: env[3] };
+      o.steps = a[n + 2]; o.notes = a[n + 3];
+      return normLane(o, dl);
+    }) };
+  }
+
   /* ── timing: the clock reads `state` live, so UI edits land on a step's next pass ── */
 
   function stepDur(bpm, rate) { return 60 / bpm / 4 / rate; }
@@ -379,13 +399,31 @@ var TF = (function () {
     return worker;
   }
 
-  function play() {
+  /* A new clock = every lane from step 0 at t0. t0 may be in the past (a LINK slave
+     catching up with its master): the lanes walk forward from it and only steps from
+     the horizon on are scheduled. A switch still waiting is carried over. */
+  var t0 = 0, anchorPerf = 0;
+  function newClock(at) {
+    var p = clock ? clock.pendingSlot : -1;
+    t0 = at; clock = makeClock(state, at);
+    clock.onStep(function (j, s, t) { if (t >= AC.currentTime) queue.push([j, s, t]); });
+    clock.onSwitch(function (s, at) { syncLanes(at); queue.push([-1, s, at]); });
+    if (p >= 0) clock.requestSlot(p, AC.currentTime);
+  }
+  /* LINK carries start times in performance.now(); the audio clock is AC time. The output
+     timestamp ties the two at the speaker, so phones that agree on one agree on the other. */
+  function acOf(perf) {
+    var ts = AC.getOutputTimestamp ? AC.getOutputTimestamp() : null;
+    if (ts && ts.performanceTime > 0) return ts.contextTime + (perf - ts.performanceTime) / 1000;
+    return AC.currentTime + (perf - performance.now()) / 1000;
+  }
+  function perfOf(t) { return performance.now() + (t - acOf(performance.now())) * 1000; }
+
+  function play(at) {
     if (playing) return;
     var c = getAC(); graph(); syncLanes();          /* vol/mute may have been edited while stopped */
     run = nodes.lanes.map(function (lg) { var g = c.createGain(); g.connect(lg); return g; });
-    clock = makeClock(state, c.currentTime + 0.05);  /* a new clock = every lane from step 0 */
-    clock.onStep(function (j, s, t) { if (t >= AC.currentTime) queue.push([j, s, t]); });
-    clock.onSwitch(function (s, at) { syncLanes(at); queue.push([-1, s, at]); });
+    clock = null; newClock(at > c.currentTime ? at : c.currentTime + 0.05);
     lastT = c.currentTime; playing = true;
     ensureWorker().postMessage('start');
     tick(); requestAnimationFrame(frame);
@@ -458,6 +496,7 @@ var TF = (function () {
   function stop() {
     if (!playing) return;
     var p = clock.pendingSlot;
+    anchorPerf = perfOf(t0);
     playing = false; clock = null; queue.length = 0; switchAt = -1;
     worker.postMessage('stop');
     var r = run; run = null;
@@ -849,7 +888,23 @@ var TF = (function () {
   }
 
   var api = {
-    mount: mount, voice: voice, MOD: MOD, play: play, stop: stop, setBusVol: setBusVol, syncLanes: function () { syncLanes(); },
+    mount: mount, voice: voice, MOD: MOD,
+    /* LINK: a slave's TRACKER runs on the master's patterns and start time */
+    owns: function (k) { return k in owned; },
+    /* playing: where this phone's clock started; stopped: the last start held (a LINK anchor
+       is a stored value, set then get gives it back) */
+    get startPerf() { return playing ? perfOf(t0) : anchorPerf; },
+    alignPerf: function (p) { anchorPerf = p; if (playing && Math.abs(acOf(p) - t0) > 0.003) newClock(acOf(p)); },
+    get pendingSlot() { return pendingSlot; },
+    pickSlot: function (i) { pickSlot(i); },
+    setBpm: function (v) { setBpm(v); },
+    /* a whole slot, packed, from the master; the current one also brings its gains and sends */
+    packSlot: function (i) { return packSlot(state.slots[i]); },
+    setSlotData: function (i, v) {
+      state.slots[i] = unpackSlot(v);
+      if (i === state.slot) { syncLanes(); pushFx(); if (panel) fillPanel(); }
+      render();
+    }, play: play, stop: stop, setBusVol: setBusVol, syncLanes: function () { syncLanes(); },
     render: render, openPanel: openPanel, setBusLen: setBusLen, setSwing: setSwing, setLaneFx: setLaneFx, setBusFx: setBusFx,
     get panel() { return panel; },
     get view() { return view; }, get follow() { return follow; }, get playPage() { return playPage; },
@@ -866,6 +921,7 @@ var TF = (function () {
     get _switchAt() { return switchAt; },
     _: { defaults: defaults, cycle: cycle, normalize: normalize, serialize: serialize,
          stepDur: stepDur, swingOffset: swingOffset, makeClock: makeClock,
+         packSlot: packSlot, unpackSlot: unpackSlot,
          placeNote: placeNote, noteAt: noteAt, deleteNote: deleteNote,
          KIT: KIT, RATES: RATES, MODS: MODS, LANES: LANES, SLOTS: SLOTS, ROWS: ROWS, MAX: MAX, STORE: STORE }
   };

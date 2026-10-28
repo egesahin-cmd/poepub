@@ -88,3 +88,15 @@ test('placeNote clamps to 16 rows, the next note and the lane length; noteAt / d
   assert.equal(placeNote(n, 6, 2, 64), 2); assert.equal(n[6], 2);  /* re-placing resizes */
   deleteNote(n, 11); assert.equal(n[10], 0); assert.equal(noteAt(n, 10), -1);
 });
+
+test('packSlot gives LINK nested arrays only, and unpackSlot gives the same slot back', () => {
+  const { packSlot, unpackSlot } = TF._;
+  const s = defaults().slots[1];
+  s.lanes[0].steps[40] = 2; s.lanes[3].mod = 'noise'; s.lanes[3].notes[5] = 7; s.lanes[3].env = { a: 1, d: 2, s: 3, r: 4 };
+  s.lanes[2].fx.verb = 30; s.lanes[1].mute = true; s.lanes[4].rate = 2 / 3; s.lanes[4].snd = 'cow';
+  const p = packSlot(s);
+  const flat = (v) => Array.isArray(v) ? v.every(flat) : (v === null || typeof v !== 'object');
+  assert.ok(Array.isArray(p) && flat(p));
+  assert.deepEqual(unpackSlot(p), s);
+  assert.deepEqual(unpackSlot('junk'), defaults().slots[0]);
+});

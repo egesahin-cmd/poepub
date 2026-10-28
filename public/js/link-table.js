@@ -13,27 +13,30 @@
   'use strict';
   /* The app's play buttons are flips. Applied as "flip only if different", they become idempotent
      and still run the whole handler (audio graph, button state, app autogain). */
+  /* A module TRACKER is switching per note is not the room's state: every phone's own
+     TRACKER switches it, with the envelope, so neither side reads or heals it here. */
+  function mine(k) { return typeof TF !== 'undefined' && TF.owns(k); }
   function flipTo(isOn, toggle) { return function (v) { if (!!isOn() !== !!v) toggle(); }; }
 
   LINK.row({ id: 'rs.on', kind: 'transport',
-    get: function () { return rsPlaying ? 1 : 0; },
+    get: function () { return rsPlaying && !mine('riser') ? 1 : 0; },
     set: flipTo(function () { return rsPlaying; }, function () { toggleRiser(); }) });
 
   LINK.row({ id: 'bb.on', kind: 'transport',
-    get: function () { return swpPlaying ? 1 : 0; },
+    get: function () { return swpPlaying && !mine('birdbox') ? 1 : 0; },
     set: flipTo(function () { return swpPlaying; }, function () { toggleSweep(); }) });
 
   /* NOISE's roll resumes only if a first roll exists, and a phone that never opened the NOISE tab
      has none (switchTab does it on first open). Without this the slave would play a frozen spectrum. */
   LINK.row({ id: 'ns.on', kind: 'transport',
-    get: function () { return nOn ? 1 : 0; },
+    get: function () { return nOn && !mine('noise') ? 1 : 0; },
     set: flipTo(function () { return nOn; }, function () {
       if (!nOn && !nsInitialized) { nsInitialized = true; randomizeNoise(); }
       toggleNoise();
     }) });
 
   LINK.row({ id: 'mu.on', kind: 'transport',
-    get: function () { return multiPlaying ? 1 : 0; },
+    get: function () { return multiPlaying && !mine('multi') ? 1 : 0; },
     set: flipTo(function () { return multiPlaying; }, function () { multiToggle(); }) });
 
   /* ── helpers ──────────────────────────────────────────────────────────────── */
@@ -368,7 +371,7 @@
      the same way). So a switch set early is remembered and shown, and handed over when it starts. */
   var vtWant = {};
   function voiceSwitch(id, name, btn) {
-    setting(id, function () { return (vtInitialized ? VT['get' + name]() : vtWant[name]) ? 1 : 0; }, function (v) {
+    setting(id, function () { return (vtInitialized ? VT['get' + name]() : vtWant[name]) && !(name === 'AlwaysVoice' && mine('voice')) ? 1 : 0; }, function (v) {
       v = !!v;
       if (!vtInitialized) vtWant[name] = v;
       else if (!!VT['get' + name]() !== v) VT['set' + name](v);
@@ -456,6 +459,25 @@
        this phone has fallen out of — its screen was away (the app stops SPEAK after 2 s), or the
        loop was switched on after its own phrase had ended. A loop has no ending to cut short. */
     heal: function (v) { if (v[0] && vtSpkLoop && !vtSpkPlaying) quietly(spkSay); } });
+  /* ── TRACKER ────────────────────────────────────────────────────────────────
+     Not mirrored hit by hit: each slave runs its own hidden TRACKER on the master's
+     patterns, from the master's start time, so it plays the drums and the module
+     envelopes itself. Phones are not re-aligned beyond the self-check's anchor. */
+  setting('tf.bpm', function () { return TF.state.bpm; }, function (v) { TF.setBpm(v); });
+  setting('tf.swing', function () { return TF.state.swing; }, function (v) { TF.setSwing(v); TF.render(); });
+  setting('tf.bus', function () { var s = TF.state; return [s.busLen, s.busVol, s.busFx.comp, s.busFx.drive, s.busFx.verb]; },
+    function (v) { var s = TF.state; s.busLen = v[0]; TF.setBusVol(v[1]); TF.setBusFx('comp', v[2]); TF.setBusFx('drive', v[3]); TF.setBusFx('verb', v[4]); TF.render(); });
+  /* a slot is packed into arrays: LINK's compare sees only arrays and plain values */
+  [0, 1, 2, 3].forEach(function (i) {
+    LINK.row({ id: 'tf.s' + i, kind: 'struct', get: function () { return TF.packSlot(i); }, set: function (v) { TF.setSlotData(i, v); } });
+  });
+  /* the slot asked for, so a slave asks for it too and both take it on the same bar line */
+  setting('tf.slot', function () { return TF.pendingSlot >= 0 ? TF.pendingSlot : TF.state.slot; }, function (v) { TF.pickSlot(v); });
+  /* started past the first look-ahead, so nothing is scheduled before the anchor aligns it */
+  LINK.row({ id: 'tf.on', kind: 'transport', get: function () { return TF.playing ? 1 : 0; },
+    set: function (v) { if (v && !TF.playing) TF.play(getAC().currentTime + 0.15); else if (!v && TF.playing) TF.stop(); TF.render(); } });
+  anchor('tf.t0', function () { return TF.startPerf; }, function (v) { TF.alignPerf(v); });
+
   /* The master's own phone drops out of its loop the same way. It falls in again at once — this
      listener runs after the app's — so the room's flag never drops and nothing is counted. */
   document.addEventListener('visibilitychange', function () {

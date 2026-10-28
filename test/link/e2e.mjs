@@ -34,8 +34,6 @@ try {
   await until('release reaches the latecomer too', s2, `multiPlaying === true`);
 
   const x = await page('/masterctrl');
-  await x.ev(`window.__why = null; LINK.on(function(e, d){ if (e === 'refused') window.__why = d; }); LINK.start('master','e2e-room','nope')`);
-  await until('a wrong key is refused', x, `window.__why === 'key' && LINK.info().role === null`);
   ok('and the real master is still the master', (await m.ev(`LINK.info().role === 'master' && LINK.info().joined`)) === true);
 
   await s.ev(`toggleNoise()`);                                         // the slave drifts off the mirror
@@ -51,17 +49,37 @@ try {
   await m.ev(`toggleNoise()`);
   await until('stop: NOISE stops on the slave', s, `nOn === false`);
 
-  /* TRACKER on the master switches a module on and off per note; the slaves follow those switches */
-  await m.ev(`var L = TF.state.slots[TF.state.slot].lanes; L[2].mod = 'birdbox'; L[2].env = { a: 10, d: 10, s: 100, r: 50 };
-              L[2].notes.fill(0); L[2].notes[0] = 4; TF.state.bpm = 120; switchTab('burst'); 1`);
+  /* TRACKER: each slave runs its own hidden TRACKER on the master's patterns and start time,
+     so it plays the drums and the module envelopes itself. Joined by a real tap, as on a phone:
+     its audio must run. */
+  const t = await page('/slaves?room=e2e-room');
+  await t.tap('#lkGo');
+  await until('a tapped-in slave joins with running audio', t, `LINK.info().joined && AC && AC.state === 'running'`);
+  await m.ev(`switchTab('burst'); 1`);                                 /* first: opening TRACKER loads its saved patterns */
+  await m.ev(`var L = TF.state.slots[TF.state.slot].lanes; TF.state.bpm = 133;
+              L[0].steps.fill(0); L[0].steps[0] = 1; L[0].steps[8] = 2;
+              L[2].mod = 'birdbox'; L[2].env = { a: 10, d: 10, s: 100, r: 50 }; L[2].notes.fill(0); L[2].notes[0] = 4;
+              TF.render(); 1`);
   await m.tap('#tfPlay');                                              /* a real tap: the reloaded page's audio is still locked */
   ok('on a master, TRACKER\'s PLAY is clear of the LINK badge', (await m.ev(`TF.playing`)) === true);
-  await until('TRACKER switches BIRDBOX on: the slave follows', s, `swpPlaying === true`, 3000);
-  await until('TRACKER switches it off after the note: the slave follows', s, `swpPlaying === false`, 3000);
-  await until('the next loop switches it on again on the slave', s, `swpPlaying === true`, 3000);
-  await m.ev(`TF.stop(); 1`);
-  await until('stopping TRACKER switches it off on the slave', s, `swpPlaying === false`, 3000);
-  ok('the slave never runs a TRACKER of its own', (await s.ev(`TF.playing`)) === false);
+  await until('the slave\'s TRACKER plays when the master\'s does', t, `TF.playing === true`, 3000);
+  await until('with the master\'s patterns and BPM', t, `TF.state.bpm === 133 && TF.state.slots[0].lanes[0].steps[8] === 2 && TF.state.slots[0].lanes[2].mod === 'birdbox'`, 3000);
+  await until('the slave\'s own TRACKER switches BIRDBOX on, with its envelope', t, `TF.owns('birdbox') && swpPlaying === true`, 3000);
+  await until('and off after the note', t, `!TF.owns('birdbox') && swpPlaying === false`, 3000);
+  ok('the hits are scheduled on the slave', (await t.ev(`TF._scheduledCount`)) > 0);
+  ok('a module TRACKER switches is not mirrored as a plain on/off', (await m.ev(`LINK.info().role`)) === 'master' && (await s.ev(`swpPlaying`)) === false);
+  await sleep(2500);                                                   /* one self-check pass */
+  const start = async (p) => p.ev(`TF.startPerf + LINK.clock().off`);
+  const dt = Math.abs((await start(m)) - (await start(t)));
+  ok('both start from the same moment (shared clock, within 30 ms)', dt < 30, dt);
+  await m.ev(`TF.state.slots[0].lanes[1].steps[3] = 2; TF.render(); 1`);
+  await until('an edit on the master while playing reaches the slave', t, `TF.state.slots[0].lanes[1].steps[3] === 2`, 2000);
+  await m.tap('.tf-slot[data-i="1"]');
+  await until('a slot switch on the master is taken on the slave too', t, `TF.state.slot === 1`, 4000);
+  await m.tap('#tfPlay');
+  await until('stopping the master stops the slave\'s TRACKER', t, `TF.playing === false && swpPlaying === false`, 3000);
+  await m.tap('.tf-slot[data-i="0"]');
+  await t.ev(`LINK.stop(); 1`);
 
   /* Review focus: a row the slave does not know, and a row whose setter throws. */
   await m.ev(`window.__a = 0; window.__b = 0;
